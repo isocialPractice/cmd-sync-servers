@@ -1,0 +1,38 @@
+# The global excludes file on the development machine ignores every dotfile
+# and package-lock.json. These rules outrank it, so the files the project
+# tracks are added by a plain `git add <path>` on any machine.
+!.gitignore
+!.gitattributes
+!.editorconfig
+!.npmrc
+!package-lock.json
+!.github/
+.github/*
+!.github/workflows/
+!.github/dependabot.yml
+!.github/ISSUE_TEMPLATE/
+!.github/PULL_REQUEST_TEMPLATE.md
+
+# Local working material: personal paths, screenshots, AI tooling and notes.
+# Never committed, packed or published.
+.claude/
+.support/
+.archive/
+.backups/
+.tmp/
+task.bat
+*.code-workspace
+*.lnk
+*.ai
+
+# The VS Code extension is scaffolded here before it moves to its own
+# repository beside this one.
+/vscode-sync-servers/
+
+# Built output, installed dependencies and packages
+out/
+_site/
+node_modules/
+coverage/
+*.tgz
+*.vsix
