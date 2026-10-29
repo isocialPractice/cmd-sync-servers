@@ -31,34 +31,51 @@ the step of the plan that specifies it.
       rules with `git status --short --ignored`
   - **Goal**: Resolve to [Phase E0, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e0-foundation)
   - From: version.control = null
-- [ ] Per-OS settings and state folders with `SYNC_SERVERS_HOME`, tested with
+- [x] Per-OS settings and state folders with `SYNC_SERVERS_HOME`, tested with
       injected platform and environment values
   - **Goal**: Resolve to [Phase E1, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
   - From: Phase E1 - Configuration and Site Registry
-- [ ] The `sites.json` schema in zod, with `schema/site.schema.json`
+- [x] The `sites.json` schema in zod, with `schema/site.schema.json`
       generated at build and checked in CI
   - **Goal**: Resolve to [Phase E1, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
   - From: Phase E1 - Configuration and Site Registry
-- [ ] The site registry: atomic writes with a backup, the lock file,
+- [x] The site registry: atomic writes with a backup, the lock file,
       unknown-key errors, site resolution order, and the migrations scaffold
   - **Goal**: Resolve to [Phase E1, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
   - From: Phase E1 - Configuration and Site Registry
-- [ ] Credential stores: environment, prompt and memory, and the OS keyring
+- [x] Credential stores: environment, prompt and memory, and the OS keyring
       behind its own export, loaded lazily with a clean fallback
   - **Goal**: Resolve to [Phase E1, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
   - From: Phase E1 - Configuration and Site Registry
-- [ ] The redacting logger, used by every module from here on
+- [x] The redacting logger, used by every module from here on
   - **Goal**: Resolve to [Phase E1, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
   - From: Phase E1 - Configuration and Site Registry
+- [ ] Path safety in `sync/paths.ts`, with the exhaustive hostile-name tests
+  - **Goal**: Resolve to [Phase E2, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
+  - From: Phase E2 - Transports and Sandbox
+- [ ] The transport interface, the `local` transport and the sandbox harness
+  - **Goal**: Resolve to [Phase E2, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
+  - From: Phase E2 - Transports and Sandbox
+- [ ] The SFTP transport with host key pinning and modern algorithms, and the
+      in-process SFTP sandbox with fault injection
+  - **Goal**: Resolve to [Phase E2, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
+  - From: Phase E2 - Transports and Sandbox
+- [ ] The FTP and FTPS transport with certificate verification and the
+      insecure opt-in, and the in-process FTP and FTPS sandbox
+  - **Goal**: Resolve to [Phase E2, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
+  - From: Phase E2 - Transports and Sandbox
+- [ ] Connection pool, retries and timeouts, and `server test`
+  - **Goal**: Resolve to [Phase E2, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
+  - From: Phase E2 - Transports and Sandbox
 
 ## Phase E1 - Configuration and Site Registry
 
 Next version: minor.
 
-- [ ] Site, server, password and cloak commands, `config path` and a first
+- [x] Site, server, password and cloak commands, `config path` and a first
       `doctor`, with `--editor` JSON editing
   - **Goal**: Resolve to [Phase E1, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
-- [ ] Shell integration: `shell-init` for bash, zsh, fish, pwsh and cmd, and
+- [x] Shell integration: `shell-init` for bash, zsh, fish, pwsh and cmd, and
       `--cd-file`
   - **Goal**: Resolve to [Phase E1, step 7](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
 
@@ -66,18 +83,6 @@ Next version: minor.
 
 Next version: minor.
 
-- [ ] Path safety in `sync/paths.ts`, with the exhaustive hostile-name tests
-  - **Goal**: Resolve to [Phase E2, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
-- [ ] The transport interface, the `local` transport and the sandbox harness
-  - **Goal**: Resolve to [Phase E2, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
-- [ ] The SFTP transport with host key pinning and modern algorithms, and the
-      in-process SFTP sandbox with fault injection
-  - **Goal**: Resolve to [Phase E2, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
-- [ ] The FTP and FTPS transport with certificate verification and the
-      insecure opt-in, and the in-process FTP and FTPS sandbox
-  - **Goal**: Resolve to [Phase E2, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
-- [ ] Connection pool, retries and timeouts, and `server test`
-  - **Goal**: Resolve to [Phase E2, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
 - [ ] The Docker interop sandbox, its Linux CI job, and `npm run sandbox`
   - **Goal**: Resolve to [Phase E2, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
 

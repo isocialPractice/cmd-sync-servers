@@ -1,0 +1,417 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json",
+  "title": "sync-servers sites.json",
+  "description": "The master list of sites and servers shared by the sync-servers CLI and the VS Code extension.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "sites": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "A random UUID, stable across renames."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The site name, unique across all sites, ignoring case."
+          },
+          "localRoot": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The local site folder."
+          },
+          "servers": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                  "description": "A random UUID, stable across renames."
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "description": "The server name, unique within its site."
+                },
+                "protocol": {
+                  "type": "string",
+                  "enum": [
+                    "sftp",
+                    "ftps",
+                    "ftps-implicit",
+                    "ftp",
+                    "local"
+                  ],
+                  "description": "\"local\" is a folder, a mounted drive or a network share."
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "username": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "auth": {
+                  "type": "object",
+                  "properties": {
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "password",
+                        "key",
+                        "agent"
+                      ],
+                      "description": "How to authenticate. \"key\" and \"agent\" are SFTP only."
+                    },
+                    "keyPath": {
+                      "description": "Private key file for the \"key\" method. Referenced, never copied.",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "savePassword": {
+                      "default": false,
+                      "description": "Keep the password or key passphrase in the operating system credential store.",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "method"
+                  ],
+                  "additionalProperties": false
+                },
+                "remoteRoot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The site root on the server. For \"local\", an absolute or UNC path."
+                },
+                "webUrl": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "options": {
+                  "default": {},
+                  "type": "object",
+                  "properties": {
+                    "passive": {
+                      "default": true,
+                      "description": "FTP passive mode. Only passive mode is supported.",
+                      "type": "boolean"
+                    },
+                    "ipFamily": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "const": 4
+                        },
+                        {
+                          "type": "number",
+                          "const": 6
+                        }
+                      ]
+                    },
+                    "timeoutSeconds": {
+                      "default": 30,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 600
+                    },
+                    "allowInsecure": {
+                      "description": "Required for plain FTP, which sends the password in clear text.",
+                      "type": "boolean"
+                    },
+                    "allowRootDeletes": {
+                      "description": "Allow deletes when the remote root is \"/\" or a drive root.",
+                      "type": "boolean"
+                    },
+                    "legacyAlgorithms": {
+                      "description": "SFTP: allow older algorithms for an old server, with a warning.",
+                      "type": "boolean"
+                    },
+                    "tls": {
+                      "type": "object",
+                      "properties": {
+                        "caFile": {
+                          "description": "A PEM file of extra certificate authorities, for a private CA.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "servername": {
+                          "description": "The host name to verify the certificate against, when it differs from host.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minVersion": {
+                          "default": "TLSv1.2",
+                          "type": "string",
+                          "enum": [
+                            "TLSv1.2",
+                            "TLSv1.3"
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "hostKey": {
+                      "description": "The pinned SSH host key, set when it is accepted on first connection.",
+                      "type": "object",
+                      "properties": {
+                        "algorithm": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9+/]{43}$",
+                          "description": "The SHA-256 fingerprint, as OpenSSH prints it after \"SHA256:\"."
+                        },
+                        "pinnedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "algorithm",
+                        "sha256",
+                        "pinnedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "uploadOnSave": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "remoteFileMode": {
+                      "type": "string",
+                      "pattern": "^[0-7]{3,4}$",
+                      "description": "An octal mode such as \"644\". Unset leaves the server default."
+                    },
+                    "remoteDirMode": {
+                      "type": "string",
+                      "pattern": "^[0-7]{3,4}$",
+                      "description": "An octal mode such as \"644\". Unset leaves the server default."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "protocol",
+                "remoteRoot"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "remoteServerId": {
+            "description": "The server synchronization uses.",
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "testingServerId": {
+            "description": "The server automatic pushes go to.",
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "local": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "webUrl": {
+                "description": "The local web address, such as http://localhost:8080/.",
+                "type": "string",
+                "format": "uri"
+              },
+              "caseSensitive": {
+                "description": "Unset: probed from the file system.",
+                "type": "boolean"
+              },
+              "cache": {
+                "default": true,
+                "description": "Cache local scans between runs.",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "cloaking": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "default": true,
+                "type": "boolean"
+              },
+              "patterns": {
+                "default": [],
+                "description": "\".psd\" cloaks a suffix, \"archive*\" a name, \"node_modules/\" a folder, \"/drafts/\" a root folder, \"!x\" re-includes.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "paths": {
+                "default": [],
+                "description": "Site-relative files and folders cloaked one by one.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "sync": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "maintainInfo": {
+                "default": true,
+                "description": "Keep sync records, so changes on both sides are detected.",
+                "type": "boolean"
+              },
+              "compare": {
+                "default": "metadata",
+                "type": "string",
+                "enum": [
+                  "metadata",
+                  "checksum"
+                ]
+              },
+              "mtimeToleranceSeconds": {
+                "default": 2,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 3600
+              },
+              "symlinks": {
+                "default": "skip",
+                "type": "string",
+                "enum": [
+                  "skip",
+                  "follow-inside-root"
+                ]
+              },
+              "concurrency": {
+                "default": 4,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16
+              },
+              "guard": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "patterns": {
+                    "default": [],
+                    "description": "Sensitive-file patterns added to the built-in list.",
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "massDelete": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "maxCount": {
+                    "default": 50,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "maxPercent": {
+                    "default": 25,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "additionalProperties": false
+              },
+              "recovery": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "keepDays": {
+                    "default": 14,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "maxMegabytes": {
+                    "default": 1024,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "localRoot"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "lastSelectedSiteId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+      "description": "A random UUID, stable across renames."
+    }
+  },
+  "required": [
+    "schemaVersion"
+  ],
+  "additionalProperties": false
+}

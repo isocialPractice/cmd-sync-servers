@@ -1,6 +1,6 @@
 {
   "name": "@isocialpractice/cmd-sync-servers",
-  "version": "1.0.0-alpha.0.0.0",
+  "version": "1.0.0-alpha.0.1.0",
   "description": "Cross-platform command-line site synchronization with a library API, modelled on Dreamweaver's Synchronize: sites, servers, cloaking and a preview of every change.",
   "keywords": [
     "sync",
@@ -30,6 +30,11 @@
       "types": "./out/index.d.ts",
       "default": "./out/index.js"
     },
+    "./credentials/keyring": {
+      "types": "./out/credentials/keyring.d.ts",
+      "default": "./out/credentials/keyring.js"
+    },
+    "./schema/site.schema.json": "./schema/site.schema.json",
     "./package.json": "./package.json"
   },
   "files": [
@@ -48,7 +53,8 @@
     "tag": "alpha"
   },
   "scripts": {
-    "build": "node scripts/clean.ts out && tsc -p tsconfig.json",
+    "build": "node scripts/clean.ts out && tsc -p tsconfig.json && node scripts/generate-schema.ts",
+    "schema": "node scripts/generate-schema.ts",
     "typecheck": "tsc -p tsconfig.dev.json",
     "lint": "eslint .",
     "test": "npm run build && node scripts/run-tests.ts unit integration e2e docs",
@@ -66,5 +72,11 @@
     "typedoc": "0.28.20",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "2.1.2"
   }
 }

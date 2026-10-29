@@ -28,7 +28,8 @@ explicitly with the commands below, never from npm lifecycle hooks.
 
 | Command | Does |
 | --- | --- |
-| `npm run build` | Compiles `src/` into `out/` |
+| `npm run build` | Compiles `src/` into `out/` and regenerates `schema/site.schema.json` |
+| `npm run schema` | Regenerates `schema/site.schema.json` from the zod schema; commit the result |
 | `npm run typecheck` | Type checks `src/`, `test/` and `scripts/` |
 | `npm run lint` | ESLint with type-aware rules |
 | `npm test` | Builds, then runs every test layer |
@@ -49,8 +50,12 @@ request. CI runs the same commands on Linux, macOS and Windows with Node.js
   put them in the layer they belong to: `unit`, `integration`, `e2e` or
   `docs`.
 - Every test sets `SYNC_SERVERS_HOME` to its own temp folder. The test
-  runner also points it at a fresh temp folder, so no test ever reads or
-  writes your real list of sites.
+  runner also points it at a fresh temp folder and sets
+  `SYNC_SERVERS_KEYRING=off`, so no test ever reads or writes your real list
+  of sites or your operating system's credential store. Tests that need a
+  credential store pass a `MemoryCredentialStore`.
+- A unit test fails when `schema/site.schema.json` differs from the zod
+  schema. Run `npm run schema` and commit the file after changing the schema.
 - Tests never connect to a real server. Protocol tests run against sandbox
   servers bound to `127.0.0.1` with credentials generated for each run.
 - Never commit a private key, certificate or password, even a test one.

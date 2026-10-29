@@ -1,7 +1,8 @@
 // Runs the node:test files of the named layers (test/<layer>/**/*.test.ts) in
 // one `node --test` process. A layer with no tests yet is reported and passes.
-// SYNC_SERVERS_HOME points at a fresh temp folder, so no test can reach the
-// real master list even if it forgets to set its own.
+// SYNC_SERVERS_HOME points at a fresh temp folder and SYNC_SERVERS_KEYRING is
+// off, so no test can reach the real master list or the OS credential store
+// even if it forgets to set its own.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -36,7 +37,7 @@ const home = mkdtempSync(join(tmpdir(), 'sync-servers-test-'));
 try {
   const result = spawnSync(process.execPath, ['--test', ...files], {
     stdio: 'inherit',
-    env: { ...process.env, SYNC_SERVERS_HOME: home },
+    env: { ...process.env, SYNC_SERVERS_HOME: home, SYNC_SERVERS_KEYRING: 'off' },
   });
   process.exitCode = result.status ?? 1;
 } finally {
