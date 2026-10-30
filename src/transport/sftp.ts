@@ -1,3 +1,4 @@
+import { getCiphers } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable, Writable } from 'node:stream';
@@ -26,6 +27,17 @@ import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEn
 const { Client, utils } = ssh2;
 
 /**
+ * The ciphers SFTP offers, given the ciphers of the runtime's crypto:
+ * ChaCha20-Poly1305 only where it has ChaCha20. Some runtimes, such as the
+ * Electron inside VS Code, lack it, and ssh2 refuses a list that names a
+ * cipher it cannot use.
+ */
+export function modernCiphers(available: readonly string[]): string[] {
+  const chacha = available.includes('chacha20') ? ['chacha20-poly1305@openssh.com'] : [];
+  return ['aes256-gcm@openssh.com', 'aes128-gcm@openssh.com', ...chacha, 'aes256-ctr', 'aes192-ctr', 'aes128-ctr'];
+}
+
+/**
  * The algorithms SFTP offers by default: modern key exchange, host keys,
  * ciphers and encrypt-then-MAC.
  *
@@ -34,7 +46,7 @@ const { Client, utils } = ssh2;
 export const MODERN_ALGORITHMS: Algorithms = {
   kex: ['curve25519-sha256', 'curve25519-sha256@libssh.org', 'ecdh-sha2-nistp256', 'ecdh-sha2-nistp384', 'ecdh-sha2-nistp521'],
   serverHostKey: ['ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'rsa-sha2-512', 'rsa-sha2-256'],
-  cipher: ['aes256-gcm@openssh.com', 'aes128-gcm@openssh.com', 'chacha20-poly1305@openssh.com', 'aes256-ctr', 'aes192-ctr', 'aes128-ctr'],
+  cipher: modernCiphers(getCiphers()) as Algorithms['cipher'],
   hmac: ['hmac-sha2-512-etm@openssh.com', 'hmac-sha2-256-etm@openssh.com'],
   compress: ['none'],
 };

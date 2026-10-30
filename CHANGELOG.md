@@ -104,6 +104,12 @@ Until the first stable release, versions use the pre-release form
   `Capabilities.startingFolder`, `TransportContext.updateServer` and
   `TransportContext.expectedCertificate`.
 
+### Fixed
+
+- SFTP connects in runtimes whose crypto lacks ChaCha20, such as the VS Code
+  extension host: ChaCha20-Poly1305 is offered only where it is available,
+  after AES-GCM as before.
+
 ## [1.0.0-alpha.0.6.1] - 2026-10-30
 
 ### Fixed
