@@ -6,6 +6,7 @@ import { type Stats } from 'node:fs';
 import { chmod, lstat, mkdir, open, readdir, rename, rmdir, stat, unlink, utimes, type FileHandle as FsHandle } from 'node:fs/promises';
 import path from 'node:path';
 import ssh2, { type Attributes, type AuthContext, type Connection, type FileEntry, type SFTPWrapper } from 'ssh2';
+import { ed25519KeyPair } from './keys.ts';
 
 const { Server, utils } = ssh2;
 const STATUS = utils.sftp.STATUS_CODE;
@@ -349,7 +350,7 @@ function authenticate(context: AuthContext, options: SftpSandboxOptions): void {
 
 /** Starts an SFTP sandbox serving `options.root` as `/` on 127.0.0.1. */
 export async function startSftpSandbox(options: SftpSandboxOptions): Promise<SftpSandbox> {
-  const hostKey = options.hostKey ?? utils.generateKeyPairSync('ed25519').private;
+  const hostKey = options.hostKey ?? ed25519KeyPair().private;
   const parsed = utils.parseKey(hostKey);
   if (parsed instanceof Error) {
     throw parsed;

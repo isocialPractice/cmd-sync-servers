@@ -8,6 +8,39 @@ Until the first stable release, versions use the pre-release form
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0.3.0] - 2026-10-29
+
+### Added
+
+- `sync --put`, `--get` or `--both`, with `--delete` to remove files missing
+  on the other side: compares both sides, shows a preview of every file with
+  a difference, and transfers the checked rows once confirmed. `--yes` runs
+  it from a script; without it, a script only sees the preview. Also
+  `--dry-run`, `--plan-out` and `--plan-in` for a saved plan, and `--json`.
+- Sync records for each site and server, kept in the state folder and saved
+  during a run. A file changed on both sides, or changed on one side and
+  deleted on the other, waits for a decision instead of being overwritten.
+- `put` and `get` for single files and folders, which run at once unless a
+  decision is needed.
+- `status`, `diff`, `mark-synced` and `state reset`.
+- Library API: `SyncSession`, `SyncPlan` and the change classification.
+
+### Security
+
+- Sensitive files such as `.env`, private keys, and version-control or
+  credential folders are listed unchecked and move only when checked.
+- Deletes need the delete option, and files never synchronized before are
+  listed unchecked. Deleting more than 50 files or 25 % of a side needs the
+  count typed back or `--allow-mass-delete`. Mirroring from an empty root,
+  and deleting at the top of a server, are refused.
+- Each file is checked again just before it moves; one that changed since
+  the preview is skipped. Files are written to a partial copy, checked for
+  size, then renamed into place, and a local file that is overwritten or
+  deleted is kept in a recovery folder for 14 days.
+- Names that differ only by case on a case-insensitive file system, names
+  not valid on this system, and symbolic links are reported and never
+  transferred.
+
 ## [1.0.0-alpha.0.2.0] - 2026-10-29
 
 ### Added
@@ -86,7 +119,8 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...HEAD
+[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...HEAD
+[1.0.0-alpha.0.3.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...v1.0.0-alpha.0.3.0
 [1.0.0-alpha.0.2.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.1.0...v1.0.0-alpha.0.2.0
 [1.0.0-alpha.0.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.0.0...v1.0.0-alpha.0.1.0
 [1.0.0-alpha.0.0.0]: https://github.com/isocialPractice/cmd-sync-servers/releases/tag/v1.0.0-alpha.0.0.0

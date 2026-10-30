@@ -18,6 +18,7 @@ import {
 import { serverTestCommand } from './commands/server-test.ts';
 import { folderProblem } from './commands/shared.ts';
 import { shellInitCommand } from './commands/shell.ts';
+import { diffCommand, getCommand, markSyncedCommand, putCommand, stateResetCommand, statusCommand, syncCommand } from './commands/sync.ts';
 import { siteAddCommand, siteEditCommand, sitePathCommand, siteRemoveCommand, siteShowCommand, sitesCommand } from './commands/site.ts';
 import { CommandContext, type GlobalFlags } from './context.ts';
 import { CancelledError, exitCodeFor, UsageError } from './errors.ts';
@@ -76,6 +77,13 @@ export const COMMANDS: readonly CommandSpec[] = [
   passwordForgetCommand,
   cloakCommand,
   uncloakCommand,
+  syncCommand,
+  putCommand,
+  getCommand,
+  statusCommand,
+  diffCommand,
+  markSyncedCommand,
+  stateResetCommand,
   configPathCommand,
   doctorCommand,
   shellInitCommand,

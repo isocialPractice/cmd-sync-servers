@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { realpathSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -68,4 +68,21 @@ test('a site with two servers is created, edited, resolved from a subfolder and 
   assert.deepEqual(filesContaining(home, secret), []);
   assert.ok(filesContaining(home, 'Site removed').length > 0, 'the run logs were written');
   assert.equal(path.basename(home), 'home');
+});
+
+test('the built CLI synchronizes with a folder server and reports through its exit codes', () => {
+  const site = realpathSync(makeFolder(temp.dir, 'sync', 'local'));
+  const share = realpathSync(makeFolder(temp.dir, 'sync', 'share'));
+  writeFileSync(path.join(site, 'index.html'), 'home');
+  assert.equal(run(temp.dir, 'site', 'add', '--name', 'Sample App', '--local-root', site).status, 0);
+  assert.equal(run(temp.dir, 'server', 'add', '--site', 'Sample App', '--name', 'Share', '--protocol', 'local', '--remote-root', share).status, 0);
+  assert.equal(run(site, 'sync').status, 2);
+  const preview = run(site, 'sync', '--put');
+  assert.equal(preview.status, 0);
+  assert.equal(readdirSync(share).length, 0);
+  const synced = run(site, 'sync', '--put', '--yes', '--json');
+  assert.equal(synced.status, 0, synced.stderr);
+  assert.equal((JSON.parse(synced.stdout) as { result: { done: number } }).result.done, 1);
+  assert.equal(readFileSync(path.join(share, 'index.html'), 'utf8'), 'home');
+  assert.deepEqual(filesContaining(home, secret), []);
 });

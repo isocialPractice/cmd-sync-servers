@@ -55,6 +55,25 @@ export { lookupSecret, type SecretLookupOptions } from './credentials/lookup.ts'
 export type { HostAdapter, HostKeyDecision, HostKeyInfo } from './host.ts';
 
 export {
+  SyncSession,
+  type Comparison,
+  type ComparedSide,
+  type PlanOptions,
+  type SingleTransfer,
+  type StatusEntry,
+  type StatusReport,
+  type SyncSessionOptions,
+} from './sync/session.ts';
+export { SyncPlan, decide, scanFingerprint, type PlanItem, type PlanSummary, type SavedPlan, type SilentUpdate } from './sync/plan.ts';
+export { resultLine, type ExecuteOptions, type ItemOutcome, type ItemResult, type SyncResult } from './sync/execute.ts';
+export { classify, copiesMatch, hasChanged, type CompareOptions, type SyncState } from './sync/classify.ts';
+export { STATUS, guardedStatus, unsafeNameStatus } from './sync/messages.ts';
+export { cloakPatternToGitignore, siteCloak, splitPatterns, type Cloak } from './sync/cloak.ts';
+export { DEFAULT_GUARD_PATTERNS, siteGuard, type Guard } from './sync/guard.ts';
+export { SyncRecords, recordsFile, type SyncRecord } from './sync/state.ts';
+export type { Action, Direction, Observation, ProblemKind, ProgressEvent, ScanProblem, Scope } from './sync/types.ts';
+
+export {
   ROOT,
   baseName,
   caseCollisions,

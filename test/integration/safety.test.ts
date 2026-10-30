@@ -4,7 +4,6 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, test } from 'node:test';
-import ssh2 from 'ssh2';
 import { isSyncError } from '../../src/errors.ts';
 import type { HostKeyDecision, HostKeyInfo } from '../../src/host.ts';
 import { createLogger, memorySink } from '../../src/log/logger.ts';
@@ -12,6 +11,7 @@ import { caseCollisions, checkPath, ROOT, toRemotePath } from '../../src/sync/pa
 import { TransportPool } from '../../src/transport/pool.ts';
 import type { Transport } from '../../src/transport/types.ts';
 import type { FtpSandbox } from '../sandbox/ftp-server.ts';
+import { ed25519KeyPair } from '../sandbox/keys.ts';
 import { collector } from '../helpers/streams.ts';
 import { startRig, type Kind } from '../sandbox/rig.ts';
 import type { SftpSandbox } from '../sandbox/sftp-server.ts';
@@ -213,7 +213,7 @@ describe('SFTP sign-in', () => {
 
   test('a private key with a passphrase signs in, and a wrong passphrase is E_AUTH', async () => {
     const passphrase = `pass-${randomBytes(6).toString('hex')}`;
-    const keys = ssh2.utils.generateKeyPairSync('ed25519', { passphrase, cipher: 'aes256-ctr', rounds: 16 });
+    const keys = ed25519KeyPair(passphrase);
     const rig = await startRig('sftp', { publicKey: keys.public });
     const keyPath = path.join(rig.siteDir, '..', 'id_test');
     writeFileSync(keyPath, keys.private);

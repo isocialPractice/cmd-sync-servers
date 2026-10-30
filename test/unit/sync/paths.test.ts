@@ -14,6 +14,7 @@ import {
   joinRemote,
   nameProblem,
   parentPath,
+  realpathOfNearest,
   ROOT,
   safeLocalTarget,
   toRemotePath,
@@ -216,6 +217,16 @@ describe('safeLocalTarget', () => {
     assert.equal(await safeLocalTarget(site, toRemotePath('new/deep/file.txt')), path.join(site, 'new', 'deep', 'file.txt'));
   });
 
+  test('the nearest real path walks up past missing folders and passes on other errors', async () => {
+    const missing = Object.assign(new Error('missing'), { code: 'ENOENT' });
+    const top = path.parse(root).root;
+    const existing = path.join(root, 'site');
+    const lookup = (file: string): Promise<string> => (file === existing ? Promise.resolve(`real:${file}`) : Promise.reject(missing));
+    assert.equal(await realpathOfNearest(path.join(existing, 'a', 'b'), lookup), `real:${existing}`);
+    await assert.rejects(realpathOfNearest(path.join(top, 'nothing'), () => Promise.reject(missing)), /missing/);
+    await assert.rejects(realpathOfNearest(existing, () => Promise.reject(Object.assign(new Error('not a folder'), { code: 'ENOTDIR' }))), /not a folder/);
+  });
+
   test('refuses a target inside a linked folder that leads out of the root', async (t) => {
     if (!folderLinks) {
       t.skip('creating folder links is not permitted here');
@@ -243,6 +254,19 @@ describe('case', () => {
     assert.deepEqual(caseCollisions(['Index.html', 'index.html', 'about.html', 'INDEX.HTML']), new Set(['Index.html', 'index.html', 'INDEX.HTML']));
     assert.deepEqual(caseCollisions(['a', 'b']), new Set());
     assert.deepEqual(caseCollisions(['same', 'same']), new Set());
+  });
+
+  test('isCaseSensitive reads either answer, and passes on other errors', async () => {
+    const temp = tempDir();
+    try {
+      assert.equal(await isCaseSensitive(temp.dir, () => Promise.resolve()), false);
+      assert.equal(await isCaseSensitive(temp.dir, () => Promise.reject(Object.assign(new Error('missing'), { code: 'ENOENT' }))), true);
+      await assert.rejects(isCaseSensitive(temp.dir, () => Promise.reject(Object.assign(new Error('denied'), { code: 'EACCES' }))), /denied/);
+      const { readdirSync } = await import('node:fs');
+      assert.deepEqual(readdirSync(temp.dir), []);
+    } finally {
+      temp.cleanup();
+    }
   });
 
   test('isCaseSensitive probes the file system and cleans up', async () => {

@@ -149,15 +149,16 @@ function hasCode(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 
-async function realpathOfNearest(target: string): Promise<string> {
-  for (let current = target; ; current = path.dirname(current)) {
-    try {
-      return await realpath(current);
-    } catch (error) {
-      if (!hasCode(error, 'ENOENT') || path.dirname(current) === current) {
-        throw error;
-      }
+/** The real path of `target`, or of its nearest folder that exists. `resolve` is replaceable in tests. */
+export async function realpathOfNearest(target: string, resolve: (file: string) => Promise<string> = realpath): Promise<string> {
+  try {
+    return await resolve(target);
+  } catch (error) {
+    const parent = path.dirname(target);
+    if (!hasCode(error, 'ENOENT') || parent === target) {
+      throw error;
     }
+    return realpathOfNearest(parent, resolve);
   }
 }
 
@@ -206,20 +207,26 @@ export function caseCollisions(names: Iterable<string>): Set<string> {
   return colliding;
 }
 
-/** Probes whether the file system holding `dir` tells names apart by case. */
-export async function isCaseSensitive(dir: string): Promise<boolean> {
+/**
+ * Probes whether the file system holding `dir` tells names apart by case:
+ * writes a lower-case file and looks for its upper-case name. `look` is the
+ * lookup, replaceable in tests.
+ */
+export async function isCaseSensitive(dir: string, look: (file: string) => Promise<unknown> = stat): Promise<boolean> {
   const name = `.sync-servers-case-${randomBytes(6).toString('hex')}`;
   const probe = path.join(dir, name);
   await writeFile(probe, '', { flag: 'wx', mode: 0o600 });
+  let sensitive: boolean;
   try {
-    await stat(path.join(dir, name.toUpperCase()));
-    return false;
+    await look(path.join(dir, name.toUpperCase()));
+    sensitive = false;
   } catch (error) {
-    if (hasCode(error, 'ENOENT')) {
-      return true;
+    if (!hasCode(error, 'ENOENT')) {
+      throw error;
     }
-    throw error;
+    sensitive = true;
   } finally {
     await rm(probe, { force: true });
   }
+  return sensitive;
 }

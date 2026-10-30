@@ -35,6 +35,7 @@ export class TransportPool {
   #sharedSlot: Slot | undefined;
   #waiting: (() => void)[] = [];
   #closed = false;
+  #capabilities: Capabilities | undefined;
 
   constructor(factory: () => Transport, options: PoolOptions) {
     this.#factory = factory;
@@ -89,7 +90,7 @@ export class TransportPool {
     let connected = false;
     let broken = true;
     try {
-      await slot.ready;
+      this.#capabilities = await slot.ready;
       connected = true;
       const result = await operation(slot.transport);
       broken = false;
@@ -104,6 +105,14 @@ export class TransportPool {
     } finally {
       this.#release(slot, broken);
     }
+  }
+
+  /** What the server offers, connecting first when no connection is open yet. */
+  async capabilities(signal?: AbortSignal): Promise<Capabilities> {
+    if (this.#capabilities === undefined) {
+      await this.run(() => Promise.resolve(), signal);
+    }
+    return this.#capabilities as Capabilities;
   }
 
   /** {@link run} with retries after transient failures, each on a fresh connection. */

@@ -67,25 +67,42 @@ the step of the plan that specifies it.
 - [x] Connection pool, retries and timeouts, and `server test`
   - **Goal**: Resolve to [Phase E2, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
   - From: Phase E2 - Transports and Sandbox
-- [ ] Local and remote scanners with cloaking, the sensitive-file guard, the
+- [x] Local and remote scanners with cloaking, the sensitive-file guard, the
       symbolic link policy and the scan cache
   - **Goal**: Resolve to [Phase E3, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
   - From: Phase E3 - Sync Engine
-- [ ] Sync records and the classification matrix, as table-driven tests of
+- [x] Sync records and the classification matrix, as table-driven tests of
       every state, direction and delete option
   - **Goal**: Resolve to [Phase E3, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
   - From: Phase E3 - Sync Engine
-- [ ] The sync plan model with its fingerprint, and the empty-root and
+- [x] The sync plan model with its fingerprint, and the empty-root and
       mass-delete guards
   - **Goal**: Resolve to [Phase E3, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
   - From: Phase E3 - Sync Engine
-- [ ] The executor and the recovery folder: stale re-checks, atomic
+- [x] The executor and the recovery folder: stale re-checks, atomic
       transfers, times, ordering, retries and cancellation
   - **Goal**: Resolve to [Phase E3, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
   - From: Phase E3 - Sync Engine
-- [ ] `SyncSession` and the public library API
+- [x] `SyncSession` and the public library API
   - **Goal**: Resolve to [Phase E3, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
   - From: Phase E3 - Sync Engine
+- [ ] Vendor kilo at a pinned commit with `VENDORED.md`, the checksum test and
+      the BSD-2-Clause notice
+  - **Goal**: Resolve to [Phase E4, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
+  - From: Phase E4 - Terminal UI and Editor Mode
+- [ ] Port kilo's terminal layer and editing core into `src/tui/`, restoring
+      the terminal on every exit path
+  - **Goal**: Resolve to [Phase E4, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
+  - From: Phase E4 - Terminal UI and Editor Mode
+- [ ] TUI widgets with ASCII and `NO_COLOR` modes and frame snapshot tests
+  - **Goal**: Resolve to [Phase E4, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
+  - From: Phase E4 - Terminal UI and Editor Mode
+- [ ] Sites, site home, site setup, server editor and cloaking screens
+  - **Goal**: Resolve to [Phase E4, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
+  - From: Phase E4 - Terminal UI and Editor Mode
+- [ ] Synchronize, preview, progress and results screens
+  - **Goal**: Resolve to [Phase E4, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
+  - From: Phase E4 - Terminal UI and Editor Mode
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -109,10 +126,10 @@ Next version: minor.
 
 Next version: minor.
 
-- [ ] The `sync`, `status`, `put`, `get`, `mark-synced`, `state reset` and
+- [x] The `sync`, `status`, `put`, `get`, `mark-synced`, `state reset` and
       `diff` commands, unattended and with `--json`
   - **Goal**: Resolve to [Phase E3, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
-- [ ] The scenario suite across the `local`, SFTP and FTPS sandboxes, ending
+- [x] The scenario suite across the `local`, SFTP and FTPS sandboxes, ending
       with the search for the password in every output
   - **Goal**: Resolve to [Phase E3, step 7](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
 
@@ -120,18 +137,6 @@ Next version: minor.
 
 Next version: minor.
 
-- [ ] Vendor kilo at a pinned commit with `VENDORED.md`, the checksum test and
-      the BSD-2-Clause notice
-  - **Goal**: Resolve to [Phase E4, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
-- [ ] Port kilo's terminal layer and editing core into `src/tui/`, restoring
-      the terminal on every exit path
-  - **Goal**: Resolve to [Phase E4, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
-- [ ] TUI widgets with ASCII and `NO_COLOR` modes and frame snapshot tests
-  - **Goal**: Resolve to [Phase E4, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
-- [ ] Sites, site home, site setup, server editor and cloaking screens
-  - **Goal**: Resolve to [Phase E4, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
-- [ ] Synchronize, preview, progress and results screens
-  - **Goal**: Resolve to [Phase E4, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
 - [ ] Editor mode and plain mode
   - **Goal**: Resolve to [Phase E4, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e4-terminal-ui-and-editor-mode)
 - [ ] Complete `DESIGN_LANGUAGE.md` with the final screens

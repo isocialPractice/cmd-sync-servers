@@ -29,6 +29,8 @@ export interface CliIo {
   readonly homedir: string;
   /** A credential store to use instead of the OS one, when embedding the CLI or testing it. */
   readonly credentialStore?: CredentialStore | undefined;
+  /** Aborted when the person cancels, as with Ctrl+C. */
+  readonly signal?: AbortSignal | undefined;
 }
 
 export function processIo(): CliIo {

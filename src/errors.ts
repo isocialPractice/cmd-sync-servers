@@ -18,6 +18,8 @@ export type SyncErrorCode =
   | 'E_REMOTE'
   | 'E_REMOTE_ROOT'
   | 'E_LISTING_LIMIT'
+  | 'E_ROOT_DELETE'
+  | 'E_PLAN_INVALID'
   | 'E_CANCELLED';
 
 export interface SyncErrorOptions extends ErrorOptions {

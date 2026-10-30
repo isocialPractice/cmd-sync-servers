@@ -22,6 +22,7 @@ const GUARD_CODES: ReadonlySet<SyncErrorCode> = new Set([
   'E_INSECURE_PROTOCOL',
   'E_EMPTY_ROOT',
   'E_MASS_DELETE',
+  'E_ROOT_DELETE',
 ]);
 
 const USAGE_CODES: ReadonlySet<SyncErrorCode> = new Set(['E_SITE_NOT_FOUND', 'E_SERVER_NOT_FOUND']);

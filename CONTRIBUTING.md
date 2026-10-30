@@ -38,6 +38,7 @@ explicitly with the commands below, never from npm lifecycle hooks.
 | `npm run test:e2e` | Builds, then runs the CLI as a child process from `test/e2e/` |
 | `npm run test:docs` | Documentation checks in `test/docs/` |
 | `npm run test:docker` | The interop tests against real OpenSSH and vsftpd containers (see below) |
+| `npm run coverage` | Unit and integration tests with coverage, then the coverage bar (below) |
 | `npm run sandbox` | Starts local SFTP, FTPS and FTP test servers with throwaway credentials, until Ctrl+C |
 | `npm run pack:check` | Builds, then fails if `npm pack` would ship anything outside the `files` allowlist |
 | `npm run docs:api` | Generates the API reference into `_site/api/` |
@@ -58,6 +59,13 @@ request. CI runs the same commands on Linux, macOS and Windows with Node.js
   credential store pass a `MemoryCredentialStore`.
 - A unit test fails when `schema/site.schema.json` differs from the zod
   schema. Run `npm run schema` and commit the file after changing the schema.
+- The coverage bar: every branch of `src/sync/paths.ts` (path safety) and
+  `src/sync/classify.ts` (change detection), and 85 % of the lines of
+  `src/`. CI enforces it with `npm run coverage`.
+- `test/integration/scenarios.test.ts` runs the synchronization scenarios
+  (first syncs, edits, conflicts, deletes, guards, cloaking, stale files,
+  hostile names) against the local, SFTP and FTPS sandboxes, and searches
+  every file and log record a run wrote for the server password.
 - Tests never connect to a real server. Protocol tests run against sandbox
   servers bound to `127.0.0.1` with credentials generated for each run: an
   SFTP server on `ssh2` and an FTP and FTPS server in `test/sandbox/`, which

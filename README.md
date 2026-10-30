@@ -8,9 +8,10 @@ last sync so a file changed on both sides is flagged instead of overwritten.
 The same engine is a library: the `vscode-sync-servers` extension for VS Code
 uses it in-process, and both read one shared list of sites.
 
-> **Status: early alpha.** This release manages sites, servers, saved
-> passwords and cloaking, and tests connections to servers. Synchronizing
-> and the terminal UI are not available yet.
+> **Status: early alpha.** Sites, servers, saved passwords, cloaking and
+> synchronizing work from the command line, with a text preview. The
+> full-screen terminal UI and the editor mode for the preview are not
+> available yet. Try it on a copy of a site first.
 
 ## Goals
 
@@ -65,10 +66,30 @@ sync-servers server test Production --site "My Site"
 # Cloak what no operation should touch: suffixes, names, folders or paths
 sync-servers cloak --site "My Site" .psd "archive*" node_modules/
 
+# Inside the site's folder: preview, then synchronize
+cd ~/sites/my-site
+sync-servers sync --put             # preview newer local files, confirm, upload
+sync-servers sync --both --delete   # both ways, deleting what the other side lost
+sync-servers put css/site.css       # one file, at once unless a decision is needed
+sync-servers status                 # what changed on each side since the last sync
+sync-servers diff css/site.css      # how the local and remote copies differ
+
 sync-servers sites      # list the sites
 sync-servers doctor     # check the setup
 sync-servers --help     # every command and option
 ```
+
+The preview lists only files with a difference, each with a checkbox. A file
+changed on both sides since the last sync waits for your decision. Files
+like `.env` and private keys are listed unchecked. Deletes need `--delete`,
+files that were never synchronized are listed unchecked, and deleting more
+than 50 files or a quarter of a side asks you to type the count. Local files
+that a sync overwrites or deletes are kept in a recovery folder for 14 days.
+
+In a script, `sync` without `--yes` prints the preview and changes nothing;
+`--yes` runs the checked rows, and decisions are never made for you. Exit
+codes: 0 done, 1 error, 2 usage, 3 failures or decisions left, 4 cancelled,
+5 stopped by a safety guard.
 
 Run a command inside a site's folder and that site is chosen; elsewhere,
 pass `--site`. In a terminal, a command asks for anything it is missing, and
