@@ -1,3 +1,5 @@
+import type { CertificateInfo } from './host.ts';
+
 /** Stable codes carried by every {@link SyncError}. */
 export type SyncErrorCode =
   | 'E_HOST_KEY_MISMATCH'
@@ -22,12 +24,29 @@ export type SyncErrorCode =
   | 'E_PLAN_INVALID'
   | 'E_CANCELLED';
 
+/**
+ * Facts about an error that a program can act on, beyond its code. Never
+ * holds a secret.
+ */
+export interface SyncErrorDetails {
+  /** `E_AUTH`: the server refused the sign-in, no source had a secret, or a saved secret was not sent because the server changed. */
+  readonly reason?: 'rejected' | 'missing' | 'saved-for-elsewhere';
+  /** `E_TLS_CERT`: the certificate that did not verify. */
+  readonly certificate?: CertificateInfo;
+  /** `E_REMOTE_ROOT`: the folder the account opens in after signing in. */
+  readonly startingFolder?: string;
+  /** `E_REMOTE_ROOT`: up to 50 folder names in the starting folder. */
+  readonly folders?: readonly string[];
+}
+
 /** Options of a {@link SyncError}: the cause, and whether a retry may help. */
 export interface SyncErrorOptions extends ErrorOptions {
   /** True when trying again, on a fresh connection, may succeed. */
   readonly transient?: boolean;
   /** The server's reply code, such as an FTP `550` or an SFTP status, when there is one. */
   readonly serverCode?: number;
+  /** Facts a program can act on, such as why a sign-in failed. */
+  readonly details?: SyncErrorDetails;
 }
 
 /**
@@ -41,6 +60,8 @@ export class SyncError extends Error {
   readonly transient: boolean;
   /** The server's reply code, when the server gave one. */
   readonly serverCode: number | undefined;
+  /** Facts a program can act on, such as why a sign-in failed or which certificate did not verify. */
+  readonly details: SyncErrorDetails | undefined;
 
   constructor(code: SyncErrorCode, message: string, options: SyncErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
@@ -48,6 +69,7 @@ export class SyncError extends Error {
     this.code = code;
     this.transient = options.transient ?? false;
     this.serverCode = options.serverCode;
+    this.details = options.details;
   }
 }
 

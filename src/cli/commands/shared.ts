@@ -73,6 +73,7 @@ export function serverSummary(site: Site, server: Server): Record<string, unknow
     testing: site.testingServerId === server.id,
     savePassword: server.auth?.savePassword ?? false,
     hostKeyPinned: server.options.hostKey !== undefined,
+    certificateTrusted: server.options.tls?.trustedCertificate !== undefined,
   };
 }
 

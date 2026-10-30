@@ -6,7 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Until the first stable release, versions use the pre-release form
 `1.0.0-alpha.x.y.z`, where `x.y.z` counts alpha iterations toward `1.0.0`.
 
-## [Unreleased]
+## [1.0.0-alpha.1.0.0] - 2026-10-30
+
+### Changed
+
+- **Breaking:** `host` in `sites.json` holds the host name or IP address
+  alone. A value with a port, a user, a protocol or a folder, such as
+  `server1.hosting.example.net:2083`, no longer loads, and the error names
+  the field to use instead.
+- **Breaking:** `secretQuestion` reads
+  `Password for demo-user on sftp.example.com (My Site: Production): `, so a
+  user name that holds an `@` reads clearly.
+- A refused FTP or SFTP sign-in says to check the user name, since many
+  hosts name FTP accounts in full, as `user@domain`. A host that does not
+  exist and a refused connection say what to check instead of showing the
+  library's text, which stays in the debug log.
+- A remote root that is not found names the folder the account opens in
+  and the folders it holds.
+- When a saved password is not sent because the server's protocol, host,
+  port or user changed, the question for the password says so.
+- An FTP welcome banner shows as its first line.
+
+### Added
+
+- FTPS certificates that fail verification are shown with their names,
+  issuer, validity dates and SHA-256 fingerprint, and a run in a terminal
+  asks what to do: connect to a host name the certificate covers and that
+  leads to the same machine, keep the host and check the certificate as
+  that name, trust the certificate (pinned in
+  `options.tls.trustedCertificate`), or cancel. Unattended runs print the
+  certificate and the fixes. Expired and not-yet-valid certificates are
+  never trusted, and every decision is made before the user name is sent.
+- `--trust-certificate <sha256>` on `server test` and on every command that
+  takes `--host-key` accepts a certificate by fingerprint for one run.
+  `server edit --forget-certificate` removes a pinned certificate.
+- FTPS data connections must resume the TLS session of the verified control
+  connection or present the same certificate; any other is closed before
+  data moves.
+- `server test` shows the folder the account opens in, as `Start`, and as
+  `startingFolder` in its JSON.
+- Once a server accepts a password typed in a terminal, the command line
+  and the terminal interface offer to save it in the credential store.
+- Library: `parseServerAddress`, `ServerProbe` (experimental) to connect
+  with settings not saved yet and list folders by absolute path,
+  `findCoveredNames`, `normalizeCertificateFingerprint`, the
+  `CertificateInfo` and `CertificateDecision` types, the optional
+  `HostAdapter.confirmCertificate` and `HostAdapter.secretAccepted`
+  members, `SecretRequest.note`, `SyncError.details`,
+  `Capabilities.startingFolder`, `TransportContext.updateServer` and
+  `TransportContext.expectedCertificate`.
 
 ## [1.0.0-alpha.0.6.1] - 2026-10-30
 
@@ -241,7 +289,7 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.1...HEAD
+[1.0.0-alpha.1.0.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.1...v1.0.0-alpha.1.0.0
 [1.0.0-alpha.0.6.1]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.0...v1.0.0-alpha.0.6.1
 [1.0.0-alpha.0.6.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...v1.0.0-alpha.0.6.0
 [1.0.0-alpha.0.5.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...v1.0.0-alpha.0.5.0

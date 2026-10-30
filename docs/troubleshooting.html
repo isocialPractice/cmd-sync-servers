@@ -40,28 +40,36 @@
 
 <h2 id="connection">Connection problems</h2>
 <dl>
+  <dt>"The host ftp.example.org was not found"</dt>
+  <dd>The name does not exist. Compare it, letter by letter, with the FTP or SFTP host your hosting panel shows; it is often not your site's own domain. The host is the name alone: a port goes in <code>--port</code>, so <code>server1.hosting.example.net:21</code> is written <code>--host server1.hosting.example.net --port 21</code>.</dd>
   <dt>The connection is refused or times out</dt>
-  <dd>Check the host and port: <code>sync-servers site show</code> lists them, and <code>server edit Production --port 2222</code> changes one. A firewall between you and the server, or a VPN you are not connected to, looks the same. A slow server may need a longer <code>--timeout</code>.</dd>
+  <dd>Check the protocol and port: SFTP usually uses 22, FTPS 21 and implicit FTPS 990. <code>sync-servers site show</code> lists them, and <code>server edit Production --port 2222</code> changes one. Ports such as 2082, 2083, 2086, 2087, 2095 and 2096 belong to web control panels, not to FTP or SFTP. A firewall between you and the server, or a VPN you are not connected to, looks the same. A slow server may need a longer <code>--timeout</code>.</dd>
   <dt>It works over IPv4 but not IPv6, or the other way round</dt>
   <dd>Set the server's IP version: <code>server edit Production --ip-family 4</code>.</dd>
   <dt>FTP transfers hang after the listing</dt>
   <dd>Only passive mode is supported. The server must allow passive data connections, and its firewall must let them through.</dd>
+  <dt>The certificate names another host (<code>E_TLS_CERT</code>)</dt>
+  <dd>Shared hosting serves many sites from one machine, and its certificate names that machine, such as <code>server1.hosting.example.net</code>, not your domain or an IP address. Run <code>sync-servers server test</code> in a terminal: it shows the certificate and, when it finds a host name the certificate covers that leads to the same machine, offers to connect to it. In a script, the error names that host: <code>sync-servers server edit Production --host server1.hosting.example.net</code>. Your hosting panel usually shows the same name as the FTP host. See <a href="security.html#certificates">Certificates</a>.</dd>
   <dt>The certificate cannot be verified (<code>E_TLS_CERT</code>)</dt>
-  <dd>The FTPS certificate is not signed by an authority this computer trusts, or does not name the host you connect to. For a private authority, pass its PEM file with <code>--ca-file</code>. When the certificate names another host than the one you connect to, set <code>--tls-servername</code>. Never switch to plain FTP to get past this.</dd>
+  <dd>The FTPS certificate is not signed by an authority this computer trusts. For a private authority, pass its PEM file with <code>--ca-file</code>. For a self-signed certificate, run <code>server test</code> in a terminal and trust it after comparing its fingerprint with the one your host gives you; a script passes <code>--trust-certificate</code> with that fingerprint. An expired certificate is never trusted: ask the host to renew it, or check this computer's date and time. Never switch to plain FTP to get past this.</dd>
   <dt>The host key does not match (<code>E_HOST_KEY_MISMATCH</code>)</dt>
   <dd>The server offered a different SSH host key from the one you trusted. Stop and ask the server's administrator whether the key changed; if it did, check the new fingerprint, then <code>server edit Production --forget-host-key</code>. See <a href="security.html#host-keys">Host keys</a>.</dd>
   <dt>An old server offers no algorithm in common</dt>
   <dd>Only modern SSH algorithms are offered. Ask for the server to be updated; if that is not possible, <code>--legacy-algorithms</code> allows older ones, with a warning on every connection.</dd>
+  <dt>The remote root was not found (<code>E_REMOTE_ROOT</code>)</dt>
+  <dd>Many hosting accounts open in their own folder and see it as <code>/</code>, so a path from the control panel, such as <code>/home/&lt;user&gt;/example.com/my-site</code>, does not exist for them. The message names the folder the account opens in and the folders it holds, and <code>sync-servers server test</code> shows it on its <code>Start</code> line. Set the root as the account sees it: <code>server edit Production --remote-root /</code>, or the folder below it that holds the site.</dd>
 </dl>
 
 <h2 id="sign-in">Sign-in problems</h2>
 <dl>
   <dt>No password is found (<code>E_AUTH</code>)</dt>
   <dd>In a script nothing is asked. Save the password with <code>sync-servers password set</code>, or set <code>SYNC_SERVERS_PASSWORD</code> for the run. In a terminal you are asked when no other source has it.</dd>
+  <dt>Asked for the password after editing a server</dt>
+  <dd>"The saved password is for another host or user, so it was not sent." A saved password is tied to the protocol, host, port and user it was saved for; after any of them changes, the password is asked for again. Once the server accepts it, you are offered to save it for the new settings. If you did not change the server, check <code>sites.json</code>: someone may have pointed it elsewhere.</dd>
   <dt>"The saved password was saved for another protocol, address or user"</dt>
-  <dd>The server's host, port, user name or protocol changed since the password was saved, so the saved password is not sent there. If the change is yours, save the password again with <code>password set</code>. If it is not, check <code>sites.json</code>: someone may have pointed the server elsewhere.</dd>
-  <dt>The password is refused</dt>
-  <dd>Save it again with <code>password set</code>. A saved password is read only when the server has <code>savePassword</code> on, which <code>password set</code> turns on.</dd>
+  <dd>The same, in a script, where nobody can be asked. Save the password again with <code>password set</code>, or run <code>server test</code> in a terminal once.</dd>
+  <dt>"did not accept the user name or password (530)"</dt>
+  <dd>Check the user name first: many hosts name FTP accounts in full, as <code>demo-user@example.com</code>, not <code>demo-user</code>. Your hosting panel shows the exact name. Then check the password, and save it again with <code>password set</code> if it changed. A saved password is read only when the server has <code>savePassword</code> on, which <code>password set</code> turns on.</dd>
   <dt>The credential store cannot be used (<code>E_CREDENTIAL_STORE</code>)</dt>
   <dd>On Linux the Secret Service needs a running keyring, such as GNOME Keyring or KWallet, which headless machines often lack; use <code>SYNC_SERVERS_PASSWORD</code> there. <code>sync-servers doctor</code> says whether a store is available.</dd>
   <dt>Key sign-in fails</dt>
@@ -109,13 +117,13 @@
   <thead><tr><th scope="col">Code</th><th scope="col">Means</th><th scope="col">Do</th></tr></thead>
   <tbody>
     <tr><td><code>E_HOST_KEY_MISMATCH</code></td><td>The SSH host key differs from the pinned one, or an unknown key was refused with nobody to ask.</td><td>Check the fingerprint with the server's administrator; pass <code>--host-key</code> in scripts.</td></tr>
-    <tr><td><code>E_TLS_CERT</code></td><td>The FTPS certificate could not be verified.</td><td>Use <code>--ca-file</code> or <code>--tls-servername</code>.</td></tr>
+    <tr><td><code>E_TLS_CERT</code></td><td>The FTPS certificate could not be verified, and nobody accepted it.</td><td>Connect to a host it covers, use <code>--ca-file</code>, or decide in a terminal with <code>server test</code>; scripts pass <code>--trust-certificate</code>.</td></tr>
     <tr><td><code>E_INSECURE_PROTOCOL</code></td><td>Plain FTP without <code>allowInsecure</code>.</td><td>Use SFTP or FTPS.</td></tr>
     <tr><td><code>E_AUTH</code></td><td>Signing in failed, or no password or passphrase was found.</td><td>Save the password, or set <code>SYNC_SERVERS_PASSWORD</code>.</td></tr>
     <tr><td><code>E_CONNECTION</code></td><td>The connection was refused, reset or dropped.</td><td>Check host, port and network; transient failures are retried.</td></tr>
     <tr><td><code>E_TIMEOUT</code></td><td>The server stopped answering.</td><td>Try again, or raise the timeout.</td></tr>
     <tr><td><code>E_REMOTE</code></td><td>The server refused an operation, such as a write without permission.</td><td>Check the account's permissions on the server.</td></tr>
-    <tr><td><code>E_REMOTE_ROOT</code></td><td>The root directory does not exist on the server, or is not a folder.</td><td>Fix the server's root directory.</td></tr>
+    <tr><td><code>E_REMOTE_ROOT</code></td><td>The root directory does not exist on the server, or is not a folder.</td><td>Set it as the account sees it; the message names the folder the account opens in.</td></tr>
     <tr><td><code>E_LISTING_LIMIT</code></td><td>A folder holds more than 100,000 entries.</td><td>Cloak it, or narrow the sync to some paths.</td></tr>
     <tr><td><code>E_PATH_UNSAFE</code></td><td>A path would leave the site or is not valid here.</td><td>Rename the file.</td></tr>
     <tr><td><code>E_MASS_DELETE</code></td><td>More deletes than the limit, not confirmed.</td><td>Review the preview; confirm, or pass <code>--allow-mass-delete</code>.</td></tr>

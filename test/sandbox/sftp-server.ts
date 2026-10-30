@@ -37,6 +37,8 @@ export interface SftpSandboxOptions {
   readonly hostKey?: string;
   readonly port?: number;
   readonly faults?: SftpFaults;
+  /** The folder relative paths start from, as a home folder does; default `/`. */
+  readonly home?: string;
 }
 
 export interface SftpSandbox {
@@ -89,8 +91,9 @@ function serve(sftp: SFTPWrapper, options: SftpSandboxOptions, faults: SftpFault
   let next = 0;
   // Once a drop fault fires, nothing more is answered on this connection.
   let dropped = false;
+  const home = options.home ?? '/';
   const local = (remote: string): string =>
-    path.join(options.root, ...path.posix.resolve('/', remote).split('/').filter((part) => part !== ''));
+    path.join(options.root, ...path.posix.resolve(home, remote).split('/').filter((part) => part !== ''));
   const newHandle = (value: FileHandle | DirHandle): Buffer => {
     next += 1;
     handles.set(next, value);
@@ -285,7 +288,7 @@ function serve(sftp: SFTPWrapper, options: SftpSandboxOptions, faults: SftpFault
     });
   });
   sftp.on('REALPATH', (reqId, remote) => {
-    const resolved = path.posix.resolve('/', remote);
+    const resolved = path.posix.resolve(home, remote);
     sftp.name(reqId, [{ filename: resolved, longname: resolved, attrs: {} as Attributes }]);
   });
   sftp.on('EXTENDED', (reqId) => {

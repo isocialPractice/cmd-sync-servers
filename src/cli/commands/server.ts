@@ -68,7 +68,7 @@ interface ServerDraft {
     allowInsecure?: boolean;
     allowRootDeletes?: boolean;
     legacyAlgorithms?: boolean;
-    tls?: { caFile?: string; servername?: string; minVersion?: 'TLSv1.2' | 'TLSv1.3' };
+    tls?: { caFile?: string; servername?: string; minVersion?: 'TLSv1.2' | 'TLSv1.3'; trustedCertificate?: unknown };
     hostKey?: unknown;
     uploadOnSave?: boolean;
     remoteFileMode?: string;
@@ -368,17 +368,20 @@ export const serverEditCommand: CommandSpec = {
   options: {
     ...SERVER_FIELD_OPTIONS,
     'forget-host-key': { type: 'boolean', description: 'Remove the pinned SSH host key, after checking the new one with the host' },
+    'forget-certificate': { type: 'boolean', description: 'Remove the trusted TLS certificate; the next connection verifies it again' },
     editor: { type: 'boolean', description: 'Edit the whole server as JSON in your editor' },
   },
   examples: [
     'sync-servers server edit Production --port 2222',
     'sync-servers server edit Production --forget-host-key',
+    'sync-servers server edit Production --forget-certificate',
     'sync-servers server edit --editor',
   ],
   async run(ctx, { values, args }) {
     const site = await ctx.chooseSite();
     const server = await ctx.chooseServer(site, args[0]);
-    const changing = hasServerFieldOptions(values) || flag(values, 'forget-host-key');
+    const forgetCertificate = flag(values, 'forget-certificate');
+    const changing = hasServerFieldOptions(values) || flag(values, 'forget-host-key') || forgetCertificate;
     if (flag(values, 'editor') || (!changing && ctx.interactive)) {
       return editServerInEditor(ctx, site, server);
     }
@@ -397,6 +400,9 @@ export const serverEditCommand: CommandSpec = {
       if (flag(values, 'forget-host-key')) {
         delete draft.options.hostKey;
       }
+      if (forgetCertificate && draft.options.tls !== undefined) {
+        delete draft.options.tls.trustedCertificate;
+      }
     });
     if (booleanOption(values, 'save-password') === false) {
       await forgetSecrets(ctx, site.id, [updated]);
@@ -404,7 +410,11 @@ export const serverEditCommand: CommandSpec = {
     if (ctx.flags.json) {
       ctx.json('server', { siteId: site.id, server: serverSummary(site, updated) });
     } else {
-      ctx.out(`Updated server ${describeServer(updated)}.${flag(values, 'forget-host-key') ? ' Its host key will be confirmed on the next connection.' : ''}\n`);
+      const notes = [
+        ...(flag(values, 'forget-host-key') ? [' Its host key will be confirmed on the next connection.'] : []),
+        ...(forgetCertificate && server.options.tls?.trustedCertificate !== undefined ? [' Its certificate will be verified again on the next connection.'] : []),
+      ];
+      ctx.out(`Updated server ${describeServer(updated)}.${notes.join('')}\n`);
     }
     return undefined;
   },

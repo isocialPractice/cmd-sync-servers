@@ -19,10 +19,13 @@ export class PromptSecretSource implements SecretSource {
   }
 }
 
-/** The question shown when asking for a secret, such as `Password for demo-user@sftp.example.com (My Site: Production): `. */
+/**
+ * The question shown when asking for a secret, such as
+ * `Password for demo-user on sftp.example.com (My Site: Production): `, or
+ * `Password for sftp.example.com (My Site: Production): ` without a user.
+ */
 export function secretQuestion(request: SecretRequest): string {
   const what = request.ref.kind === 'password' ? 'Password' : 'Key passphrase';
-  const account =
-    request.host === undefined ? '' : ` for ${request.username === undefined ? '' : `${request.username}@`}${request.host}`;
+  const account = request.host === undefined ? '' : ` for ${request.username === undefined ? '' : `${request.username} on `}${request.host}`;
   return `${what}${account} (${request.siteName}: ${request.serverName}): `;
 }

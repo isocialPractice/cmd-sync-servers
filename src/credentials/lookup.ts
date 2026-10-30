@@ -22,48 +22,62 @@ export interface SecretLookupOptions {
   readonly prompt?: SecretPrompt | undefined;
   /** Registers the secret so no log or error can show it. */
   readonly redactor?: Redactor | undefined;
+  /** Told where the secret came from, so a typed one can be offered for saving once the server accepts it. */
+  readonly found?: ((source: SecretOrigin) => void) | undefined;
 }
+
+/** Where {@link lookupSecret} found a secret. */
+export type SecretOrigin = 'store' | 'environment' | 'prompt';
 
 /**
  * Finds a secret in this order: the saved-secret store (when the server saves
  * its password, and only when it was saved for the server's current address),
- * the environment, then a prompt. Fails with `E_AUTH` when none has it. There
- * is no plaintext fallback.
+ * the environment, then a prompt. Fails with `E_AUTH` when none has it, with
+ * `details.reason` `missing` or `saved-for-elsewhere`. There is no plaintext
+ * fallback.
  */
 export async function lookupSecret(request: SecretRequest, options: SecretLookupOptions): Promise<string> {
-  const sources: (() => Promise<string | undefined>)[] = [];
+  const sources: [SecretOrigin, () => Promise<string | undefined>][] = [];
   const { store, env, prompt, binding } = options;
+  const what = request.ref.kind === 'password' ? 'password' : 'key passphrase';
   const saved = { forElsewhere: false };
   if (options.savePassword && store !== undefined) {
-    sources.push(async () => {
-      const stored = await store.get(request.ref);
-      if (stored === undefined || binding === undefined) {
-        return stored;
-      }
-      const secret = openSecret(stored, binding);
-      saved.forElsewhere = secret === undefined;
-      return secret;
-    });
+    sources.push([
+      'store',
+      async () => {
+        const stored = await store.get(request.ref);
+        if (stored === undefined || binding === undefined) {
+          return stored;
+        }
+        const secret = openSecret(stored, binding);
+        saved.forElsewhere = secret === undefined;
+        return secret;
+      },
+    ]);
   }
   if (env !== undefined) {
-    sources.push(() => env.get(request.ref));
+    sources.push(['environment', () => env.get(request.ref)]);
   }
   if (prompt !== undefined) {
-    sources.push(() => prompt(request));
+    sources.push([
+      'prompt',
+      () => prompt(saved.forElsewhere ? { ...request, note: `The saved ${what} is for another host or user, so it was not sent.` } : request),
+    ]);
   }
-  for (const source of sources) {
+  for (const [origin, source] of sources) {
     const secret = await source();
     if (secret !== undefined && secret !== '') {
       options.redactor?.addSecret(secret);
+      options.found?.(origin);
       return secret;
     }
   }
-  const what = request.ref.kind === 'password' ? 'password' : 'key passphrase';
   const variable = request.ref.kind === 'password' ? 'SYNC_SERVERS_PASSWORD' : 'SYNC_SERVERS_KEY_PASSPHRASE';
   throw new SyncError(
     'E_AUTH',
     saved.forElsewhere
       ? `The saved ${what} for "${request.siteName}: ${request.serverName}" was saved for another protocol, address or user, so it was not sent. Save it again with "sync-servers password set", set ${variable}, or run in a terminal to be asked.`
       : `No ${what} for "${request.siteName}: ${request.serverName}". Save one with "sync-servers password set", set ${variable}, or run in a terminal to be asked.`,
+    { details: { reason: saved.forElsewhere ? 'saved-for-elsewhere' : 'missing' } },
   );
 }

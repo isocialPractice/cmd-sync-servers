@@ -1,5 +1,6 @@
 import path from 'node:path';
 import * as z from 'zod';
+import { hostFieldProblem } from './address.ts';
 
 /** The version of the `sites.json` format this release reads and writes. */
 export const SCHEMA_VERSION = 1;
@@ -42,10 +43,22 @@ const authSchema = z.strictObject({
     .describe('Keep the password or key passphrase in the operating system credential store.'),
 });
 
+const trustedCertificateSchema = z
+  .strictObject({
+    sha256: z
+      .string()
+      .regex(/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/, 'Must be a SHA-256 fingerprint: 32 upper-case hex pairs separated by colons.')
+      .describe('The SHA-256 fingerprint of the trusted certificate, as colon-separated upper-case hex.'),
+    validTo: z.iso.datetime().describe('When the certificate expires. An expired certificate is never trusted.'),
+    pinnedAt: z.iso.datetime(),
+  })
+  .describe('A certificate a person chose to trust after it failed verification. Normal verification still runs first.');
+
 const tlsSchema = z.strictObject({
   caFile: z.string().min(1).optional().describe('A PEM file of extra certificate authorities, for a private CA.'),
   servername: z.string().min(1).optional().describe('The host name to verify the certificate against, when it differs from host.'),
   minVersion: z.enum(['TLSv1.2', 'TLSv1.3']).default('TLSv1.2'),
+  trustedCertificate: trustedCertificateSchema.optional(),
 });
 
 const hostKeySchema = z.strictObject({
@@ -77,7 +90,18 @@ export const serverSchema = z
     id,
     name: displayName.describe('The server name, unique within its site.'),
     protocol: z.enum(PROTOCOLS).describe('"local" is a folder, a mounted drive or a network share.'),
-    host: z.string().trim().min(1).optional(),
+    host: z
+      .string()
+      .trim()
+      .min(1)
+      .superRefine((value, ctx) => {
+        const problem = hostFieldProblem(value);
+        if (problem !== undefined) {
+          ctx.addIssue({ code: 'custom', message: problem });
+        }
+      })
+      .optional()
+      .describe('The host name or IP address alone, such as sftp.example.com. The port, user and folder have their own fields.'),
     port: z.number().int().min(1).max(65535).optional(),
     username: z.string().min(1).optional(),
     auth: authSchema.optional(),

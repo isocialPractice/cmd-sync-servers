@@ -7,6 +7,7 @@ import { stringOption, type CommandSpec } from '../command.ts';
 import { cliHostAdapter } from '../host.ts';
 import { formatPairs, paint } from '../output.ts';
 import { describeServer } from './shared.ts';
+import { trustedCertificateOption } from './sync.ts';
 
 function precision(capabilities: Capabilities): string {
   if (capabilities.mtimePrecisionMs === undefined) {
@@ -22,8 +23,14 @@ export const serverTestCommand: CommandSpec = {
   summary: 'Connect, sign in, check the remote root and show what the server offers',
   options: {
     'host-key': { type: 'string', value: '<fingerprint>', description: 'Accept this SSH host key (SHA256:...) when it is not pinned yet, for scripts' },
+    'trust-certificate': { type: 'string', value: '<sha256>', description: 'Accept this TLS certificate (SHA-256 fingerprint) when it does not verify, for scripts' },
   },
-  examples: ['sync-servers server test', 'sync-servers server test Production --site "My Site"', 'sync-servers server test --host-key SHA256:<fingerprint>'],
+  examples: [
+    'sync-servers server test',
+    'sync-servers server test Production --site "My Site"',
+    'sync-servers server test --host-key SHA256:<fingerprint>',
+    'sync-servers server test --trust-certificate 3A:91:5C:<...>:C4',
+  ],
   async run(ctx, { values, args }) {
     const site = await ctx.chooseSite();
     const server = await ctx.chooseServer(site, args[0]);
@@ -35,10 +42,9 @@ export const serverTestCommand: CommandSpec = {
       env: ctx.io.env,
       logger: ctx.logger,
       expectedHostKey: stringOption(values, 'host-key'),
-      pinHostKey: async (info) => {
-        await registry.updateServer(site.id, server.id, (draft) => {
-          draft.options.hostKey = { algorithm: info.algorithm, sha256: info.sha256, pinnedAt: new Date().toISOString() };
-        });
+      expectedCertificate: trustedCertificateOption(values),
+      updateServer: async (change) => {
+        await registry.updateServer(site.id, server.id, change);
       },
     });
     const started = Date.now();
@@ -71,6 +77,7 @@ export const serverTestCommand: CommandSpec = {
         protocol: capabilities.protocol,
         elapsedMs,
         remoteRoot: server.remoteRoot,
+        startingFolder: capabilities.startingFolder ?? null,
         entries,
         hostKey: hostKey === undefined ? null : { algorithm: hostKey.algorithm, fingerprint: hostKey.fingerprint, state: hostKeyState },
         tls: capabilities.tls ?? null,
@@ -89,6 +96,7 @@ export const serverTestCommand: CommandSpec = {
         ...(hostKey === undefined ? [] : [['Host key', `${hostKey.algorithm} ${hostKey.fingerprint} (${hostKeyState ?? ''})`] as const]),
         ...(capabilities.tls === undefined ? [] : [['TLS', capabilities.tls] as const]),
         ...(capabilities.software === undefined || capabilities.software === '' ? [] : [['Server', safeLine(capabilities.software)] as const]),
+        ...(capabilities.startingFolder === undefined ? [] : [['Start', `${safeLine(capabilities.startingFolder)}, where the account opens`] as const]),
         ['Root', `${server.remoteRoot}, a folder with ${String(entries)} entr${entries === 1 ? 'y' : 'ies'}`],
         ['Times', `${precision(capabilities)}${capabilities.canSetMtime ? '; can be set' : '; cannot be set'}`],
         ['Replace', capabilities.atomicReplace ? 'in one step' : 'remove, then rename'],

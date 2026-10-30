@@ -9,6 +9,7 @@ import { safeLine, safeText } from '../../terminal-text.ts';
 import { SyncPlan, type PlanItem, type SavedPlan } from '../../sync/plan.ts';
 import { SyncSession, type StatusEntry } from '../../sync/session.ts';
 import { DIRECTION_TITLES, type Action, type Direction } from '../../sync/types.ts';
+import { normalizeCertificateFingerprint } from '../../transport/certificates.ts';
 import { flag, stringOption, type CommandSpec, type OptionSpecs, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
 import { CancelledError, UsageError } from '../errors.ts';
@@ -32,6 +33,7 @@ const SYMBOLS: Readonly<Record<Action, readonly [string, string, string]>> = {
 
 const HOST_KEY_OPTION: OptionSpecs = {
   'host-key': { type: 'string', value: '<fingerprint>', description: 'Accept this SSH host key (SHA256:...) when it is not pinned yet' },
+  'trust-certificate': { type: 'string', value: '<sha256>', description: 'Accept this TLS certificate (SHA-256 fingerprint) when it does not verify' },
 };
 
 const YES_OPTION: OptionSpecs = {
@@ -68,7 +70,21 @@ async function openSession(ctx: CommandContext, values: OptionValues): Promise<S
     logger: ctx.logger,
     env: ctx.io.env,
     expectedHostKey: stringOption(values, 'host-key'),
+    expectedCertificate: trustedCertificateOption(values),
   });
+}
+
+/** The `--trust-certificate` fingerprint in the form certificates are compared in. */
+export function trustedCertificateOption(values: OptionValues): string | undefined {
+  const given = stringOption(values, 'trust-certificate');
+  if (given === undefined) {
+    return undefined;
+  }
+  const normalized = normalizeCertificateFingerprint(given);
+  if (normalized === undefined) {
+    throw new UsageError('--trust-certificate takes a SHA-256 fingerprint: 32 hex pairs, such as 3A:91:5C:...');
+  }
+  return normalized;
 }
 
 function checkbox(item: PlanItem): string {

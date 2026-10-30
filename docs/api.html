@@ -119,11 +119,26 @@ console.log(registry.list().map((item) =&gt; item.name));</code></pre>
   <tbody>
     <tr><td><code>credentials</code></td><td>Where saved passwords and key passphrases are read and kept.</td></tr>
     <tr><td><code>confirmHostKey(info)</code></td><td>Whether to trust an SSH host key seen for the first time: <code>'accept-and-pin'</code>, <code>'accept-once'</code> or <code>'reject'</code>.</td></tr>
-    <tr><td><code>promptSecret(request)</code></td><td>A password typed by a person, or <code>undefined</code>.</td></tr>
-    <tr><td><code>interactive</code></td><td><code>false</code> when nobody can answer, so new host keys are refused without asking.</td></tr>
+    <tr><td><code>confirmCertificate(info)</code></td><td>Optional. What to do about an FTPS certificate that did not verify, given a <code>CertificateInfo</code>: a <code>CertificateDecision</code>, described below. Without it, such a certificate is refused.</td></tr>
+    <tr><td><code>promptSecret(request)</code></td><td>A password typed by a person, or <code>undefined</code>. <code>request.note</code>, when set, says why it is asked, such as a saved password that was not sent because the server changed.</td></tr>
+    <tr><td><code>secretAccepted(request, secret)</code></td><td>Optional. Called once after the server accepts a secret a person typed, so the program may offer to save it. Never called for a secret from the store or the environment.</td></tr>
+    <tr><td><code>interactive</code></td><td><code>false</code> when nobody can answer, so new host keys and unverified certificates are refused without asking.</td></tr>
     <tr><td><code>logger</code></td><td>Where the engine logs, with every secret already removed.</td></tr>
   </tbody>
 </table>
+<p>A <code>CertificateInfo</code> carries the host and port, the names the certificate lists, its issuer and validity dates, its SHA-256 fingerprint, the <code>problem</code> (<code>name-mismatch</code>, <code>untrusted-issuer</code>, <code>self-signed</code>, <code>expired</code>, <code>not-yet-valid</code>, <code>changed</code> or <code>other</code>), and <code>coveredNames</code>: host names that lead to the same machine and that the certificate covers. Every string from the certificate is already escaped. The decision is one of:</p>
+<table>
+  <caption>Certificate decisions</caption>
+  <thead><tr><th scope="col">Decision</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>{ action: 'use-host', host }</code></td><td>Connects to a name from <code>coveredNames</code> instead, with full verification, and saves it as the server's host.</td></tr>
+    <tr><td><code>{ action: 'check-as', servername }</code></td><td>Keeps the host and checks the certificate as a name from <code>coveredNames</code>, saved as <code>options.tls.servername</code>.</td></tr>
+    <tr><td><code>{ action: 'accept-and-pin' }</code></td><td>Trusts this certificate and pins its fingerprint in <code>options.tls.trustedCertificate</code>.</td></tr>
+    <tr><td><code>{ action: 'accept-once' }</code></td><td>Trusts it for this session only.</td></tr>
+    <tr><td><code>{ action: 'reject' }</code></td><td>Refuses it with <code>E_TLS_CERT</code>.</td></tr>
+  </tbody>
+</table>
+<p>Expired and not-yet-valid certificates are refused before the adapter is asked. Every decision is made before the user name or password is sent.</p>
 <p>To use the operating system's credential store, as the command line does:</p>
 <pre><code>import { openKeyringStore } from '@isocialpractice/cmd-sync-servers/credentials/keyring';
 import { MemoryCredentialStore } from '@isocialpractice/cmd-sync-servers';
@@ -151,7 +166,7 @@ const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.from
   <caption>SyncSession methods</caption>
   <thead><tr><th scope="col">Method</th><th scope="col">Does</th></tr></thead>
   <tbody>
-    <tr><td><code>testConnection(signal)</code></td><td>Connects, signs in, checks the root directory and reports what the server offers.</td></tr>
+    <tr><td><code>testConnection(signal)</code></td><td>Connects, signs in, checks the root directory and reports what the server offers, including <code>startingFolder</code>, the folder the account opens in.</td></tr>
     <tr><td><code>status(options)</code></td><td>What changed on each side since the last sync, without a plan.</td></tr>
     <tr><td><code>put(paths)</code>, <code>get(paths)</code></td><td>Moves single files or folders at once; returns a plan instead when a decision is needed.</td></tr>
     <tr><td><code>compare(path, signal)</code></td><td>Both copies of a file for a diff; the server copy is a private temporary file removed by <code>dispose()</code>.</td></tr>
@@ -160,6 +175,39 @@ const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.from
     <tr><td><code>close()</code></td><td>Saves the records and closes every connection.</td></tr>
   </tbody>
 </table>
+
+<h2 id="setup">Setting up a server</h2>
+<p>Two exports help a program set a server up before it is saved. <code>parseServerAddress</code> reads what a person typed in a Host field: a host name or IP address, <code>host:port</code>, <code>[IPv6]:port</code>, <code>user@host</code>, or an <code>sftp://</code>, <code>ftpes://</code>, <code>ftps://</code> or <code>ftp://</code> address.</p>
+<pre><code>import { parseServerAddress } from '@isocialpractice/cmd-sync-servers';
+
+const result = parseServerAddress('demo-user@example.com@server1.hosting.example.net:21');
+if (result.ok) {
+  // { host: 'server1.hosting.example.net', port: 21, username: 'demo-user@example.com' }
+  console.log(result.address, result.address.warning ?? '');
+} else {
+  console.error(result.problem);   // such as: That is a web address. Enter the FTP or SFTP host ...
+}</code></pre>
+<p><code>ServerProbe</code> <em>(experimental)</em> connects with settings that are not saved yet, goes through the host key and certificate decisions, and lists folders by absolute path, so the remote root can be picked from what the server shows. Give a new server its final id up front, so a password typed now can be saved under it once the server accepts it.</p>
+<pre><code>import { randomUUID } from 'node:crypto';
+import { ServerProbe, serverSchema } from '@isocialpractice/cmd-sync-servers';
+
+const server = serverSchema.parse({
+  id: randomUUID(),
+  name: 'Production',
+  protocol: 'ftps',
+  host: 'server1.hosting.example.net',
+  username: 'demo-user@example.com',
+  remoteRoot: '/',
+});
+const probe = await ServerProbe.open({ site: { id: site.id, name: site.name }, server, host });
+try {
+  const start = probe.startingFolder ?? '/';           // where the account opens, such as "/"
+  const listing = await probe.folders(start);          // { path: '/', folders: ['css', 'images', 'js'], files: 3 }
+  console.log(listing.folders, await probe.exists('/images'));
+  const settings = probe.server;                       // the settings, with any decision applied
+} finally {
+  await probe.close();
+}</code></pre>
 
 <h2 id="progress">Progress and cancelling</h2>
 <p>Every call that can take long takes an <code>AbortSignal</code>. Aborting a run starts no new transfer, removes partial files and records what finished; the result says <code>cancelled: true</code>. Aborting a scan rejects with <code>E_CANCELLED</code>.</p>
@@ -177,14 +225,14 @@ const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.from
 </table>
 
 <h2 id="errors">Errors</h2>
-<p>Failures are <code>SyncError</code> instances. Their <code>code</code> is stable across versions and their message never contains a secret. <code>transient</code> says whether trying again on a fresh connection may help.</p>
+<p>Failures are <code>SyncError</code> instances. Their <code>code</code> is stable across versions and their message never contains a secret. <code>transient</code> says whether trying again on a fresh connection may help. <code>details</code> holds facts to act on: for <code>E_AUTH</code>, <code>reason</code> is <code>rejected</code>, <code>missing</code> or <code>saved-for-elsewhere</code>; for <code>E_TLS_CERT</code>, <code>certificate</code> is the <code>CertificateInfo</code>; for <code>E_REMOTE_ROOT</code>, <code>startingFolder</code> and <code>folders</code> name where the account opens and what it holds.</p>
 <pre><code>import { isSyncError } from '@isocialpractice/cmd-sync-servers';
 
 try {
   await session.testConnection();
 } catch (error) {
-  if (isSyncError(error, 'E_AUTH')) {
-    // ask for the password again
+  if (isSyncError(error, 'E_AUTH') &amp;&amp; error.details?.reason === 'rejected') {
+    // the server refused it: ask for the user name and password again
   } else if (isSyncError(error) &amp;&amp; error.transient) {
     // try again later
   } else {

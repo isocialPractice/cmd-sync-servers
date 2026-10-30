@@ -145,9 +145,12 @@ undocumented one.
 - Stage files by explicit path. Local working folders (`.claude/`,
   `.support/`, `.archive/`, `.tmp/`) and workspace files are git-ignored and
   never committed.
-- Add a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) for
-  every user-visible change, under Added, Changed, Deprecated, Removed, Fixed
-  or Security. Prefix breaking changes with **BREAKING**.
+- Add a line to the newest version, the top section of
+  [CHANGELOG.md](CHANGELOG.md), for every user-visible change, under Added,
+  Changed, Deprecated, Removed, Fixed or Security. There is no
+  `## [Unreleased]` section: work in progress is written into the version
+  being worked on. Start a breaking change with **Breaking:** and list it
+  first under its heading.
 
 ## Versions
 

@@ -1,12 +1,14 @@
 import type { SiteRegistry } from '../config/registry.ts';
+import { sealSecret } from '../credentials/binding.ts';
 import { secretQuestion } from '../credentials/prompt.ts';
 import type { CredentialStore } from '../credentials/types.ts';
 import { SyncError } from '../errors.ts';
-import type { HostAdapter, HostKeyDecision } from '../host.ts';
+import type { CertificateDecision, HostAdapter, HostKeyDecision } from '../host.ts';
 import type { Logger } from '../log/logger.ts';
 import { SyncSession } from '../sync/session.ts';
+import { certificateQuestion, certificateSummary } from '../transport/certificates.ts';
 import type { App } from './app.ts';
-import { choiceDialog, inputDialog } from './widgets/dialog.ts';
+import { choiceDialog, confirmDialog, inputDialog } from './widgets/dialog.ts';
 
 /** What the screens need from outside: the master list, secrets, the log and the environment. */
 export interface TuiServices {
@@ -28,10 +30,15 @@ function emptyStore(): CredentialStore {
   };
 }
 
-/** A {@link HostAdapter} that asks in dialogs: the host key fingerprint, and secrets in a masked field. */
+/**
+ * A {@link HostAdapter} that asks in dialogs: the host key fingerprint, what
+ * to do about an unverified certificate, secrets in a masked field, and
+ * whether to save a typed password once the server accepted it.
+ */
 export async function tuiHost(app: App, services: TuiServices): Promise<HostAdapter> {
+  const saved = await services.credentialStore();
   return {
-    credentials: (await services.credentialStore()) ?? emptyStore(),
+    credentials: saved ?? emptyStore(),
     interactive: true,
     logger: services.logger,
     confirmHostKey: (info) =>
@@ -48,7 +55,46 @@ export async function tuiHost(app: App, services: TuiServices): Promise<HostAdap
           2,
         ),
       ),
-    promptSecret: (request) => app.dialog(inputDialog(request.ref.kind === 'password' ? 'Password' : 'Key passphrase', secretQuestion(request).trim(), { masked: true })),
+    confirmCertificate: (info) => {
+      const { question, choices, initial } = certificateQuestion(info);
+      return app.dialog(
+        choiceDialog<CertificateDecision>(
+          info.problem === 'changed' ? 'Certificate changed' : 'Certificate not verified',
+          `${certificateSummary(info)}\n${question}`,
+          choices,
+          { action: 'reject' },
+          initial,
+        ),
+      );
+    },
+    promptSecret: (request) =>
+      app.dialog(
+        inputDialog(
+          request.ref.kind === 'password' ? 'Password' : 'Key passphrase',
+          `${request.note === undefined ? '' : `${request.note}\n`}${secretQuestion(request).trim()}`,
+          { masked: true },
+        ),
+      ),
+    secretAccepted: async (request, secret) => {
+      if (saved === undefined) {
+        return;
+      }
+      const registry = await services.registry();
+      const server = registry.get(request.ref.siteId)?.servers.find((candidate) => candidate.id === request.ref.serverId);
+      if (server === undefined) {
+        return;
+      }
+      const what = request.ref.kind === 'password' ? 'password' : 'key passphrase';
+      if (!(await app.dialog(confirmDialog(`Save ${what}`, `Save the ${what} in the ${saved.name}?`, { yes: 'Save', no: 'Not now', defaultYes: true })))) {
+        return;
+      }
+      await saved.set(request.ref, sealSecret(secret, server));
+      await registry.updateServer(request.ref.siteId, server.id, (draft) => {
+        draft.auth ??= { method: 'password', savePassword: true };
+        draft.auth.savePassword = true;
+      });
+      services.logger.info('Secret saved', { siteId: request.ref.siteId, serverId: server.id, kind: request.ref.kind, store: saved.name });
+    },
   };
 }
 

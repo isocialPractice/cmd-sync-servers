@@ -65,6 +65,7 @@
                   "description": "\"local\" is a folder, a mounted drive or a network share."
                 },
                 "host": {
+                  "description": "The host name or IP address alone, such as sftp.example.com. The port, user and folder have their own fields.",
                   "type": "string",
                   "minLength": 1
                 },
@@ -173,6 +174,34 @@
                             "TLSv1.2",
                             "TLSv1.3"
                           ]
+                        },
+                        "trustedCertificate": {
+                          "type": "object",
+                          "properties": {
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$",
+                              "description": "The SHA-256 fingerprint of the trusted certificate, as colon-separated upper-case hex."
+                            },
+                            "validTo": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                              "description": "When the certificate expires. An expired certificate is never trusted."
+                            },
+                            "pinnedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "sha256",
+                            "validTo",
+                            "pinnedAt"
+                          ],
+                          "additionalProperties": false,
+                          "description": "A certificate a person chose to trust after it failed verification. Normal verification still runs first."
                         }
                       },
                       "additionalProperties": false

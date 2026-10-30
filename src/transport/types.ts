@@ -37,6 +37,8 @@ export interface Capabilities {
   readonly hostKey: HostKeyInfo | undefined;
   /** Protocol extensions in use, such as `MLSD` or `posix-rename@openssh.com`. */
   readonly features: readonly string[];
+  /** The absolute folder the server puts the account in after signing in, read before changing to the remote root; absent for `local`. */
+  readonly startingFolder?: string | undefined;
 }
 
 /**

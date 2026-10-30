@@ -230,11 +230,13 @@ sync-servers server add --name Staging --protocol ftps --host ftp.example.org --
       <tr><td><code>--file-mode &lt;mode&gt;</code></td><td>Permissions for uploaded files, such as 644</td></tr>
       <tr><td><code>--dir-mode &lt;mode&gt;</code></td><td>Permissions for created folders, such as 755</td></tr>
       <tr><td><code>--forget-host-key</code></td><td>Remove the pinned SSH host key, after checking the new one with the host</td></tr>
+      <tr><td><code>--forget-certificate</code></td><td>Remove the trusted TLS certificate; the next connection verifies it again</td></tr>
       <tr><td><code>--editor</code></td><td>Edit the whole server as JSON in your editor</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers server edit Production --port 2222
 sync-servers server edit Production --forget-host-key
+sync-servers server edit Production --forget-certificate
 sync-servers server edit --editor</code></pre>
 </section>
 <section class="command" id="command-server-remove">
@@ -258,11 +260,13 @@ sync-servers server remove Staging --site &quot;My Site&quot; --yes</code></pre>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet, for scripts</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify, for scripts</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers server test
 sync-servers server test Production --site &quot;My Site&quot;
-sync-servers server test --host-key SHA256:&lt;fingerprint&gt;</code></pre>
+sync-servers server test --host-key SHA256:&lt;fingerprint&gt;
+sync-servers server test --trust-certificate 3A:91:5C:&lt;...&gt;:C4</code></pre>
 </section>
 <section class="command" id="command-server-set-remote">
   <h3><code>sync-servers server set-remote &lt;server&gt;</code></h3>
@@ -358,6 +362,7 @@ sync-servers uncloak img/raw</code></pre>
       <tr><td><code>--plan-out &lt;file&gt;</code></td><td>Save the plan as JSON</td></tr>
       <tr><td><code>--plan-in &lt;file&gt;</code></td><td>Run a saved plan, if the site and server have not changed since</td></tr>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers sync --put
@@ -376,6 +381,7 @@ sync-servers sync --put --plan-out plan.json</code></pre>
       <tr><td><code>-y, --yes</code></td><td>Run without asking for confirmation</td></tr>
       <tr><td><code>--preview &lt;mode&gt;</code></td><td>Show the preview in the terminal UI (tui), your editor, plain prompts, or print it (none)</td></tr>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers put css/site.css
@@ -391,6 +397,7 @@ sync-servers put img --site &quot;My Site&quot;</code></pre>
       <tr><td><code>-y, --yes</code></td><td>Run without asking for confirmation</td></tr>
       <tr><td><code>--preview &lt;mode&gt;</code></td><td>Show the preview in the terminal UI (tui), your editor, plain prompts, or print it (none)</td></tr>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers get css/site.css
@@ -404,6 +411,7 @@ sync-servers get img --site &quot;My Site&quot;</code></pre>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers status
@@ -417,6 +425,7 @@ sync-servers status css --json</code></pre>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers diff css/site.css</code></pre>
@@ -429,6 +438,7 @@ sync-servers status css --json</code></pre>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>--host-key &lt;fingerprint&gt;</code></td><td>Accept this SSH host key (SHA256:...) when it is not pinned yet</td></tr>
+      <tr><td><code>--trust-certificate &lt;sha256&gt;</code></td><td>Accept this TLS certificate (SHA-256 fingerprint) when it does not verify</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers mark-synced css/site.css

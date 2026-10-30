@@ -18,7 +18,7 @@ import { SyncError } from '../errors.ts';
 import type { HostKeyInfo } from '../host.ts';
 import { silentLogger, type Logger } from '../log/logger.ts';
 import { baseName, joinRemote, parentPath, ROOT, type RemotePath } from '../sync/paths.ts';
-import { checkListingLimit, errorMessage, makeEntry, networkError, throwIfAborted, withTimeout } from './common.ts';
+import { checkListingLimit, errorMessage, makeEntry, networkError, remoteRootError, throwIfAborted, withTimeout } from './common.ts';
 import { describeHostKey, verifyHostKey, type HostKeyPolicy } from './hostkeys.ts';
 import { StallGuard, watchUpload } from './stall.ts';
 import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEntry, type Transport } from './types.ts';
@@ -74,6 +74,10 @@ export interface SftpTransportOptions {
   readonly hostKeys: HostKeyPolicy;
   /** Supplies the password or key passphrase, only once the host key has been verified. */
   readonly secret: (kind: SecretKind) => Promise<string>;
+  /** Called once the server has accepted the sign-in. */
+  readonly signedIn?: (() => Promise<void>) | undefined;
+  /** The server's name, for messages that suggest a command. */
+  readonly serverName?: string | undefined;
   /** The SSH agent: a socket path, a Windows pipe, or `pageant`. Default: `SSH_AUTH_SOCK`, then the Windows OpenSSH agent. */
   readonly agent?: string | undefined;
   /** Where `SSH_AUTH_SOCK` is read. Default: the process environment. */
@@ -305,6 +309,7 @@ export class SftpTransport implements Transport {
       client.end();
     };
     signal?.addEventListener('abort', onAbort, { once: true });
+    let startingFolder: string | undefined;
     try {
       await new Promise<void>((resolve, reject) => {
         client.once('ready', resolve);
@@ -314,28 +319,59 @@ export class SftpTransport implements Transport {
           } else if (this.#authError !== undefined) {
             reject(this.#authError);
           } else if (error.level === 'client-authentication') {
-            reject(new SyncError('E_AUTH', `${host} did not accept the sign-in for "${this.#options.username}".`, { cause: error }));
+            reject(
+              new SyncError(
+                'E_AUTH',
+                `${host} did not accept the sign-in for "${this.#options.username}". Check the user name: many hosts name FTP accounts in full, as user@domain.`,
+                { cause: error, details: { reason: 'rejected' } },
+              ),
+            );
           } else if (error.level === 'client-timeout') {
             reject(new SyncError('E_TIMEOUT', `${host} did not complete the SSH handshake in time.`, { cause: error, transient: true }));
           } else {
-            reject(networkError(error, `Connecting to ${host}:${String(port)}`));
+            this.#logger.debug('Connecting failed', { host, error: errorMessage(error) });
+            reject(networkError(error, `Connecting to ${host}:${String(port)}`, { host, port }));
           }
         });
         client.connect(config);
       });
       throwIfAborted(signal);
-      this.#sftp = await withTimeout(
+      try {
+        await this.#options.signedIn?.();
+      } catch (error) {
+        this.#logger.warn('Saving the password failed.', { error: errorMessage(error) });
+      }
+      const sftp = await withTimeout(
         call<SFTPWrapper>((callback) => {
           client.sftp(callback);
         }),
         timeoutMs,
         'Opening the SFTP channel',
       );
-      const rootInfo = await this.#stat(this.#root).catch((error: unknown) => {
-        throw new SyncError('E_REMOTE_ROOT', `The remote root ${this.#root} was not found on ${host}: ${errorMessage(error)}`, { cause: error });
-      });
+      this.#sftp = sftp;
+      startingFolder = await withTimeout(
+        call<string>((callback) => {
+          sftp.realpath('.', callback);
+        }),
+        timeoutMs,
+        'Reading the starting folder',
+      ).then(
+        (folder) => (folder.startsWith('/') ? folder : undefined),
+        () => undefined,
+      );
+      let rootInfo: Stats;
+      try {
+        rootInfo = await this.#stat(this.#root);
+      } catch (error) {
+        if (statusCode(error) === undefined) {
+          throw sftpError(error, `Reading ${this.#root}`);
+        }
+        throw remoteRootError(this.#root, host, { startingFolder, folders: await this.#folderNames(startingFolder) }, this.#options.serverName, { cause: error });
+      }
       if (!rootInfo.isDirectory()) {
-        throw new SyncError('E_REMOTE_ROOT', `The remote root ${this.#root} on ${host} is not a folder.`);
+        throw remoteRootError(this.#root, host, { startingFolder, folders: await this.#folderNames(startingFolder) }, this.#options.serverName, {
+          notAFolder: true,
+        });
       }
     } catch (error) {
       client.end();
@@ -353,7 +389,37 @@ export class SftpTransport implements Transport {
       tls: undefined,
       hostKey,
       features: negotiated === undefined ? [] : [`kex ${negotiated.kex}`, `cipher ${negotiated.cs.cipher}`, `host key ${negotiated.serverHostKey}`],
+      startingFolder,
     };
+  }
+
+  /** Up to 50 folder names in `folder`, for a message; none when it cannot be listed. */
+  async #folderNames(folder: string | undefined): Promise<string[]> {
+    if (folder === undefined) {
+      return [];
+    }
+    const sftp = this.#channel();
+    try {
+      const handle = await withTimeout(call<Buffer>((callback) => { sftp.opendir(folder, callback); }), this.#options.timeoutMs, `Listing ${folder}`);
+      try {
+        const batch = await withTimeout(
+          call<FileEntryWithStats[]>((callback) => {
+            sftp.readdir(handle, callback);
+          }),
+          this.#options.timeoutMs,
+          `Listing ${folder}`,
+        );
+        return batch
+          .filter((item) => typeOf(item.attrs.mode) === 'dir' && item.filename !== '.' && item.filename !== '..' && !/[/\\]/.test(item.filename) && !item.filename.includes('\0'))
+          .map((item) => item.filename)
+          .sort()
+          .slice(0, 50);
+      } finally {
+        await callVoid((callback) => { sftp.close(handle, callback); }).catch(() => undefined);
+      }
+    } catch {
+      return [];
+    }
   }
 
   #channel(): SFTPWrapper {

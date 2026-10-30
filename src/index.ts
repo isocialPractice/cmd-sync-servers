@@ -7,7 +7,7 @@
  */
 
 export { VERSION } from './version.ts';
-export { SyncError, isSyncError, type SyncErrorCode, type SyncErrorOptions } from './errors.ts';
+export { SyncError, isSyncError, type SyncErrorCode, type SyncErrorDetails, type SyncErrorOptions } from './errors.ts';
 
 export { defaultPaths, type PathsEnvironment, type PathsOptions, type SyncServersPaths } from './config/paths.ts';
 export {
@@ -51,9 +51,10 @@ export { MemoryCredentialStore } from './credentials/memory.ts';
 export { openSecret, sealSecret, secretBinding, type BoundServer } from './credentials/binding.ts';
 export { EnvSecretSource, PASSPHRASE_ENV, PASSWORD_ENV } from './credentials/env.ts';
 export { PromptSecretSource, secretQuestion, type SecretPrompt } from './credentials/prompt.ts';
-export { lookupSecret, type SecretLookupOptions } from './credentials/lookup.ts';
+export { lookupSecret, type SecretLookupOptions, type SecretOrigin } from './credentials/lookup.ts';
 
-export type { HostAdapter, HostKeyDecision, HostKeyInfo } from './host.ts';
+export type { CertificateDecision, CertificateInfo, CertificateProblem, HostAdapter, HostKeyDecision, HostKeyInfo } from './host.ts';
+export { parseServerAddress, type ServerAddress, type ServerAddressResult } from './config/address.ts';
 
 export {
   SyncSession,
@@ -99,11 +100,20 @@ export {
   type Capabilities,
   type EntryType,
   type RemoteEntry,
+  type SecretSupplier,
   type Transport,
   type TransportContext,
 } from './transport/index.ts';
 export { DEFAULT_LISTING_LIMIT } from './transport/types.ts';
 export { describeHostKey, normalizeFingerprint, verifyHostKey, type HostKeyPolicy, type PinnedHostKey } from './transport/hostkeys.ts';
+export {
+  findCoveredNames,
+  normalizeCertificateFingerprint,
+  type CertificateChange,
+  type NameResolver,
+  type TrustedCertificate,
+} from './transport/certificates.ts';
+export { ServerProbe, type FolderListing, type ServerProbeOptions } from './transport/probe.ts';
 export { TransportPool, type PoolOptions } from './transport/pool.ts';
 export { DEFAULT_RETRY_DELAYS_MS, isTransient, withRetry, type RetryOptions } from './transport/retry.ts';
 export { LocalTransport, type LocalTransportOptions } from './transport/local.ts';

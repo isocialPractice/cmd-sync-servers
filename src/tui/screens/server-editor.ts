@@ -441,18 +441,24 @@ export class ServerEditorView implements View {
       options.ipFamily = family === 'any' ? undefined : Number(family);
       options.allowInsecure = protocol === 'ftp' ? this.#toggle('allowInsecure') : undefined;
       options.legacyAlgorithms = protocol === 'sftp' && this.#toggle('legacyAlgorithms') ? true : undefined;
+      const sameEndpoint = this.#server?.protocol === protocol && this.#server.host === draft.host && this.#server.port === draft.port;
       if (protocol === 'ftps' || protocol === 'ftps-implicit') {
         const caFile = this.#text('caFile');
         const resolvedCa = caFile === '' ? undefined : path.resolve(this.#services.cwd, caFile);
         if (resolvedCa !== undefined && !existsSync(resolvedCa)) {
           problems.set('caFile', `File not found: ${resolvedCa}`);
         }
-        options.tls = { caFile: resolvedCa, servername: this.#text('servername') || undefined, minVersion: this.#choice('minVersion') };
+        options.tls = {
+          caFile: resolvedCa,
+          servername: this.#text('servername') || undefined,
+          minVersion: this.#choice('minVersion'),
+          // A trusted certificate stays with the server it was trusted for.
+          trustedCertificate: sameEndpoint ? this.#server?.options.tls?.trustedCertificate : undefined,
+        };
       }
       options.remoteFileMode = this.#text('fileMode') || undefined;
       options.remoteDirMode = this.#text('dirMode') || undefined;
       const pinned = this.#server?.options.hostKey;
-      const sameEndpoint = this.#server?.protocol === protocol && this.#server.host === draft.host && this.#server.port === draft.port;
       options.hostKey = protocol === 'sftp' && sameEndpoint ? pinned : undefined;
     }
     const webUrl = this.#text('webUrl');

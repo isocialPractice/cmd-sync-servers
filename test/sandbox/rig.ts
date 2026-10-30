@@ -23,6 +23,14 @@ export interface RigOptions {
   readonly mlsd?: boolean;
   readonly keyboardInteractiveOnly?: boolean;
   readonly publicKey?: string;
+  /** The FTPS server's certificate; default a self-signed one for localhost and 127.0.0.1. */
+  readonly certificate?: TestCertificate;
+  /** The certificate written to `caFile`; default the server's own certificate. */
+  readonly ca?: TestCertificate;
+  /** Another certificate for FTPS data connections. */
+  readonly dataCertificate?: TestCertificate;
+  /** The folder the account starts in; default `/`. */
+  readonly home?: string;
 }
 
 export interface TransportOverrides {
@@ -33,6 +41,16 @@ export interface TransportOverrides {
   readonly allowInsecure?: boolean;
   readonly trustCertificate?: boolean;
   readonly minVersion?: 'TLSv1.2' | 'TLSv1.3';
+  /** Replaces the FTPS TLS settings: the CA file, the name to check, the trusted certificate. */
+  readonly tls?: FtpTransportOptions['tls'];
+  readonly host?: string;
+  readonly ipFamily?: 4 | 6;
+  readonly expectedCertificate?: string;
+  readonly confirmCertificate?: FtpTransportOptions['confirmCertificate'];
+  readonly certificateChanged?: FtpTransportOptions['certificateChanged'];
+  readonly resolver?: FtpTransportOptions['resolver'];
+  readonly signedIn?: FtpTransportOptions['signedIn'];
+  readonly serverName?: string;
   readonly listingLimit?: number;
   readonly auth?: SftpTransportOptions['auth'];
   readonly secret?: SftpTransportOptions['secret'];
@@ -78,12 +96,13 @@ export async function startRig(kind: Kind, options: RigOptions = {}): Promise<Ri
       ...(options.publicKey === undefined ? {} : { publicKey: options.publicKey }),
       ...(options.keyboardInteractiveOnly === undefined ? {} : { keyboardInteractiveOnly: options.keyboardInteractiveOnly }),
       ...(options.faults === undefined ? {} : { faults: options.faults }),
+      ...(options.home === undefined ? {} : { home: options.home }),
     });
   } else if (kind !== 'local') {
     if (kind !== 'ftp') {
-      certificate = selfSignedCertificate();
+      certificate = options.certificate ?? selfSignedCertificate();
       caFile = path.join(temp.dir, 'ca.pem');
-      writeFileSync(caFile, certificate.cert);
+      writeFileSync(caFile, (options.ca ?? certificate).cert);
     }
     sandbox = await startFtpSandbox({
       root: serverDir,
@@ -91,8 +110,10 @@ export async function startRig(kind: Kind, options: RigOptions = {}): Promise<Ri
       password,
       tls: kind === 'ftps' ? 'explicit' : kind === 'ftps-implicit' ? 'implicit' : 'none',
       ...(certificate === undefined ? {} : { certificate }),
+      ...(options.dataCertificate === undefined ? {} : { dataCertificate: options.dataCertificate }),
       ...(options.mlsd === undefined ? {} : { mlsd: options.mlsd }),
       ...(options.faults === undefined ? {} : { faults: options.faults }),
+      ...(options.home === undefined ? {} : { home: options.home }),
     });
   }
 
@@ -114,12 +135,15 @@ export async function startRig(kind: Kind, options: RigOptions = {}): Promise<Ri
       throw new Error('no sandbox');
     }
     const common = {
-      host: sandbox.host,
+      host: overrides.host ?? sandbox.host,
       port: sandbox.port,
       remoteRoot: overrides.remoteRoot ?? '/site',
       timeoutMs,
       logger,
       secret,
+      ipFamily: overrides.ipFamily,
+      signedIn: overrides.signedIn,
+      serverName: overrides.serverName,
       ...(overrides.listingLimit === undefined ? {} : { listingLimit: overrides.listingLimit }),
     };
     if (kind === 'sftp') {
@@ -138,9 +162,14 @@ export async function startRig(kind: Kind, options: RigOptions = {}): Promise<Ri
       username: user,
       allowInsecure: overrides.allowInsecure ?? kind === 'ftp',
       tls:
-        overrides.trustCertificate === false
+        overrides.tls ??
+        (overrides.trustCertificate === false
           ? { minVersion: overrides.minVersion ?? 'TLSv1.2' }
-          : { caFile, minVersion: overrides.minVersion ?? 'TLSv1.2', servername: 'localhost' },
+          : { caFile, minVersion: overrides.minVersion ?? 'TLSv1.2', servername: 'localhost' }),
+      expectedCertificate: overrides.expectedCertificate,
+      confirmCertificate: overrides.confirmCertificate,
+      certificateChanged: overrides.certificateChanged,
+      resolver: overrides.resolver,
     };
     return new FtpTransport(ftpOptions);
   };

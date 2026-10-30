@@ -123,13 +123,13 @@
     <tr><td><code>id</code></td><td>generated</td><td>A random UUID that stays the same when the server is renamed.</td></tr>
     <tr><td><code>name</code></td><td></td><td>Unique within the site, ignoring case.</td></tr>
     <tr><td><code>protocol</code></td><td></td><td><code>sftp</code>, <code>ftps</code>, <code>ftps-implicit</code>, <code>ftp</code> or <code>local</code>.</td></tr>
-    <tr><td><code>host</code></td><td></td><td>The host name or address. Not used by <code>local</code>.</td></tr>
+    <tr><td><code>host</code></td><td></td><td>The host name or IP address alone, such as <code>sftp.example.com</code> or <code>203.0.113.10</code>. A port, a user or a protocol in it, such as <code>server1.hosting.example.net:2083</code>, is refused with the field to use instead. Not used by <code>local</code>.</td></tr>
     <tr><td><code>port</code></td><td>22, 21 or 990</td><td>22 for SFTP, 21 for FTP and explicit FTPS, 990 for implicit FTPS.</td></tr>
     <tr><td><code>username</code></td><td></td><td>The account to sign in as.</td></tr>
     <tr><td><code>auth.method</code></td><td><code>password</code></td><td><code>password</code>, or for SFTP <code>key</code> or <code>agent</code>.</td></tr>
     <tr><td><code>auth.keyPath</code></td><td></td><td>The private key file of the <code>key</code> method; read when connecting, never copied.</td></tr>
     <tr><td><code>auth.savePassword</code></td><td><code>false</code></td><td>Keep the password or key passphrase in the credential store.</td></tr>
-    <tr><td><code>remoteRoot</code></td><td></td><td>The site folder on the server, starting with <code>/</code>; for <code>local</code>, an absolute or network path.</td></tr>
+    <tr><td><code>remoteRoot</code></td><td></td><td>The site folder on the server, starting with <code>/</code>, as the account sees it; for <code>local</code>, an absolute or network path. Many hosting accounts open in their own folder and see it as <code>/</code>, so a path from a control panel, such as <code>/home/&lt;user&gt;/example.com/my-site</code>, does not exist for them. <code>sync-servers server test</code> shows the folder the account opens in, and a root that is not found names it and what it holds.</td></tr>
     <tr><td><code>webUrl</code></td><td>none</td><td>The address of the site on this server.</td></tr>
     <tr><td><code>options.timeoutSeconds</code></td><td><code>30</code></td><td>How long a connection or an operation may wait.</td></tr>
     <tr><td><code>options.ipFamily</code></td><td>either</td><td><code>4</code> or <code>6</code> to use one IP version only.</td></tr>
@@ -140,6 +140,7 @@
     <tr><td><code>options.tls.caFile</code></td><td></td><td>FTPS: a PEM file of extra certificate authorities, for a private CA.</td></tr>
     <tr><td><code>options.tls.servername</code></td><td></td><td>FTPS: the name to verify the certificate against, when it differs from <code>host</code>.</td></tr>
     <tr><td><code>options.tls.minVersion</code></td><td><code>TLSv1.2</code></td><td>FTPS: the lowest TLS version accepted.</td></tr>
+    <tr><td><code>options.tls.trustedCertificate</code></td><td></td><td>FTPS: a certificate you chose to trust after it failed verification: <code>sha256</code> (colon-separated hex), <code>validTo</code> and <code>pinnedAt</code>. Normal verification runs first; an expired certificate is never trusted. Set when you trust a certificate in a terminal; removed with <code>--forget-certificate</code>. See <a href="security.html#certificates">Certificates</a>.</td></tr>
     <tr><td><code>options.hostKey</code></td><td></td><td>SFTP: the pinned host key, set when you trust it on first connection.</td></tr>
     <tr><td><code>options.uploadOnSave</code></td><td><code>false</code></td><td>Used by the VS Code extension: put a file when it is saved.</td></tr>
     <tr><td><code>options.remoteFileMode</code></td><td>server default</td><td>An octal mode such as <code>644</code> for uploaded files.</td></tr>

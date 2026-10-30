@@ -4,7 +4,7 @@ import path from 'node:path';
 import { findServer, type SiteRegistry } from '../config/registry.ts';
 import type { Server, Site } from '../config/schema.ts';
 import { SyncError } from '../errors.ts';
-import type { HostAdapter, HostKeyDecision, HostKeyInfo } from '../host.ts';
+import type { CertificateDecision, CertificateInfo, HostAdapter, HostKeyDecision, HostKeyInfo } from '../host.ts';
 import { silentLogger, type Logger } from '../log/logger.ts';
 import { transportFactory } from '../transport/index.ts';
 import { TransportPool } from '../transport/pool.ts';
@@ -39,6 +39,8 @@ export interface SyncSessionOptions {
   readonly env?: Readonly<Record<string, string | undefined>> | undefined;
   /** A host key fingerprint to accept when none is pinned (`--host-key`). */
   readonly expectedHostKey?: string | undefined;
+  /** A certificate fingerprint to accept when the certificate does not verify (`--trust-certificate`). */
+  readonly expectedCertificate?: string | undefined;
   /** Waits before retries after transient failures. Default 1, 2 and 4 seconds. */
   readonly retryDelaysMs?: readonly number[] | undefined;
 }
@@ -185,6 +187,7 @@ export class SyncSession {
 
   #hostAdapter(): HostAdapter {
     const host = this.#host;
+    const confirmCertificate = host.confirmCertificate?.bind(host);
     return {
       ...host,
       // A key accepted once is not asked about again by later connections of this session.
@@ -198,6 +201,21 @@ export class SyncSession {
         }
         return decision;
       },
+      ...(confirmCertificate === undefined
+        ? {}
+        : {
+            // So is a certificate.
+            confirmCertificate: async (info: CertificateInfo): Promise<CertificateDecision> => {
+              if (this.#acceptedOnce.has(info.sha256)) {
+                return { action: 'accept-once' };
+              }
+              const decision = await confirmCertificate(info);
+              if (decision.action === 'accept-once') {
+                this.#acceptedOnce.add(info.sha256);
+              }
+              return decision;
+            },
+          }),
     };
   }
 
@@ -210,14 +228,11 @@ export class SyncSession {
         host: this.#hostAdapter(),
         logger: this.#logger,
         expectedHostKey: this.#options.expectedHostKey,
+        expectedCertificate: this.#options.expectedCertificate,
         ...(this.#options.env === undefined ? {} : { env: this.#options.env }),
-        pinHostKey: async (info) => {
-          const pinned = { algorithm: info.algorithm, sha256: info.sha256, pinnedAt: new Date().toISOString() };
-          await this.#registry.updateServer(site.id, server.id, (draft) => {
-            draft.options.hostKey = pinned;
-          });
-          // Later connections of this session see the pin.
-          server.options.hostKey = pinned;
+        // Later connections of this session see a change at once: the factory applies it to `server`.
+        updateServer: async (change) => {
+          await this.#registry.updateServer(site.id, server.id, change);
         },
       });
       this.#pool = new TransportPool(factory, {

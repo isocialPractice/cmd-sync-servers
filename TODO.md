@@ -128,6 +128,36 @@ the step of the plan that specifies it.
 - [x] Resolve the Scorecard findings that are in the repository's control
   - **Goal**: Resolve to [Phase E6, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
   - From: Phase E6 - Release Pipeline and First Public Alpha
+- [x] `parseServerAddress` for the Host field, and a `host` in `sites.json`
+      that holds the host alone
+  - **Goal**: Resolve to [Phase S1, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
+- [x] Certificate inspection and decisions in the FTPS transport: covered
+      names, `use-host`, `check-as`, pins checked before credentials,
+      `changed`, never-trusted expired certificates, and the data-connection
+      rule, with the sandbox's test authority and data certificate
+  - **Goal**: Resolve to [Phase S1, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
+- [x] The starting folder for FTP and SFTP, and `E_REMOTE_ROOT` naming it and
+      what it holds
+  - **Goal**: Resolve to [Phase S1, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
+- [x] `ServerProbe`, with integration tests on every sandbox protocol
+  - **Goal**: Resolve to [Phase S1, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
+- [x] Sign-in and network messages: the 530 and SFTP text, `E_AUTH`
+      reasons, `SecretRequest.note`, `secretAccepted` and the new
+      `secretQuestion`
+  - **Goal**: Resolve to [Phase S1, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
+- [x] The CLI and TUI adapters, `--trust-certificate`, `--forget-certificate`,
+      and the starting folder and banner in `server test`
+  - **Goal**: Resolve to [Phase S1, step 6](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
+- [x] Documentation for S1, the extension's `TODO.md` item, the version
+      `1.0.0-alpha.1.0.0` and the changelog without `## [Unreleased]`
+  - **Goal**: Resolve to [Phase S1, step 7](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
+  - From: Simplify Site Setup
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -183,6 +213,62 @@ Next version: minor.
 
 All items moved to Current and done. The first public alpha waits on the
 owner steps under User Use Only.
+
+## Simplify Site Setup
+
+Next version: major. Phases S1 to S3 together make `1.0.0-alpha.1.0.0`:
+S1 sets the version, and S2 and S3 add to it without moving it again. The
+items of Phase S5 move no version.
+
+- [ ] `site add` takes the server options and `--server-name`; the first
+      server is named after its host and becomes the Remote server
+  - **Goal**: Resolve to [Phase S2, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] The guided flow for `site add`, `server add` and interactive
+      `server edit`: Host parsing, connecting through `ServerProbe`, the
+      failure menus, sign-in retries, the remote root picker, the
+      root-at-top question, saving the password after success, and nothing
+      saved on Cancel
+  - **Goal**: Resolve to [Phase S2, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] `server test` in a terminal repairs what it finds: the sign-in, the
+      remote root and the host
+  - **Goal**: Resolve to [Phase S2, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] `config edit` and `sites.json` errors that name the site, the server
+      and the value
+  - **Goal**: Resolve to [Phase S2, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] The only site used without asking, `~` in paths, the Protocol, Host
+      and User labels, and web URLs without a scheme
+  - **Goal**: Resolve to [Phase S2, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] Tests of the guided setup with scripted answers against the sandbox
+  - **Goal**: Resolve to [Phase S2, step 6](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] Documentation for S2, changelog, checks and commit
+  - **Goal**: Resolve to [Phase S2, step 7](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+- [ ] The quick setup form on the Sites screen
+  - **Goal**: Resolve to [Phase S3, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+- [ ] The server editor: Basic tab order and labels, Test with unsaved
+      values, Browse, and Web URL and the trusted certificate on the
+      Advanced tab
+  - **Goal**: Resolve to [Phase S3, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+- [ ] The folder picker dialog, and the certificate and save-password
+      dialogs reviewed against `DESIGN_LANGUAGE.md`
+  - **Goal**: Resolve to [Phase S3, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+- [ ] Terminal UI tests of quick setup, the certificate choice, the picker
+      and Esc with unsaved changes
+  - **Goal**: Resolve to [Phase S3, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+- [ ] Documentation for S3, changelog, checks and commit
+  - **Goal**: Resolve to [Phase S3, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+- [ ] Run the engine's and the extension's checks once more from clean
+      builds
+  - **Goal**: Resolve to [Phase S5, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
+- [ ] Bring `init-sync-servers.prompt.md` and this plan's status and
+      departures up to date
+  - **Goal**: Resolve to [Phase S5, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
+- [ ] Write `.support/complete-init.md`, the paste-ready prompt that makes
+      the same updates
+  - **Goal**: Resolve to [Phase S5, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
+- [ ] Check these items and commit
+  - **Goal**: Resolve to [Phase S5, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
+- [ ] Report what was checked and the owner step that remains
+  - **Goal**: Resolve to [Phase S5, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
 
 ## Later Roadmap - paused
 
@@ -243,4 +329,7 @@ or needs a person at a real terminal.
       rulesets (section 11.7) and register for the OpenSSF Best Practices
       badge; fuzzing is not set up
 - [ ] Fill the git-ignored `.claude/leak-denylist.txt` with personal names,
-      hosts and paths for the docs leak scan
+      hosts and paths for the docs leak scan, including the host names,
+      account name, domains and IP address of the server first set up by
+      hand, and copy it to `vscode-sync-servers/.claude/leak-denylist.txt`,
+      where the extension's leak scan looks

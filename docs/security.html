@@ -46,7 +46,7 @@
   <thead><tr><th scope="col">Protocol</th><th scope="col">Protection</th></tr></thead>
   <tbody>
     <tr><td>SFTP</td><td>Encrypted and authenticated by SSH. Only modern key exchange, host key, cipher and MAC algorithms are offered. A server that needs older ones must set <code>legacyAlgorithms</code>, and every connection to it warns.</td></tr>
-    <tr><td>FTPS</td><td>TLS 1.2 or later, with the certificate chain and host name verified against the system's certificate authorities, plus a private one given with <code>--ca-file</code>.</td></tr>
+    <tr><td>FTPS</td><td>TLS 1.2 or later, with the certificate chain and host name verified against the system's certificate authorities, plus a private one given with <code>--ca-file</code>. A certificate that fails is shown to you to decide on (see <a href="#certificates">Certificates</a>).</td></tr>
     <tr><td>FTP</td><td>None: the password and every file travel in clear text. Refused unless the server sets <code>allowInsecure</code>, and every connection warns.</td></tr>
     <tr><td>Local folder</td><td>Whatever the drive or network share provides.</td></tr>
   </tbody>
@@ -61,11 +61,35 @@
   <li>When a server's key changes for a good reason, check the new fingerprint with the server's administrator, then <code>sync-servers server edit Production --forget-host-key</code> and connect again.</li>
 </ul>
 
+<h2 id="certificates">Certificates</h2>
+<p>An FTPS certificate proves you reached the right server. It is checked on every connection, before your user name or password is sent: its chain must lead to a certificate authority this computer trusts, or to one given with <code>--ca-file</code>, and it must name the host you connect to. When both hold, nothing is asked.</p>
+<p>When the check fails, a run in a terminal shows the certificate and asks what to do, instead of only refusing it:</p>
+<pre><code>The certificate of 203.0.113.10:21 does not name 203.0.113.10.
+  Issued to  *.hosting.example.net, hosting.example.net
+  Issued by  Example Trust CA
+  Valid      2026-03-01 to 2027-03-31
+  SHA-256    3A:91:5C:...:C4
+203.0.113.10 is server1.hosting.example.net, which this certificate covers.
+  1. Connect to server1.hosting.example.net instead (recommended)
+  2. Keep 203.0.113.10 and check the certificate as server1.hosting.example.net
+  3. Trust this certificate for 203.0.113.10
+  4. Cancel</code></pre>
+<ul>
+  <li><strong>A host name the certificate covers.</strong> Shared hosting often serves many sites from one machine, and its certificate names the hosting company's machine, not your domain or its IP address. sync-servers looks the address up both ways and offers a name only when the certificate covers it and it leads back to the same machine. Connecting to that name, or checking the certificate as that name (<code>options.tls.servername</code>), keeps full verification, and keeps working when the host renews its certificate.</li>
+  <li><strong>Trust this certificate.</strong> For a self-signed or privately issued certificate, trusting it pins its SHA-256 fingerprint in the server's settings, as <code>options.tls.trustedCertificate</code>. Compare the fingerprint with the one your host publishes before you trust it. Normal verification still runs first and wins when it passes.</li>
+  <li><strong>A certificate that changed.</strong> When a pinned certificate is replaced, both fingerprints are shown and the default answer is to cancel. A renewal looks like this, and so does a machine in the middle: check the new fingerprint with the host before you trust it.</li>
+  <li><strong>Never trusted:</strong> a certificate that has expired, or is not valid yet, is refused with no choice to trust it. Ask the host to renew it, or check this computer's date and time.</li>
+  <li><strong>Unattended runs</strong> never trust a certificate on their own. The error names the certificate, a covered host name when one was found (<code>sync-servers server edit Production --host server1.hosting.example.net</code>), and the option that accepts a fingerprint you checked: <code>--trust-certificate 3A:91:5C:...:C4</code>. It accepts that certificate for the run only.</li>
+  <li><strong>Data connections</strong> carry your files on connections of their own. Each one must resume the TLS session of the verified control connection, or present the same certificate; any other is closed before data moves.</li>
+  <li>FTPS never falls back to plain FTP. An <code>ftp://</code> address in the Host field connects with FTPS; plain FTP stays an explicit choice.</li>
+  <li><code>sync-servers server edit Production --forget-certificate</code> removes a pin, so the next connection verifies the certificate again.</li>
+</ul>
+
 <h2 id="credentials">Credentials</h2>
 <ul>
   <li>Passwords and key passphrases are kept only in the operating system's credential store, when you choose to save them. They are never written to <code>sites.json</code>, a log, a plan file or a temporary file.</li>
   <li>A password is asked for, and sent, only after the server's host key or TLS certificate has been verified.</li>
-  <li>A saved password is tied to the protocol, address, port and user it was saved for. If the settings change any of them, by mistake or by someone else, the saved password is not sent: you are asked again, and an unattended run stops with <code>E_AUTH</code>.</li>
+  <li>A saved password is tied to the protocol, address, port and user it was saved for. If the settings change any of them, by mistake or by someone else, the saved password is not sent: you are asked again, with the reason, and an unattended run stops with <code>E_AUTH</code>. Once the server accepts a password you typed, you are offered to save it for the new settings.</li>
   <li>Every secret is registered with the logger the moment it is read and replaced with <code>[redacted]</code> in every log line and error message, including FTP <code>PASS</code> commands and passwords inside URLs.</li>
   <li>Private keys are read from their file when connecting and never copied.</li>
   <li>For scripts, <code>SYNC_SERVERS_PASSWORD</code> supplies the password. Treat it like the password itself: keep it in your CI system's secret store.</li>

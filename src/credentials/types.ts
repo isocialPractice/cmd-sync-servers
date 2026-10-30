@@ -15,6 +15,8 @@ export interface SecretRequest {
   readonly serverName: string;
   readonly host?: string | undefined;
   readonly username?: string | undefined;
+  /** Shown before the question, such as why a saved password was not sent. */
+  readonly note?: string | undefined;
 }
 
 /** Somewhere a secret can be read from. */

@@ -132,8 +132,45 @@ test('lookup fails with E_AUTH and never shows a secret when nothing has one', a
   );
 });
 
+test('a saved secret skipped for another address says why before the question, and the error carries the reason', async () => {
+  const server = { protocol: 'sftp', host: 'sftp.example.com', port: undefined, username: 'demo-user' } as const;
+  const store = new MemoryCredentialStore();
+  await store.set(ref, sealSecret('saved', server));
+  const binding = secretBinding({ ...server, host: 'sftp.example.org' });
+  const asked: SecretRequest[] = [];
+  const origins: string[] = [];
+  const typed = await lookupSecret(request, {
+    store,
+    savePassword: true,
+    binding,
+    prompt: (question) => {
+      asked.push(question);
+      return Promise.resolve('typed');
+    },
+    found: (origin) => origins.push(origin),
+  });
+  assert.equal(typed, 'typed');
+  assert.deepEqual(origins, ['prompt']);
+  assert.equal(asked[0]?.note, 'The saved password is for another host or user, so it was not sent.');
+  await assert.rejects(
+    lookupSecret(request, { store, savePassword: true, binding }),
+    (error) => isSyncError(error, 'E_AUTH') && error.details?.reason === 'saved-for-elsewhere',
+  );
+  await assert.rejects(
+    lookupSecret(request, { savePassword: false }),
+    (error) => isSyncError(error, 'E_AUTH') && error.details?.reason === 'missing',
+  );
+  const fromStore: string[] = [];
+  await lookupSecret(request, { store, savePassword: true, binding: secretBinding(server), found: (origin) => fromStore.push(origin) });
+  assert.deepEqual(fromStore, ['store']);
+});
+
 test('the question names the account and the site', () => {
-  assert.equal(secretQuestion(request), 'Password for demo-user@sftp.example.com (My Site: Production): ');
+  assert.equal(secretQuestion(request), 'Password for demo-user on sftp.example.com (My Site: Production): ');
+  assert.equal(
+    secretQuestion({ ...request, username: 'demo-user@example.com', host: 'server1.hosting.example.net' }),
+    'Password for demo-user@example.com on server1.hosting.example.net (My Site: Production): ',
+  );
   assert.equal(
     secretQuestion({ ...request, ref: { ...ref, kind: 'passphrase' }, username: undefined }),
     'Key passphrase for sftp.example.com (My Site: Production): ',

@@ -7,12 +7,12 @@ import { SiteRegistry, type NewServer } from '../../src/config/registry.ts';
 import type { Site, SiteInput } from '../../src/config/schema.ts';
 import { sealSecret } from '../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../src/credentials/memory.ts';
-import type { HostAdapter, HostKeyDecision, HostKeyInfo } from '../../src/host.ts';
+import type { CertificateDecision, CertificateInfo, HostAdapter, HostKeyDecision, HostKeyInfo } from '../../src/host.ts';
 import { createLogger, memorySink, type LogRecord } from '../../src/log/logger.ts';
 import { SyncSession } from '../../src/sync/session.ts';
 import { makeFolder } from '../helpers/cli.ts';
 import type { FtpFaults } from './ftp-server.ts';
-import { startRig, type Kind, type Rig } from './rig.ts';
+import { startRig, type Kind, type Rig, type RigOptions } from './rig.ts';
 import type { SftpFaults, SftpSandbox } from './sftp-server.ts';
 
 export interface SiteRigOptions {
@@ -21,11 +21,17 @@ export interface SiteRigOptions {
   readonly site?: Partial<Pick<SiteInput, 'cloaking' | 'sync' | 'local'>>;
   /** Leave the SFTP host key unpinned. */
   readonly unpinned?: boolean;
+  /** The FTPS certificate and the authority written to the CA file. */
+  readonly certificate?: RigOptions['certificate'];
+  readonly ca?: RigOptions['ca'];
+  /** Leave the FTPS server without the name to check the certificate as. */
+  readonly noServername?: boolean;
 }
 
 export interface SessionOptions {
   readonly interactive?: boolean;
   readonly confirmHostKey?: (info: HostKeyInfo) => Promise<HostKeyDecision>;
+  readonly confirmCertificate?: (info: CertificateInfo) => Promise<CertificateDecision>;
   readonly expectedHostKey?: string;
 }
 
@@ -48,7 +54,11 @@ export interface SiteRig {
 export const BASE_TIME = Date.UTC(2026, 9, 1, 12, 0, 0);
 
 export async function startSiteRig(kind: Kind, options: SiteRigOptions = {}): Promise<SiteRig> {
-  const rig = await startRig(kind, options.faults === undefined ? {} : { faults: options.faults });
+  const rig = await startRig(kind, {
+    ...(options.faults === undefined ? {} : { faults: options.faults }),
+    ...(options.certificate === undefined ? {} : { certificate: options.certificate }),
+    ...(options.ca === undefined ? {} : { ca: options.ca }),
+  });
   const home = makeFolder(rig.siteDir, '..', '..', 'home');
   const localDir = makeFolder(rig.siteDir, '..', '..', 'local');
   const registry = await SiteRegistry.open({ paths: defaultPaths({}, { platform: process.platform, env: { SYNC_SERVERS_HOME: home }, homedir: home, cwd: home }) });
@@ -77,7 +87,10 @@ export async function startSiteRig(kind: Kind, options: SiteRigOptions = {}): Pr
       username: rig.user,
       auth: { method: 'password', savePassword: true },
       remoteRoot: '/site',
-      options: { tls: { caFile: rig.caFile, servername: 'localhost' }, ...(kind === 'ftp' ? { allowInsecure: true } : {}) },
+      options: {
+        tls: options.noServername === true ? { caFile: rig.caFile } : { caFile: rig.caFile, servername: 'localhost' },
+        ...(kind === 'ftp' ? { allowInsecure: true } : {}),
+      },
     };
   }
   const added = await registry.add({ name: 'My Site', localRoot: localDir, servers: [server], ...options.site });
@@ -105,6 +118,7 @@ export async function startSiteRig(kind: Kind, options: SiteRigOptions = {}): Pr
         interactive: sessionOptions.interactive ?? false,
         logger,
         confirmHostKey: sessionOptions.confirmHostKey ?? (() => Promise.resolve('reject')),
+        ...(sessionOptions.confirmCertificate === undefined ? {} : { confirmCertificate: sessionOptions.confirmCertificate }),
         promptSecret: () => Promise.resolve(undefined),
       };
       return SyncSession.open({ registry, siteId: site.id, host, logger, retryDelaysMs: [10, 10, 10], expectedHostKey: sessionOptions.expectedHostKey });

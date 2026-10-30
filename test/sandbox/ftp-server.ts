@@ -32,6 +32,10 @@ export interface FtpSandboxOptions {
   readonly password: string;
   readonly tls: 'explicit' | 'implicit' | 'none';
   readonly certificate?: TestCertificate;
+  /** A different certificate for data connections, as a machine in the middle would present. */
+  readonly dataCertificate?: TestCertificate;
+  /** The folder the account starts in after signing in; default `/`. */
+  readonly home?: string;
   /** Offer MLSD (default true); without it, clients fall back to LIST. */
   readonly mlsd?: boolean;
   readonly port?: number;
@@ -80,6 +84,7 @@ interface Shared {
   readonly options: FtpSandboxOptions;
   readonly faults: FtpFaults;
   readonly context: SecureContext | undefined;
+  readonly dataContext: SecureContext | undefined;
   readonly commands: string[];
   readonly sockets: Set<Socket>;
   readonly servers: Set<Server>;
@@ -100,6 +105,7 @@ class Session {
 
   constructor(socket: Socket, shared: Shared) {
     this.#shared = shared;
+    this.#cwd = shared.options.home ?? '/';
     this.#socket = socket;
     this.#secure = socket instanceof tls.TLSSocket;
     this.#attach(socket);
@@ -156,7 +162,7 @@ class Session {
   async #openPassive(): Promise<number> {
     const server = net.createServer();
     this.#shared.servers.add(server);
-    const { context } = this.#shared;
+    const context = this.#shared.dataContext ?? this.#shared.context;
     const protect = this.#protectData && context !== undefined;
     const accepted = new Promise<Socket>((resolve, reject) => {
       server.once('connection', (raw: Socket) => {
@@ -484,6 +490,10 @@ export async function startFtpSandbox(options: FtpSandboxOptions): Promise<FtpSa
     options,
     faults: options.faults ?? {},
     context: certificate === undefined ? undefined : tls.createSecureContext({ key: certificate.key, cert: certificate.cert, minVersion: 'TLSv1.2' }),
+    dataContext:
+      options.dataCertificate === undefined
+        ? undefined
+        : tls.createSecureContext({ key: options.dataCertificate.key, cert: options.dataCertificate.cert, minVersion: 'TLSv1.2' }),
     commands: [],
     sockets: new Set(),
     servers: new Set(),
