@@ -268,18 +268,19 @@ Next version: major. Phases S1 to S3 together make `1.0.0-alpha.1.0.0`:
 S1 sets the version, and S2 and S3 add to it without moving it again. The
 items of Phase S5 move no version.
 
-- [ ] Run the engine's and the extension's checks once more from clean
+- [x] Run the engine's and the extension's checks once more from clean
       builds
   - **Goal**: Resolve to [Phase S5, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
 - [ ] Bring `init-sync-servers.prompt.md` and this plan's status and
-      departures up to date
+      departures up to date. The closing run could not write under
+      `.claude/`; pasting `.support/complete-init.md` does it (User Use Only)
   - **Goal**: Resolve to [Phase S5, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
-- [ ] Write `.support/complete-init.md`, the paste-ready prompt that makes
+- [x] Write `.support/complete-init.md`, the paste-ready prompt that makes
       the same updates
   - **Goal**: Resolve to [Phase S5, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
-- [ ] Check these items and commit
+- [x] Check these items and commit
   - **Goal**: Resolve to [Phase S5, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
-- [ ] Report what was checked and the owner step that remains
+- [x] Report what was checked and the owner step that remains
   - **Goal**: Resolve to [Phase S5, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
 
 ## Later Roadmap - paused
@@ -310,6 +311,11 @@ Remove `- paused` from this heading to resume.
 
 Steps only the owner takes, because each changes state outside this machine
 or needs a person at a real terminal.
+
+- [ ] Open a Claude Code session in this folder and paste the whole of
+      `.support/complete-init.md` as the prompt. It brings
+      `init-sync-servers.prompt.md` and `simplify-setup.prompt.md` up to date
+      with the simplify-setup plan, which automated runs cannot write
 
 - [ ] Add `.npmrc` with `ignore-scripts=true`, `engine-strict=true`,
       `save-exact=true` and `fund=false`, one per line, then commit it. The
