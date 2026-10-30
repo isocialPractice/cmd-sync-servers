@@ -9,9 +9,8 @@ The same engine is a library: the `vscode-sync-servers` extension for VS Code
 uses it in-process, and both read one shared list of sites.
 
 > **Status: early alpha.** Sites, servers, saved passwords, cloaking and
-> synchronizing work from the command line, with a text preview. The
-> full-screen terminal UI and the editor mode for the preview are not
-> available yet. Try it on a copy of a site first.
+> synchronizing work from the command line, in a full-screen terminal UI,
+> in your own editor and in plain prompts. Try it on a copy of a site first.
 
 ## Goals
 
@@ -51,6 +50,11 @@ node out/cli/main.js --version
 
 ## Usage
 
+Run `sync-servers` with no command in a terminal to open the site list in
+the full-screen interface: add and edit sites and servers, test a
+connection, synchronize with a preview you can change row by row, and watch
+the results. The same work is available as commands:
+
 ```sh
 # A site is a local folder and its servers. The first server is the Remote server.
 sync-servers site add --name "My Site" --local-root ~/sites/my-site
@@ -86,6 +90,13 @@ files that were never synchronized are listed unchecked, and deleting more
 than 50 files or a quarter of a side asks you to type the count. Local files
 that a sync overwrites or deletes are kept in a recovery folder for 14 days.
 
+In a terminal, the preview opens in the full-screen interface: `Space`
+checks a row, `p`, `g` and `s` choose Put, Get or Skip, `d` shows the
+difference, and `Enter` synchronizes. `--preview editor` opens it as a text
+file in your own editor instead, and `--preview plain` as numbered prompts;
+`SYNC_SERVERS_UI` sets your usual choice. `--plain`, or `TERM=dumb`, uses
+numbered prompts everywhere, for screen readers and logging terminals.
+
 In a script, `sync` without `--yes` prints the preview and changes nothing;
 `--yes` runs the checked rows, and decisions are never made for you. Exit
 codes: 0 done, 1 error, 2 usage, 3 failures or decisions left, 4 cancelled,
@@ -111,6 +122,7 @@ changes to the folder of the site you chose:
 
 ```sh
 eval "$(sync-servers shell-init bash)"      # in ~/.bashrc; zsh is the same
+ssv                                         # pick a site in the UI, land in its folder
 ssv site path "My Site"
 ```
 

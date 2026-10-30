@@ -7,13 +7,16 @@ import { resultLine, type SyncResult } from '../../sync/execute.ts';
 import { isInside, ROOT, toRemotePath } from '../../sync/paths.ts';
 import { SyncPlan, type PlanItem, type SavedPlan } from '../../sync/plan.ts';
 import { SyncSession, type StatusEntry } from '../../sync/session.ts';
-import type { Action, Direction } from '../../sync/types.ts';
+import { DIRECTION_TITLES, type Action, type Direction } from '../../sync/types.ts';
 import { flag, stringOption, type CommandSpec, type OptionSpecs, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
 import { CancelledError, UsageError } from '../errors.ts';
 import { ExitCode } from '../exit-codes.ts';
 import { cliHostAdapter } from '../host.ts';
 import { formatPairs, paint } from '../output.ts';
+import { plainPreview } from '../plain.ts';
+import { editPlan } from '../preview-editor.ts';
+import { previewMode, startTui, type PreviewMode } from '../ui.ts';
 import { describeServer, protocolLabel } from './shared.ts';
 
 const SYMBOLS: Readonly<Record<Action, readonly [string, string, string]>> = {
@@ -26,18 +29,16 @@ const SYMBOLS: Readonly<Record<Action, readonly [string, string, string]>> = {
   synced: ['=', '=', 'Synchronized'],
 };
 
-const DIRECTION_TITLES: Readonly<Record<Direction, string>> = {
-  put: 'Put newer files to remote',
-  get: 'Get newer files from remote',
-  both: 'Get and put newer files',
-};
-
 const HOST_KEY_OPTION: OptionSpecs = {
   'host-key': { type: 'string', value: '<fingerprint>', description: 'Accept this SSH host key (SHA256:...) when it is not pinned yet' },
 };
 
 const YES_OPTION: OptionSpecs = {
   yes: { type: 'boolean', short: 'y', description: 'Run without asking for confirmation' },
+};
+
+const PREVIEW_OPTION: OptionSpecs = {
+  preview: { type: 'string', value: '<mode>', description: 'Show the preview in the terminal UI (tui), your editor, plain prompts, or print it (none)' },
 };
 
 /** A path for display: control characters are shown escaped, never sent to the terminal. */
@@ -79,12 +80,13 @@ function checkbox(item: PlanItem): string {
   return item.checked === true && item.action !== 'skip' ? '[x]' : '[ ]';
 }
 
+function previewTitle(plan: SyncPlan, site: Site, server: Server): string {
+  return `Synchronize: ${site.name} -> ${server.name} (${protocolLabel(server.protocol)})   ${DIRECTION_TITLES[plan.direction]}${plan.deleteOrphans ? ', deleting files missing on the other side' : ''}`;
+}
+
 /** The preview as text: a title, the summary line, then one row per path with a difference. */
 export function formatPreview(ctx: CommandContext, plan: SyncPlan, site: Site, server: Server): string {
-  const lines = [
-    `Synchronize: ${site.name} -> ${server.name} (${protocolLabel(server.protocol)})   ${DIRECTION_TITLES[plan.direction]}${plan.deleteOrphans ? ', deleting files missing on the other side' : ''}`,
-    plan.summaryLine(),
-  ];
+  const lines = [previewTitle(plan, site, server), plan.summaryLine()];
   if (plan.items.length > 0) {
     lines.push('');
     const width = Math.max(...plan.items.map((item) => (SYMBOLS[item.action][2]).length));
@@ -120,21 +122,78 @@ function exitFor(result: SyncResult): ExitCode {
   return result.failed > 0 || result.unresolved > 0 ? ExitCode.incomplete : ExitCode.ok;
 }
 
-/** Shows a plan, asks for confirmation in a terminal (or takes `--yes`), then runs it. */
-async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues): Promise<ExitCode> {
+function runnable(plan: SyncPlan): number {
+  return plan.items.filter((item) => item.state !== 'problem' && item.checked === true && item.action !== 'skip' && item.action !== 'resolve').length;
+}
+
+async function execute(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues): Promise<ExitCode> {
+  const result = await session.execute(plan, {
+    signal: ctx.io.signal,
+    allowMassDelete: flag(values, 'allow-mass-delete'),
+    confirmMassDelete: ctx.interactive
+      ? async (count, side) => (await ctx.prompter.ask(`This deletes ${String(count)} ${side} files. Type ${String(count)} to go ahead`)) === String(count)
+      : undefined,
+  });
+  if (ctx.flags.json) {
+    ctx.json('sync', { plan: plan.toJSON(), result });
+  } else {
+    printResult(ctx, result);
+  }
+  return exitFor(result);
+}
+
+/** The preview in the full-screen UI, which also runs the plan and shows the results. */
+async function previewInTui(ctx: CommandContext, session: SyncSession, plan: SyncPlan): Promise<ExitCode> {
+  const { PreviewView } = await import('../../tui/screens/preview.ts');
+  const app = await startTui(ctx, () => [new PreviewView(session, plan)]);
+  const result = app.outcome as SyncResult | undefined;
+  if (result === undefined) {
+    throw new CancelledError('Nothing was changed.');
+  }
+  printResult(ctx, result);
+  return exitFor(result);
+}
+
+/** Shows a plan in the chosen preview mode, takes the person's choices (or `--yes`), then runs it. */
+async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues, mode: PreviewMode): Promise<ExitCode> {
+  if (mode !== 'none' && plan.items.length > 0) {
+    if (mode === 'tui') {
+      return previewInTui(ctx, session, plan);
+    }
+    let go: boolean;
+    if (mode === 'plain') {
+      ctx.out(`${previewTitle(plan, session.site, session.server)}\n`);
+      go = await plainPreview(ctx, session, plan);
+    } else {
+      go = await editPlan(plan, session.site, session.server, ctx.io);
+    }
+    if (!go) {
+      throw new CancelledError('Nothing was changed.');
+    }
+    if (runnable(plan) === 0) {
+      ctx.out(plan.summary.resolve > 0 ? `Nothing to synchronize until the ${String(plan.summary.resolve)} decision(s) are made.\n` : 'Nothing to synchronize.\n');
+      return plan.summary.resolve > 0 ? ExitCode.incomplete : ExitCode.ok;
+    }
+    return execute(ctx, session, plan, values);
+  }
+  return previewAndRun(ctx, session, plan, values);
+}
+
+/** Prints the preview, asks for confirmation in a terminal (or takes `--yes`), then runs it. */
+async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues): Promise<ExitCode> {
   const json = ctx.flags.json;
-  const runnable = plan.items.filter((item) => item.state !== 'problem' && item.checked === true && item.action !== 'skip').length;
+  const count = runnable(plan);
   if (!json) {
     ctx.out(formatPreview(ctx, plan, session.site, session.server));
   }
   const waiting = plan.summary.resolve;
-  if (flag(values, 'dry-run') || runnable === 0) {
+  if (flag(values, 'dry-run') || count === 0) {
     if (json) {
       ctx.json('sync', { plan: plan.toJSON(), result: null });
-    } else if (runnable === 0) {
+    } else if (count === 0) {
       ctx.out(waiting > 0 ? `Nothing to synchronize until the ${String(waiting)} decision(s) are made.\n` : 'Nothing to synchronize.\n');
     }
-    return waiting > 0 && runnable === 0 && !flag(values, 'dry-run') ? ExitCode.incomplete : ExitCode.ok;
+    return waiting > 0 && count === 0 && !flag(values, 'dry-run') ? ExitCode.incomplete : ExitCode.ok;
   }
   if (!flag(values, 'yes')) {
     if (!ctx.interactive) {
@@ -145,23 +204,11 @@ async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
       }
       return ExitCode.ok;
     }
-    if (!(await ctx.prompter.confirm(`Synchronize ${String(runnable)} file(s)?`, false))) {
+    if (!(await ctx.prompter.confirm(`Synchronize ${String(count)} file(s)?`, false))) {
       throw new CancelledError('Nothing was changed.');
     }
   }
-  const result = await session.execute(plan, {
-    signal: ctx.io.signal,
-    allowMassDelete: flag(values, 'allow-mass-delete'),
-    confirmMassDelete: ctx.interactive
-      ? async (count, side) => (await ctx.prompter.ask(`This deletes ${String(count)} ${side} files. Type ${String(count)} to go ahead`)) === String(count)
-      : undefined,
-  });
-  if (json) {
-    ctx.json('sync', { plan: plan.toJSON(), result });
-  } else {
-    printResult(ctx, result);
-  }
-  return exitFor(result);
+  return execute(ctx, session, plan, values);
 }
 
 function directionFrom(values: OptionValues): Direction | undefined {
@@ -182,6 +229,7 @@ export const syncCommand: CommandSpec = {
     both: { type: 'boolean', description: 'Get and put newer files' },
     delete: { type: 'boolean', description: 'Delete files missing on the other side (never-synchronized ones stay unchecked)' },
     ...YES_OPTION,
+    ...PREVIEW_OPTION,
     'dry-run': { type: 'boolean', description: 'Show the preview and transfer nothing' },
     'allow-mass-delete': { type: 'boolean', description: 'Run deletes past the mass-delete limit without asking' },
     'plan-out': { type: 'string', value: '<file>', description: 'Save the plan as JSON' },
@@ -191,10 +239,12 @@ export const syncCommand: CommandSpec = {
   examples: [
     'sync-servers sync --put',
     'sync-servers sync --both --delete --dry-run',
+    'sync-servers sync --put --preview editor',
     'sync-servers sync --get css img --yes',
     'sync-servers sync --put --plan-out plan.json',
   ],
   async run(ctx, { values, args }) {
+    const mode = previewMode(ctx, values);
     const planIn = stringOption(values, 'plan-in');
     let saved: SavedPlan | undefined;
     if (planIn !== undefined) {
@@ -227,7 +277,7 @@ export const syncCommand: CommandSpec = {
       if (planOut !== undefined) {
         await writeFile(path.resolve(ctx.io.cwd, planOut), `${JSON.stringify(plan.toJSON(), null, 2)}\n`, { mode: 0o600 });
       }
-      return await confirmAndRun(ctx, session, plan, values);
+      return await confirmAndRun(ctx, session, plan, values, mode);
     } finally {
       await session.close();
     }
@@ -241,15 +291,16 @@ function single(direction: 'put' | 'get'): CommandSpec {
     args: '<path>...',
     minArgs: 1,
     summary: `${verb} files or folders now, with a preview only when a decision is needed`,
-    options: { ...YES_OPTION, ...HOST_KEY_OPTION },
+    options: { ...YES_OPTION, ...PREVIEW_OPTION, ...HOST_KEY_OPTION },
     examples: [`sync-servers ${direction} css/site.css`, `sync-servers ${direction} img --site "My Site"`],
     async run(ctx, { values, args }) {
+      const mode = previewMode(ctx, values);
       const session = await openSession(ctx, values);
       try {
         const paths = sitePaths(ctx, session.site, args);
         const outcome = await session[direction](paths, { signal: ctx.io.signal });
         if (outcome.result === undefined) {
-          return await confirmAndRun(ctx, session, outcome.plan, values);
+          return await confirmAndRun(ctx, session, outcome.plan, values, mode);
         }
         if (ctx.flags.json) {
           ctx.json('sync', { plan: outcome.plan.toJSON(), result: outcome.result });

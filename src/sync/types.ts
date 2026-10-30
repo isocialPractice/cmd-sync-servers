@@ -10,6 +10,13 @@ export interface Observation {
 /** `put` uploads newer local files, `get` downloads newer remote files, `both` does each. */
 export type Direction = 'put' | 'get' | 'both';
 
+/** Dreamweaver's names for the directions. */
+export const DIRECTION_TITLES: Readonly<Record<Direction, string>> = {
+  put: 'Put newer files to remote',
+  get: 'Get newer files from remote',
+  both: 'Get and put newer files',
+};
+
 /** The whole site, or some files and folders of it. */
 export type Scope = { readonly kind: 'site' } | { readonly kind: 'paths'; readonly paths: readonly string[] };
 

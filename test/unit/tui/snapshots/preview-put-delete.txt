@@ -1,0 +1,24 @@
+ Synchronize: My Site -> Folder (Local/Network)       Put newer files to remote
+ Files: 2 will be updated, 2 will be skipped
+ ------------------------------------------------------------------------------
+  [ ] ^ Put      .env          Matches the sensitive pattern ".env". Check t...
+  [x] ^ Put      css/site.css
+  [x] ^ Put      index.html
+  [ ] x Delete   old.html      On the server only and never synchronized. Ch...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ------------------------------------------------------------------------------
+ .env: Matches the sensitive pattern ".env". Check to transfer anyway.
+  Space Check   p Put   g Get   s Skip   d Diff   a All   Enter Synchronize

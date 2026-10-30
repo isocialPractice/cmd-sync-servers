@@ -33,7 +33,10 @@ export function globalHelp(commands: readonly CommandSpec[], globalOptions: Opti
     'Synchronize a local site folder with its servers.',
     '',
     'Usage:',
-    '  sync-servers <command> [options]',
+    ...columns([
+      ['sync-servers', 'Open the sites in the terminal UI, or numbered prompts with --plain'],
+      ['sync-servers <command> [options]', 'Run one command'],
+    ]),
     '',
     'Commands:',
     ...columns(commands.map((command) => [commandSignature(command), command.summary])),

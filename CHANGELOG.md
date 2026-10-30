@@ -8,6 +8,37 @@ Until the first stable release, versions use the pre-release form
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0.4.0] - 2026-10-29
+
+### Added
+
+- A full-screen terminal interface, opened by `sync-servers` with no command
+  in a terminal: the site list, a home screen for each site with its changes,
+  Site Setup with the Servers, Local Info, Cloaking, Synchronization and
+  Security categories, a server editor with Basic and Advanced tabs, Set
+  password and Test, and the Synchronize, preview, progress and results
+  screens. It works from the keyboard at 80 x 24, with `?` listing every key
+  of a screen.
+- The preview of `sync`, `put` and `get` opens in the full-screen interface
+  in a terminal. `--preview editor` opens it as a text file in your editor,
+  where boxes and action words can be changed and rows deleted;
+  `--preview plain` shows numbered prompts; `--preview none` prints it.
+  `SYNC_SERVERS_UI` sets the usual choice.
+- Plain mode: `--plain`, `TERM=dumb`, or a terminal without raw mode runs the
+  same flows as numbered line prompts, for screen readers and logging
+  terminals.
+- `ssv` with no command opens the site list and changes to the folder of the
+  site you open.
+
+### Security
+
+- The terminal is restored on every way out: a normal exit, `Ctrl+C`,
+  `SIGTERM`, `SIGHUP` and an error while drawing.
+- Passwords typed in the interface are masked, kept only in the credential
+  store, and removed from it when Save password is turned off.
+- Control characters in file names and messages are shown as `?`, never sent
+  to the terminal.
+
 ## [1.0.0-alpha.0.3.0] - 2026-10-29
 
 ### Added
@@ -119,7 +150,8 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...HEAD
+[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...HEAD
+[1.0.0-alpha.0.4.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...v1.0.0-alpha.0.4.0
 [1.0.0-alpha.0.3.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...v1.0.0-alpha.0.3.0
 [1.0.0-alpha.0.2.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.1.0...v1.0.0-alpha.0.2.0
 [1.0.0-alpha.0.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.0.0...v1.0.0-alpha.0.1.0

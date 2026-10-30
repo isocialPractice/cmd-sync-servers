@@ -173,7 +173,7 @@ function report(ctx: CommandContext, command: CommandSpec, error: unknown): void
     ctx.out(jsonDocument('error', { error: { code: errorCode(error), message } }));
   }
   if (error instanceof UsageError) {
-    ctx.err(`sync-servers: ${message}\nRun "sync-servers ${command.path.join(' ')} --help" for usage.\n`);
+    ctx.err(`sync-servers: ${message}\nRun "${['sync-servers', ...command.path, '--help'].join(' ')}" for usage.\n`);
   } else if (error instanceof CancelledError) {
     ctx.err(`${message}\n`);
   } else {
@@ -235,11 +235,25 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<ExitCo
     io.stdout.write(`${VERSION}\n`);
     return ExitCode.ok;
   }
-  if (command === undefined) {
+  if (command === undefined && (io.stdin.isTTY !== true || values.json === true)) {
     io.stdout.write(globalHelp(COMMANDS, GLOBAL_OPTIONS, io.platform));
     return ExitCode.ok;
   }
+  return runCommand(command ?? homeCommand, io, values, positionals);
+}
 
+/** No command in a terminal: the site list, in the terminal UI or plain mode. */
+const homeCommand: CommandSpec = {
+  path: [],
+  summary: 'Open the sites in the terminal UI',
+  examples: ['sync-servers', 'sync-servers --plain'],
+  async run(ctx) {
+    const { home } = await import('./home.ts');
+    return home(ctx);
+  },
+};
+
+async function runCommand(command: CommandSpec, io: CliIo, values: OptionValues, positionals: readonly string[]): Promise<ExitCode> {
   const args = positionals.slice(command.path.length);
   if (args.length < (command.minArgs ?? 0) || args.length > (command.maxArgs ?? Number.POSITIVE_INFINITY)) {
     return usageFailure(io, `expected: sync-servers ${commandSignature(command)}`, command);

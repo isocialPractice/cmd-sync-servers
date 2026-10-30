@@ -3,6 +3,10 @@
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
+# Vendored sources are kept byte for byte; their checksums are tested.
+vendor/kilo/kilo.c -text
+vendor/kilo/LICENSE -text
+
 *.png binary
 *.jpg binary
 *.jpeg binary

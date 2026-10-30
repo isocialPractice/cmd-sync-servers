@@ -1,0 +1,24 @@
+ Site Setup: Second Site                                            Ctrl+S Save
+ ------------------------------------------------------------------------------
+  Site                  Enable cloaking       [x]
+  Servers               Cloak files matching
+  Advanced Settings                           .psd
+    Local Info                                node_modules/▏
+>   Cloaking
+    Synchronization
+    Security
+
+                        Cloaked paths         (none)
+                        [ Uncloak a path... ]
+
+
+
+
+
+
+
+
+
+ ------------------------------------------------------------------------------
+ Removed "Backup copy".
+  Tab Pane   Up/Down Move   Space Change   Ctrl+S Save   Esc Back

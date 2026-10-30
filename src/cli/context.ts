@@ -42,6 +42,8 @@ export class CommandContext {
   readonly interactive: boolean;
   /** The folder `--cd-file` receives when the command ends, set by commands that choose a site. */
   cdTarget: string | undefined;
+  /** The site chosen in a plain-mode menu, ahead of `--site` for the commands it runs. */
+  siteOverride: string | undefined;
   #registry: SiteRegistry | undefined;
   #prompter: Prompter | undefined;
   #store: Promise<CredentialStore | undefined> | undefined;
@@ -115,7 +117,7 @@ export class CommandContext {
    */
   async chooseSite(explicit?: string): Promise<Site> {
     const registry = await this.registry();
-    const named = explicit ?? this.flags.site ?? nonEmpty(this.io.env.SYNC_SERVERS_SITE);
+    const named = explicit ?? this.siteOverride ?? this.flags.site ?? nonEmpty(this.io.env.SYNC_SERVERS_SITE);
     if (named !== undefined) {
       const site = registry.resolve({ nameOrId: named });
       if (site === undefined) {

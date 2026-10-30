@@ -1,6 +1,6 @@
 {
   "name": "@isocialpractice/cmd-sync-servers",
-  "version": "1.0.0-alpha.0.3.0",
+  "version": "1.0.0-alpha.0.4.0",
   "description": "Cross-platform command-line site synchronization with a library API, modelled on Dreamweaver's Synchronize: sites, servers, cloaking and a preview of every change.",
   "keywords": [
     "sync",
@@ -65,6 +65,7 @@
     "test:docker": "node scripts/run-tests.ts docker",
     "coverage": "node scripts/run-tests.ts --coverage unit integration && node scripts/coverage-check.ts coverage/lcov.info",
     "sandbox": "node test/sandbox/run.ts",
+    "vendor:kilo": "node scripts/vendor-kilo.ts",
     "pack:check": "npm run build && node scripts/pack-check.ts",
     "docs:api": "typedoc --entryPoints src/index.ts --tsconfig tsconfig.json --out _site/api"
   },

@@ -58,7 +58,7 @@ test('sync needs a direction without a terminal, and asks for one in a terminal'
     'local',
     async (rig, run) => {
       rig.write('local', 'a.html', 'a');
-      const asked = await run('sync');
+      const asked = await run('sync', '--preview', 'none');
       assert.equal(asked.code, 0, asked.stderr);
       assert.match(asked.stderr, /Direction\n {2}1\. Put newer files to remote/);
       assert.equal(rig.read('remote', 'a.html'), 'a');
@@ -66,6 +66,53 @@ test('sync needs a direction without a terminal, and asks for one in a terminal'
     '1\nn\ny\n',
     true,
   );
+});
+
+test('in a terminal without raw mode the preview falls back to plain mode', async () => {
+  await withSite(
+    'local',
+    async (rig, run) => {
+      rig.write('local', 'a.html', 'a');
+      rig.write('local', 'b.html', 'b');
+      const result = await run('sync', '--put');
+      assert.equal(result.code, 0, result.stderr);
+      assert.match(result.stdout, /^ {2}1 \[x\] \^ Put +a\.html$/m);
+      assert.match(result.stdout, /^ {2}2 \[x\] \^ Put +b\.html$/m);
+      assert.match(result.stdout, /^Files: 1 will be updated, 1 will be skipped$/m);
+      assert.match(result.stdout, /^Synchronized 1 file\. 0 failed\. 1 skipped\.$/m);
+      assert.equal(rig.read('remote', 'a.html'), 'a');
+      assert.equal(rig.read('remote', 'b.html'), undefined);
+    },
+    '2\ngo\ny\n',
+    true,
+  );
+  await withSite(
+    'local',
+    async (rig, run) => {
+      rig.write('local', 'a.html', 'a');
+      const result = await run('sync', '--put');
+      assert.equal(result.code, 4);
+      assert.match(result.stderr, /Nothing was changed/);
+      assert.equal(rig.read('remote', 'a.html'), undefined);
+    },
+    'q\n',
+    true,
+  );
+});
+
+test('--preview needs a terminal and does not mix with --yes', async () => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'a.html', 'a');
+    const noTerminal = await run('sync', '--put', '--preview', 'plain');
+    assert.equal(noTerminal.code, 2);
+    assert.match(noTerminal.stderr, /--preview plain needs a terminal/);
+    const both = await run('sync', '--put', '--preview', 'editor', '--yes');
+    assert.equal(both.code, 2);
+    assert.match(both.stderr, /--yes runs without a preview/);
+    const unknown = await run('sync', '--put', '--preview', 'fancy');
+    assert.equal(unknown.code, 2);
+    assert.match(unknown.stderr, /--preview must be one of: tui, editor, plain, none/);
+  });
 });
 
 test('unresolved conflicts exit 3; mass deletes exit 5 unless allowed', async () => {

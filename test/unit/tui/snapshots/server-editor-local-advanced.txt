@@ -1,0 +1,24 @@
+ Second Site: New server                                            Ctrl+S Save
+ ------------------------------------------------------------------------------
+   Basic    Advanced    Local/Network
+
+  Allow deletes at "/"  [ ]
+  Upload on save        [ ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ------------------------------------------------------------------------------
+ ! Enter a name.
+  Tab Basic   Up/Down Move   Space Change   Ctrl+S Save   Esc Back

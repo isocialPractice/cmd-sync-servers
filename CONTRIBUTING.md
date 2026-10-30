@@ -41,6 +41,7 @@ explicitly with the commands below, never from npm lifecycle hooks.
 | `npm run coverage` | Unit and integration tests with coverage, then the coverage bar (below) |
 | `npm run sandbox` | Starts local SFTP, FTPS and FTP test servers with throwaway credentials, until Ctrl+C |
 | `npm run pack:check` | Builds, then fails if `npm pack` would ship anything outside the `files` allowlist |
+| `npm run vendor:kilo` | Fetches the pinned kilo sources into `vendor/kilo/` and prints their checksums |
 | `npm run docs:api` | Generates the API reference into `_site/api/` |
 
 Run `npm run lint`, `npm run typecheck` and `npm test` before every pull
@@ -80,6 +81,17 @@ request. CI runs the same commands on Linux, macOS and Windows with Node.js
   `SANDBOX_DOCKER=1 npm run test:docker`.
 - Never commit a private key, certificate or password, even a test one.
   Generate them during the test.
+- Terminal UI screens are tested without a terminal: `test/helpers/tui.ts`
+  drives an `App` with keys and reads its frames as plain text. Screens whose
+  text does not depend on the machine are compared with snapshots in
+  `test/unit/tui/snapshots/`. A missing or empty snapshot is written by the
+  next local run and fails in CI, so review and commit it with the change.
+  After an intended change, rerun with `UPDATE_SNAPSHOTS=1`, or empty the
+  file, and review the diff.
+- `vendor/kilo/` is the upstream code the terminal layer is ported from,
+  byte for byte. A unit test checks it against the checksums in
+  `vendor/kilo/VENDORED.md`; `npm run vendor:kilo` fetches the pinned commit
+  again and prints the checksums to record.
 
 ## Placeholder Data
 

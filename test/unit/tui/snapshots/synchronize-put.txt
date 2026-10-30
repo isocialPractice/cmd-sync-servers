@@ -1,0 +1,24 @@
+ Synchronize: My Site                                             Enter Preview
+ ------------------------------------------------------------------------------
+
+  Synchronize                             Entire 'My Site' site
+  Direction                               < Put newer files to remote >
+  Delete remote files not on local drive  [ ]
+  [ Preview ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ------------------------------------------------------------------------------
+ Space or Left and Right change the direction.
+  Up/Down Move   Space Change   Enter Preview   Esc Back

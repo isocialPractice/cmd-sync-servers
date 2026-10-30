@@ -1,0 +1,24 @@
+ Results: My Site -> Folder
+ Synchronized 1 file. 0 failed. 3 skipped.
+ ------------------------------------------------------------------------------
+  done      index.html
+  skipped   .env
+  skipped   css/site.css
+  skipped   old.html
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ------------------------------------------------------------------------------
+ index.html
+  Up/Down Move   Esc Done

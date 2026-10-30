@@ -1,0 +1,24 @@
+ Second Site: New server                                            Ctrl+S Save
+ ------------------------------------------------------------------------------
+   Basic    Advanced    SFTP
+
+  Server name     ▏
+  Connect using   < SFTP >
+  Address
+  Port
+  Username
+  Sign in with    < Password >
+  Save password   [ ]
+  [ Set password... ]
+  Root directory  /
+  Web URL
+  [ Test ]
+
+
+
+
+
+
+ ------------------------------------------------------------------------------
+ Saved "Second Site".
+  Tab Advanced   Up/Down Move   Space Change   Ctrl+S Save   Esc Back
