@@ -116,23 +116,6 @@ async function saveSecret(
   ctx.logger.info('Secret saved', { siteId: site.id, serverId: server.id, kind, store: store.name });
 }
 
-/** After adding a server in a terminal, offers to save its password. */
-export async function offerToSaveSecret(ctx: CommandContext, site: Site, server: Server): Promise<void> {
-  if (server.protocol === 'local' || server.auth?.method === 'agent') {
-    return;
-  }
-  const kind: SecretKind = server.auth?.method === 'key' ? 'passphrase' : 'password';
-  const store = await ctx.credentialStore();
-  if (store === undefined) {
-    ctx.out(`The ${label(kind)} is asked for when connecting (${ctx.credentialStoreProblem()}).\n`);
-    return;
-  }
-  if (await ctx.prompter.confirm(`Save the ${label(kind)} in the ${store.name}?`, false)) {
-    await saveSecret(ctx, site, server, kind, store, false);
-    ctx.out(`Saved the ${label(kind)} in the ${store.name}.\n`);
-  }
-}
-
 export const passwordSetCommand: CommandSpec = {
   path: ['password', 'set'],
   args: '[<server>]',

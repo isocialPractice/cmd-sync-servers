@@ -49,28 +49,49 @@ git clone https://github.com/isocialPractice/cmd-sync-servers.git
 cd cmd-sync-servers
 npm ci --ignore-scripts
 npm run build
-node out/cli/main.js --version
+npm link
+sync-servers --version
 ```
+
+`npm link` puts the `sync-servers` command on your `PATH`;
+`npm unlink --global @isocialpractice/cmd-sync-servers` takes it off again.
 
 ## A first sync
 
 ```sh
-sync-servers site add --name "My Site" --local-root ~/sites/my-site
-sync-servers server add --site "My Site" --name Production \
-  --host sftp.example.com --user demo-user --remote-root /var/www/my-site
-sync-servers password set Production --site "My Site"
-sync-servers server test Production --site "My Site"
+sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com
 cd ~/sites/my-site && sync-servers sync --put
 ```
 
-The test shows the server's host key fingerprint once and asks whether to
-trust it. The last command opens the preview: check what should move, then
-press Enter. Run `sync-servers` with no command to do all of this from menus.
+On Windows, in `cmd.exe`:
+
+```bat
+sync-servers site add --name "My Site" --local-root "C:\Users\<user>\Sites\my-site" ^
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com
+```
+
+`site add` asks for the password, connects, and asks about anything only a
+person can decide: an SSH host key or a TLS certificate seen for the first
+time, and the folder on the server that holds the site, starting where the
+server opens. With no options it asks for everything. The last command opens
+the preview: check what should move, then press Enter. Run `sync-servers`
+with no command to do all of this from menus.
+
+Without a terminal, nothing is asked and nothing connects: pass the root and
+add more servers the same way.
+
+```sh
+sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --host sftp.example.com --user demo-user --remote-root /var/www/my-site
+sync-servers server add --site "My Site" --name Staging \
+  --host 192.0.2.20 --user demo-user@example.com --remote-root /var/www/my-site --testing
+```
 
 ## Documentation
 
 - [Getting started](https://isocialpractice.github.io/cmd-sync-servers/getting-started.html):
-  a site, a server, a password and the first preview
+  a site and its server in one command, and the first preview
 - [Configuration](https://isocialpractice.github.io/cmd-sync-servers/configuration.html):
   where settings live, every field, cloaking, the guard and secrets
 - [Command line](https://isocialpractice.github.io/cmd-sync-servers/cli.html):

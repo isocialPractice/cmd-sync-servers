@@ -196,13 +196,13 @@ test('server test shows where the account starts, and offers to save a typed pas
     );
     const credentialStore = new MemoryCredentialStore();
     const wrong = await cli({ home, tty: true, input: 'not-the-password\n', credentialStore }, 'server', 'test', '--site', 'My Site');
-    assert.equal(wrong.code, 1);
-    assert.match(wrong.stderr, /did not accept the user name or password \(530\)\. Check the user name: many hosts name FTP accounts in full, as user@domain\./);
+    assert.equal(wrong.code, 4);
+    assert.match(wrong.stderr, /did not accept the user name or password \(530\)\. Check the user name: many hosts name FTP accounts in full, as user@domain\.\nUser \[demo-user\]: /);
     assert.doesNotMatch(wrong.stderr, /Save the password/);
 
-    const asked = await cli({ home, tty: true, input: `${rig.password}\n\n`, credentialStore }, 'server', 'test', '--site', 'My Site');
+    const asked = await cli({ home, tty: true, input: `not-the-password\n\n${rig.password}\n\n`, credentialStore }, 'server', 'test', '--site', 'My Site');
     assert.equal(asked.code, 0, asked.stderr);
-    assert.match(asked.stderr, /Save the password in the memory\? \(Y\/n\)/);
+    assert.equal(asked.stderr.match(/Save the password in the memory\? \(Y\/n\)/g)?.length, 1);
     assert.match(asked.stdout, /^Start +\/, where the account opens$/m);
     assert.equal(firstServer(home)?.auth?.savePassword, true);
 

@@ -55,7 +55,7 @@
 </table>
 
 <h2 id="sites-json">The list of sites</h2>
-<p><code>sites.json</code> is plain JSON, described by a <a href="schema/site.schema.json">JSON Schema</a> that editors use for completion. Every write is atomic, keeps the previous version as <code>sites.json.bak</code>, and takes a lock file so two programs never lose each other's changes. A file that does not validate is never rewritten. Edit it with the commands, the terminal interface, or <code>sync-servers site edit --editor</code>, which reopens your editor with the problems listed until the JSON is valid.</p>
+<p><code>sites.json</code> is plain JSON, described by a <a href="schema/site.schema.json">JSON Schema</a> that editors use for completion. Every write is atomic, keeps the previous version as <code>sites.json.bak</code>, and takes a lock file so two programs never lose each other's changes. A file that does not validate is never rewritten. Edit it with the commands, the terminal interface, <code>sync-servers site edit --editor</code> for one site, or <code>sync-servers config edit</code> for the whole file. Both reopen your editor with the problems listed until the JSON is valid, and <code>config edit</code> works even when the file does not load.</p>
 <pre><code>{
   "$schema": "https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json",
   "schemaVersion": 1,

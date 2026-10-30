@@ -1,5 +1,6 @@
 import path from 'node:path';
 import * as z from 'zod';
+import { safeLine } from '../terminal-text.ts';
 import { hostFieldProblem } from './address.ts';
 
 /** The version of the `sites.json` format this release reads and writes. */
@@ -106,7 +107,7 @@ export const serverSchema = z
     username: z.string().min(1).optional(),
     auth: authSchema.optional(),
     remoteRoot: z.string().min(1).describe('The site root on the server. For "local", an absolute or UNC path.'),
-    webUrl: z.url().optional(),
+    webUrl: z.url({ error: 'Write the full address, such as https://www.example.com/.' }).optional(),
     options: serverOptionsSchema.prefault({}),
   })
   .superRefine((server, ctx) => {
@@ -143,7 +144,7 @@ export const serverSchema = z
   });
 
 const localSchema = z.strictObject({
-  webUrl: z.url().optional().describe('The local web address, such as http://localhost:8080/.'),
+  webUrl: z.url({ error: 'Write the full address, such as http://localhost:8080/.' }).optional().describe('The local web address, such as http://localhost:8080/.'),
   caseSensitive: z.boolean().optional().describe('Unset: probed from the file system.'),
   cache: z.boolean().default(true).describe('Cache local scans between runs.'),
 });
@@ -196,7 +197,7 @@ export const siteSchema = z
     localRoot: z
       .string()
       .min(1)
-      .refine((value) => path.isAbsolute(value), 'Must be an absolute path.')
+      .refine((value) => path.isAbsolute(value), 'Must be the full path of a folder on this computer, starting from a drive or "/".')
       .describe('The local site folder.'),
     servers: z.array(serverSchema).default([]),
     remoteServerId: id.optional().describe('The server synchronization uses.'),
@@ -264,6 +265,70 @@ export function sitesJsonSchema(): Record<string, unknown> {
     description: 'The master list of sites and servers shared by the sync-servers CLI and the VS Code extension.',
     ...Object.fromEntries(Object.entries(generated).filter(([key]) => key !== '$schema')),
   };
+}
+
+function valueAt(input: unknown, at: readonly PropertyKey[]): unknown {
+  let value = input;
+  for (const key of at) {
+    if (typeof value !== 'object' || value === null) {
+      return undefined;
+    }
+    value = (value as Record<PropertyKey, unknown>)[key];
+  }
+  return value;
+}
+
+/** A value from the file for a message: escaped, quoted when text, and cut at 80 characters. */
+function shownValue(value: unknown): string | undefined {
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const line = safeLine(value);
+  return JSON.stringify(line.length > 80 ? `${line.slice(0, 79)}...` : line);
+}
+
+function fieldPath(parts: readonly PropertyKey[]): string {
+  return parts.reduce<string>((text, part) => {
+    if (typeof part === 'number') {
+      return `${text}[${String(part)}]`;
+    }
+    return text === '' ? String(part) : `${text}.${String(part)}`;
+  }, '');
+}
+
+/**
+ * Formats the validation issues of a whole `sites.json` by name instead of
+ * index, with the value the file holds: `Site "My Site", server "Production",
+ * remoteRoot "example.com/my-site": Must be an absolute path that starts
+ * with "/".`. `input` is the parsed file the issues are about.
+ */
+export function describeSitesFileIssues(issues: readonly z.core.$ZodIssue[], input: unknown): string[] {
+  return issues.map((issue) => {
+    const where: string[] = [];
+    let rest: readonly PropertyKey[] = issue.path;
+    const [first, siteIndex] = rest;
+    if (first === 'sites' && typeof siteIndex === 'number') {
+      const name = valueAt(input, ['sites', siteIndex, 'name']);
+      where.push(typeof name === 'string' && name.trim() !== '' ? `Site ${JSON.stringify(safeLine(name.trim()))}` : `Site ${String(siteIndex + 1)}`);
+      rest = rest.slice(2);
+      const [servers, serverIndex] = rest;
+      if (servers === 'servers' && typeof serverIndex === 'number') {
+        const serverName = valueAt(input, ['sites', siteIndex, 'servers', serverIndex, 'name']);
+        where.push(
+          typeof serverName === 'string' && serverName.trim() !== '' ? `server ${JSON.stringify(safeLine(serverName.trim()))}` : `server ${String(serverIndex + 1)}`,
+        );
+        rest = rest.slice(2);
+      }
+    }
+    if (rest.length > 0) {
+      const value = shownValue(valueAt(input, issue.path));
+      where.push(value === undefined ? fieldPath(rest) : `${fieldPath(rest)} ${value}`);
+    }
+    return `${where.length === 0 ? '(top level)' : where.join(', ')}: ${issue.message}`;
+  });
 }
 
 /** Formats validation issues as `<path>: <message>` lines. */

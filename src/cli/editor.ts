@@ -169,42 +169,67 @@ function stripLeadingComments(text: string): string {
   return lines.slice(index).join('\n');
 }
 
+function problemComments(errors: readonly string[]): string[] {
+  return [
+    '// Fix these problems, then save and close the editor. Delete everything to cancel.',
+    ...errors.map((error) => `//   ${error.replace(/\r?\n/g, ' ')}`),
+  ];
+}
+
+/**
+ * Opens `text` in the editor and reopens it, with the problems as comments
+ * at the top, until `validate` accepts what was saved. Starts with
+ * `problems` shown when the text already has some. Resolves `undefined`
+ * when the person empties the file or saves it unchanged.
+ */
+export async function editTextUntilValid<T>(
+  text: string,
+  header: readonly string[],
+  validate: (saved: string) => Validation<T>,
+  environment: EditorEnvironment,
+  fileName = 'edit.json',
+  problems: readonly string[] = [],
+): Promise<T | undefined> {
+  const original = text.endsWith('\n') ? text : `${text}\n`;
+  let body = original;
+  let comments = [...header.map((line) => `// ${line}`), ...(problems.length === 0 ? [] : problemComments(problems))];
+  for (;;) {
+    const saved = stripLeadingComments(await editText(`${comments.join('\n')}\n${body}`, fileName, environment));
+    if (saved.trim() === '' || saved.trim() === original.trim()) {
+      return undefined;
+    }
+    const result = validate(saved);
+    if (result.ok) {
+      return result.value;
+    }
+    body = saved.endsWith('\n') ? saved : `${saved}\n`;
+    comments = problemComments(result.errors);
+  }
+}
+
 /**
  * Opens `value` as JSON in the editor and reopens it, with the problems as
  * comments at the top, until `validate` accepts it. Resolves `undefined`
  * when the person empties the file or saves it unchanged.
  */
-export async function editJsonUntilValid<T>(
+export function editJsonUntilValid<T>(
   value: unknown,
   header: readonly string[],
   validate: (parsed: unknown) => Validation<T>,
   environment: EditorEnvironment,
   fileName = 'edit.json',
 ): Promise<T | undefined> {
-  const original = `${JSON.stringify(value, null, 2)}\n`;
-  let body = original;
-  let comments = header.map((line) => `// ${line}`);
-  for (;;) {
-    const saved = stripLeadingComments(await editText(`${comments.join('\n')}\n${body}`, fileName, environment));
-    if (saved.trim() === '' || saved.trim() === original.trim()) {
-      return undefined;
-    }
-    let parsed: unknown;
-    let errors: readonly string[];
-    try {
-      parsed = JSON.parse(saved);
-      const result = validate(parsed);
-      if (result.ok) {
-        return result.value;
+  return editTextUntilValid(
+    `${JSON.stringify(value, null, 2)}\n`,
+    header,
+    (saved) => {
+      try {
+        return validate(JSON.parse(saved));
+      } catch (error) {
+        return { ok: false, errors: [`Not valid JSON: ${error instanceof Error ? error.message : String(error)}`] };
       }
-      errors = result.errors;
-    } catch (error) {
-      errors = [`Not valid JSON: ${error instanceof Error ? error.message : String(error)}`];
-    }
-    body = saved.endsWith('\n') ? saved : `${saved}\n`;
-    comments = [
-      '// Fix these problems, then save and close the editor. Delete everything to cancel.',
-      ...errors.map((error) => `//   ${error.replace(/\r?\n/g, ' ')}`),
-    ];
-  }
+    },
+    environment,
+    fileName,
+  );
 }

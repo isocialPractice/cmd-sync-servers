@@ -6,7 +6,7 @@ import { safeText } from '../terminal-text.ts';
 import { VERSION } from '../version.ts';
 import { stringOption, type CommandSpec, type OptionSpecs, type OptionValues } from './command.ts';
 import { cloakCommand, uncloakCommand } from './commands/cloak.ts';
-import { configPathCommand, doctorCommand } from './commands/config.ts';
+import { configEditCommand, configPathCommand, doctorCommand } from './commands/config.ts';
 import { passwordForgetCommand, passwordSetCommand } from './commands/password.ts';
 import {
   serverAddCommand,
@@ -86,6 +86,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   markSyncedCommand,
   stateResetCommand,
   configPathCommand,
+  configEditCommand,
   doctorCommand,
   shellInitCommand,
   helpCommand,

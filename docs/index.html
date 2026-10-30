@@ -50,26 +50,27 @@
 <p>Once the alpha is published on npm:</p>
 <pre><code>npm install --global @isocialpractice/cmd-sync-servers@alpha
 sync-servers --version</code></pre>
-<p>Until then, run it from a clone:</p>
+<p>Until then, run it from a clone; <code>npm link</code> puts the <code>sync-servers</code> command on your <code>PATH</code>:</p>
 <pre><code>git clone https://github.com/isocialPractice/cmd-sync-servers.git
 cd cmd-sync-servers
 npm ci --ignore-scripts
 npm run build
-node out/cli/main.js --version</code></pre>
+npm link
+sync-servers --version</code></pre>
 
-<h2 id="first-sync">A first sync in five commands</h2>
-<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site
-sync-servers server add --site "My Site" --name Production \
-  --host sftp.example.com --user demo-user --remote-root /var/www/my-site
-sync-servers password set Production --site "My Site"
-sync-servers server test Production --site "My Site"
+<h2 id="first-sync">A first sync in two commands</h2>
+<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com
 cd ~/sites/my-site &amp;&amp; sync-servers sync --put</code></pre>
-<p>The test shows the server's host key fingerprint once and asks whether to trust it. The last command scans both sides and opens the preview: check what should move, then press <kbd>Enter</kbd>.</p>
+<p>On Windows, in <code>cmd.exe</code>:</p>
+<pre><code>sync-servers site add --name "My Site" --local-root "C:\Users\&lt;user&gt;\Sites\my-site" ^
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com</code></pre>
+<p><code>site add</code> asks for the password, connects, and asks about anything only a person can decide: an SSH host key or a TLS certificate seen for the first time, and the folder on the server that holds the site, starting where the server opens. With no options it asks for everything. The last command scans both sides and opens the preview: check what should move, then press <kbd>Enter</kbd>.</p>
 <p>Prefer menus? Run <code>sync-servers</code> with no command to add sites and servers, test a connection and synchronize, all from the keyboard.</p>
 
 <h2 id="next">Where to next</h2>
 <ul class="cards">
-  <li><a href="getting-started.html">Getting started</a><p>A site, a server, a password and the first preview, step by step.</p></li>
+  <li><a href="getting-started.html">Getting started</a><p>A site and its server in one command, and the first preview, step by step.</p></li>
   <li><a href="configuration.html">Configuration</a><p>Where settings live, every field, cloaking, the guard and secrets.</p></li>
   <li><a href="cli.html">Command line</a><p>Every command and option, the terminal interface, editor and plain modes.</p></li>
   <li><a href="synchronization.html">Synchronization</a><p>How changes are found and turned into actions.</p></li>

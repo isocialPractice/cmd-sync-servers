@@ -19,7 +19,12 @@ cd cmd-sync-servers
 npm ci --ignore-scripts
 npm run build
 npm test
+npm link
 ```
+
+`npm link` puts the `sync-servers` command from your clone on your `PATH`, so
+it runs what you last built; `npm unlink --global @isocialpractice/cmd-sync-servers`
+takes it off again.
 
 Dependencies never run install scripts. Builds and tests are started
 explicitly with the commands below, never from npm lifecycle hooks.

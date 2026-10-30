@@ -17,6 +17,23 @@ Until the first stable release, versions use the pre-release form
 - **Breaking:** `secretQuestion` reads
   `Password for demo-user on sftp.example.com (My Site: Production): `, so a
   user name that holds an `@` reads clearly.
+- **Breaking:** in a terminal, `site add`, `server add` and `server edit`
+  connect before they save; `server edit` with no options asks the setup
+  questions with the current values as defaults instead of opening the JSON
+  editor, which `--editor` still opens; and with only one site, commands use
+  it without asking or failing.
+- `site add` sets up the site and its first server in one command. It takes
+  the server options, with `--server-name` for the server's name, which
+  otherwise is its host. In a terminal it asks Protocol, Host, User and the
+  password, connects, asks about a new host key or certificate, lets you
+  pick the site's folder from what the server shows, asks once whether
+  deletes are allowed when that folder is the top of the account, and
+  offers to save the password the server accepted. A failed connection
+  offers another host, the user name and password again, saving without
+  testing, or cancel; cancel saves nothing.
+- Questions and tables say Protocol, Host and User.
+- A password is offered for saving only after the server accepts it, and
+  the offer defaults to yes.
 - A refused FTP or SFTP sign-in says to check the user name, since many
   hosts name FTP accounts in full, as `user@domain`. A host that does not
   exist and a refused connection say what to check instead of showing the
@@ -47,6 +64,22 @@ Until the first stable release, versions use the pre-release form
   `startingFolder` in its JSON.
 - Once a server accepts a password typed in a terminal, the command line
   and the terminal interface offer to save it in the credential store.
+- `server test` in a terminal fixes what it finds and saves each fix: a
+  refused sign-in asks for the user name and password again, a remote root
+  that is not found is picked from what the server shows, and a host that
+  is not found can be changed.
+- `config edit` opens the whole `sites.json` in your editor, with its
+  problems listed, and reopens it until it is valid; it works while the
+  file does not load.
+- Problems in `sites.json` name the site, the server, the field and the
+  value instead of index paths, and say how to fix the file.
+- `--host` and the Host question take `host:port`, `[IPv6]:port`,
+  `user@host`, and `sftp://`, `ftpes://`, `ftps://` and `ftp://` addresses;
+  `ftp://` connects with FTPS. A web address is refused with what to enter
+  instead, and a web control panel port gets a warning.
+- A leading `~` in a local folder, key file or CA file is the home folder,
+  also in `cmd.exe` and PowerShell.
+- A web URL given without a scheme gets `https://`.
 - Library: `parseServerAddress`, `ServerProbe` (experimental) to connect
   with settings not saved yet and list folders by absolute path,
   `findCoveredNames`, `normalizeCertificateFingerprint`, the

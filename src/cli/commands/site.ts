@@ -1,13 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
+import type { NewServer } from '../../config/registry.ts';
 import { formatIssues, siteSchema, type Site } from '../../config/schema.ts';
-import { flag, booleanOption, stringOption, type CommandSpec } from '../command.ts';
+import { flag, booleanOption, stringOption, type CommandSpec, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
 import { editJsonUntilValid } from '../editor.ts';
 import { CancelledError, UsageError } from '../errors.ts';
 import { formatPairs, formatTable } from '../output.ts';
-import { addServerFromOptions } from './server.ts';
-import { describeServer, folderProblem, forgetSecrets, protocolLabel, serverAddress, siteSummary } from './shared.ts';
+import { guidedServer, hasServerFieldOptions, SERVER_FIELD_OPTIONS, storeTypedSecret } from '../setup.ts';
+import { connectionNote, guided, unattendedServer } from './server.ts';
+import { describeServer, folderProblem, forgetSecrets, localPath, normalizeWebUrl, protocolLabel, serverAddress, siteSummary } from './shared.ts';
 
 function sameName(a: string, b: string): boolean {
   return a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0;
@@ -49,49 +52,79 @@ export const sitesCommand: CommandSpec = {
   },
 };
 
+/** The server options, but `--name`, which names the site here; `--server-name` names the server. */
+const SERVER_OPTIONS_FOR_SITE = Object.fromEntries(Object.entries(SERVER_FIELD_OPTIONS).filter(([option]) => option !== 'name'));
+
 export const siteAddCommand: CommandSpec = {
   path: ['site', 'add'],
-  summary: 'Add a site',
+  summary: 'Add a site and its first server; in a terminal, connect first and pick the root from the server',
   options: {
     name: { type: 'string', value: '<name>', description: 'The site name, unique ignoring case' },
     'local-root': { type: 'string', value: '<folder>', description: 'The local site folder, which must exist' },
+    'server-name': { type: 'string', value: '<name>', description: 'The name of the first server (default: its host)' },
+    ...SERVER_OPTIONS_FOR_SITE,
   },
-  examples: ['sync-servers site add', 'sync-servers site add --name "My Site" --local-root {root}'],
+  examples: [
+    'sync-servers site add',
+    'sync-servers site add --name "My Site" --local-root {root} --protocol ftps --host 203.0.113.10 --user demo-user@example.com',
+    'sync-servers site add --name "My Site" --local-root {root} --host sftp.example.com --user demo-user --remote-root /var/www/my-site',
+  ],
   async run(ctx, { values }) {
     let name = stringOption(values, 'name');
-    let localRoot = stringOption(values, 'local-root');
-    if (name === undefined || localRoot === undefined) {
-      if (!ctx.interactive) {
+    const rootOption = stringOption(values, 'local-root');
+    const serverValues: OptionValues = { ...values, name: values['server-name'] };
+    const withServer = hasServerFieldOptions(serverValues);
+    if (!guided(ctx)) {
+      if (name === undefined || rootOption === undefined) {
         throw new UsageError('Pass --name and --local-root, or run in a terminal to be asked.');
       }
-      const sites = (await ctx.registry()).list();
-      name ??= await ctx.prompter.askValid('Site name', (answer) =>
-        answer === ''
-          ? 'Enter a name.'
-          : sites.some((site) => sameName(site.name, answer))
-            ? `A site named "${answer}" already exists.`
-            : undefined,
+      const root = localPath(rootOption, ctx);
+      const problem = (await nameProblem(ctx, name)) ?? folderProblem(root);
+      if (problem !== undefined) {
+        throw new UsageError(problem);
+      }
+      const server = withServer ? unattendedServer(ctx, { name, servers: [] }, serverValues) : undefined;
+      const site = await (await ctx.registry()).add({ name, localRoot: root, ...(server === undefined ? {} : { servers: [server as NewServer] }) });
+      if (ctx.flags.json) {
+        ctx.json('site', { site });
+        return undefined;
+      }
+      const first = site.servers[0];
+      ctx.out(
+        first === undefined
+          ? `Added site "${site.name}" at ${site.localRoot}. Add a server with "sync-servers server add".\n`
+          : `Added site "${site.name}" with the server ${describeServer(first)}. It is the Remote server. The connection was not tested.\n`,
       );
-      localRoot ??= await ctx.prompter.askValid(
-        'Local site folder',
-        (answer) => folderProblem(path.resolve(ctx.io.cwd, answer)),
-        ctx.io.cwd,
-      );
+      return undefined;
     }
-    const root = path.resolve(ctx.io.cwd, localRoot);
-    const problem = (await nameProblem(ctx, name)) ?? folderProblem(root);
+    const sites = (await ctx.registry()).list();
+    name ??= await ctx.prompter.askValid('Site name', (answer) =>
+      answer === '' ? 'Enter a name.' : sites.some((site) => sameName(site.name, answer)) ? `A site named "${answer}" already exists.` : undefined,
+    );
+    const problem = await nameProblem(ctx, name);
     if (problem !== undefined) {
       throw new UsageError(problem);
     }
-    const site = await (await ctx.registry()).add({ name, localRoot: root });
-    if (ctx.flags.json) {
-      ctx.json('site', { site });
-      return undefined;
+    const root =
+      rootOption === undefined
+        ? localPath(await ctx.prompter.askValid('Local site folder', (answer) => folderProblem(localPath(answer, ctx)), ctx.io.cwd), ctx)
+        : localPath(rootOption, ctx);
+    const rootProblem = folderProblem(root);
+    if (rootProblem !== undefined) {
+      throw new UsageError(rootProblem);
     }
-    ctx.out(`Added site "${site.name}" at ${site.localRoot}.\n`);
-    if (ctx.interactive && (await ctx.prompter.confirm('Add a server now?', true))) {
-      await addServerFromOptions(ctx, site, {});
-    }
+    const siteId = randomUUID();
+    const result = await guidedServer(ctx, { mode: 'site-add', site: { id: siteId, name }, servers: [], serverId: randomUUID(), values: serverValues });
+    const site = await (await ctx.registry()).add({ id: siteId, name, localRoot: root, servers: [result.server] });
+    const server = site.servers[0] ?? result.server;
+    await storeTypedSecret(ctx, site.id, server, result.save);
+    ctx.out(
+      [
+        `Added site "${site.name}" with the server ${server.name} (${protocolLabel(server.protocol)}). It is the Remote server.${connectionNote(result.connection)}`,
+        `Next: cd "${site.localRoot}", then "sync-servers sync --put" to preview what would be put.`,
+        '',
+      ].join('\n'),
+    );
     return undefined;
   },
 };
@@ -127,12 +160,13 @@ export const siteEditCommand: CommandSpec = {
     }
     const name = stringOption(values, 'name');
     const localRoot = stringOption(values, 'local-root');
-    const root = localRoot === undefined ? undefined : path.resolve(ctx.io.cwd, localRoot);
+    const root = localRoot === undefined ? undefined : localPath(localRoot, ctx);
     const problem = (name === undefined ? undefined : await nameProblem(ctx, name, site.id)) ?? (root === undefined ? undefined : folderProblem(root));
     if (problem !== undefined) {
       throw new UsageError(problem);
     }
-    const webUrl = stringOption(values, 'web-url');
+    const webUrlOption = stringOption(values, 'web-url');
+    const webUrl = webUrlOption === undefined ? undefined : normalizeWebUrl(webUrlOption).replace(/^https:\/\/(localhost|127\.0\.0\.1)\b/, 'http://$1');
     const caseSensitive = booleanOption(values, 'case-sensitive');
     const cache = booleanOption(values, 'cache');
     const updated = await (await ctx.registry()).update(site.id, (draft) => {
@@ -230,7 +264,7 @@ export const siteShowCommand: CommandSpec = {
     if (site.servers.length > 0) {
       ctx.out(
         `\n${formatTable(
-          ['Server', 'Address', 'Connection'],
+          ['Server', 'Host', 'Protocol'],
           site.servers.map((server) => [server.name, serverAddress(server), protocolLabel(server.protocol)]),
         )}`,
       );

@@ -266,28 +266,106 @@ test('site remove in a terminal asks for the site name', async () => {
   assert.equal(right.code, 0, right.stderr);
 });
 
-test('site add in a terminal asks for the site, its first server and its password', async () => {
-  const store = new MemoryCredentialStore();
-  const answers = [
-    'My Site', root, 'y',
-    'Production', '1', 'sftp.example.com', '', 'demo-user', '1', '/var/www/my-site', '',
-    'y', 'hunter2', 'hunter2',
-  ];
-  const result = await cli({ home, tty: true, input: `${answers.join('\n')}\n`, credentialStore: store }, 'site', 'add');
-  assert.equal(result.code, 0, result.stderr);
-  assert.match(result.stdout, /Added site "My Site"/);
-  assert.match(result.stdout, /Added server Production \(SFTP sftp\.example\.com\) to "My Site"\. It is the Remote server\./);
-  assert.match(result.stdout, /Saved the password in the memory\./);
-  const site = json<{ site: { id: string; servers: { id: string; port?: number; username: string; auth: { method: string; savePassword: boolean } }[] } }>(
+interface ShownServer {
+  name: string;
+  host?: string;
+  port?: number;
+  username?: string;
+  remoteRoot: string;
+  webUrl?: string;
+  protocol: string;
+}
+
+async function shownSite(): Promise<{ localRoot: string; servers: ShownServer[]; remoteServerId: string }> {
+  return json<{ site: { localRoot: string; servers: (ShownServer & { id: string })[]; remoteServerId: string } }>(
     (await cli({ home }, 'site', 'show', 'My Site', '--json')).stdout,
   ).site;
+}
+
+test('site add takes the first server as options, named after its host, and makes it the Remote server', async () => {
+  const result = await cli(
+    { home },
+    'site', 'add', '--name', 'My Site', '--local-root', root,
+    '--host', 'demo-user@example.com@server1.hosting.example.net:2121', '--protocol', 'ftps', '--remote-root', '/', '--web-url', 'www.example.com/my-site/',
+  );
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /^Added site "My Site" with the server server1\.hosting\.example\.net \(FTPS server1\.hosting\.example\.net:2121\)\. It is the Remote server\. The connection was not tested\.$/m);
+  const site = await shownSite();
+  assert.equal(site.servers.length, 1);
   const server = site.servers[0];
-  assert.equal(server?.username, 'demo-user');
-  assert.equal(server.port, undefined);
-  assert.deepEqual(server.auth, { method: 'password', savePassword: true });
-  assert.equal(await savedSecret(store, site.id, server.id), 'hunter2');
-  assert.deepEqual(filesContaining(home, 'hunter2'), []);
-  assert.ok(!result.stderr.includes('hunter2'));
+  assert.deepEqual(
+    [server?.name, server?.host, server?.port, server?.username, server?.protocol, server?.webUrl],
+    ['server1.hosting.example.net', 'server1.hosting.example.net', 2121, 'demo-user@example.com', 'ftps', 'https://www.example.com/my-site/'],
+  );
+  const named = await cli(
+    { home },
+    'site', 'add', '--name', 'Sample App', '--local-root', makeFolder(temp.dir, 'sites', 'sample-app'),
+    '--server-name', 'Production', '--host', 'sftp.example.com', '--remote-root', '/var/www/sample-app', '--json',
+  );
+  assert.equal(json<{ site: { servers: { name: string }[] } }>(named.stdout).site.servers[0]?.name, 'Production');
+});
+
+test('the host option is read like the Host field, and a part that disagrees with its own option is refused', async () => {
+  await addSite();
+  const ported = await cli({ home }, 'server', 'add', '--name', 'Production', '--host', 'sftp.example.com:2222', '--remote-root', '/var/www/my-site');
+  assert.equal(ported.code, 0, ported.stderr);
+  assert.equal((await shownSite()).servers[0]?.port, 2222);
+  const clash = await cli({ home }, 'server', 'add', '--name', 'Staging', '--host', 'sftp.example.com:2222', '--port', '22', '--remote-root', '/');
+  assert.equal(clash.code, 2);
+  assert.match(clash.stderr, /--host sftp\.example\.com:2222 gives 2222, but --port gives 22\. Give one of them\./);
+  const web = await cli({ home }, 'server', 'add', '--name', 'Web', '--host', 'https://www.example.com/', '--remote-root', '/');
+  assert.equal(web.code, 2);
+  assert.match(web.stderr, /That is a web address/);
+  const panel = await cli({ home }, 'server', 'add', '--host', 'server1.hosting.example.net:2083', '--remote-root', '/');
+  assert.equal(panel.code, 0, panel.stderr);
+  assert.match(panel.stderr, /warning: Port 2083 is usually a web control panel/);
+  assert.ok((await shownSite()).servers.some((server) => server.name === 'server1.hosting.example.net'));
+  const relative = await cli({ home }, 'server', 'add', '--name', 'Relative', '--host', 'sftp.example.com', '--remote-root', 'www/my-site');
+  assert.equal(relative.code, 2);
+  assert.match(relative.stderr, /must start with "\/"\. Run in a terminal to pick the folder/);
+});
+
+test('a leading ~ is the home folder in local paths', async () => {
+  makeFolder(home, 'sites', 'my-site');
+  const added = await cli({ home }, 'site', 'add', '--name', 'My Site', '--local-root', `~${path.sep}sites${path.sep}my-site`);
+  assert.equal(added.code, 0, added.stderr);
+  assert.equal((await shownSite()).localRoot, path.join(home, 'sites', 'my-site'));
+  const tilde = await cli({ home }, 'server', 'add', '--name', 'Share', '--protocol', 'local', '--remote-root', '~/sites');
+  assert.equal(tilde.code, 0, tilde.stderr);
+  assert.equal((await shownSite()).servers[0]?.remoteRoot, path.join(home, 'sites'));
+});
+
+test('with only one site, commands use it without being told which', async () => {
+  await addSite();
+  const elsewhere = makeFolder(temp.dir, 'elsewhere');
+  const script = await cli({ home, cwd: elsewhere }, 'site', 'path');
+  assert.equal(script.code, 0, script.stderr);
+  assert.equal(script.stdout, `${root}\n`);
+  const terminal = await cli({ home, cwd: elsewhere, tty: true }, 'site', 'path');
+  assert.equal(terminal.code, 0, terminal.stderr);
+  assert.doesNotMatch(terminal.stderr, /Which site/);
+});
+
+test('server edit with no options needs a terminal, and tables say Host and Protocol', async () => {
+  await addSite();
+  await addProduction();
+  const nothing = await cli({ home }, 'server', 'edit', 'Production');
+  assert.equal(nothing.code, 2);
+  assert.match(nothing.stderr, /Nothing to change\. Pass an option such as --host, run in a terminal to be asked, or pass --editor\./);
+  assert.match((await cli({ home }, 'server', 'list')).stdout, /^Name +Host +Protocol +Remote +Testing$/m);
+  assert.match((await cli({ home }, 'site', 'show')).stdout, /^Server +Host +Protocol$/m);
+});
+
+test('a sites.json that is not valid names the site, the server and the value, and how to fix it', async () => {
+  await addSite();
+  await addProduction();
+  const file = path.join(home, 'sites.json');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('"remoteRoot": "/var/www/my-site"', '"remoteRoot": "example.com/my-site"'));
+  const result = await cli({ home }, 'sites');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /is not valid:\n {2}Site "My Site", server "Production", remoteRoot "example\.com\/my-site": Must be an absolute path that starts with "\/"\.\nFix it with "sync-servers config edit"\./);
+  const script = await cli({ home }, 'config', 'edit');
+  assert.equal(script.code, 2);
 });
 
 test('config path and doctor report the folders and the checks', async () => {

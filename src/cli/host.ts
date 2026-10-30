@@ -1,6 +1,6 @@
 import { sealSecret } from '../credentials/binding.ts';
 import { secretQuestion } from '../credentials/prompt.ts';
-import type { CredentialStore } from '../credentials/types.ts';
+import type { CredentialStore, SecretRequest } from '../credentials/types.ts';
 import { SyncError } from '../errors.ts';
 import type { CertificateDecision, HostAdapter, HostKeyDecision } from '../host.ts';
 import { certificateQuestion, certificateSummary } from '../transport/certificates.ts';
@@ -13,6 +13,60 @@ export function unavailableStore(reason: string): CredentialStore {
     get: () => Promise.resolve(undefined),
     set: () => Promise.reject(new SyncError('E_CREDENTIAL_STORE', `Passwords cannot be saved: ${reason}.`)),
     delete: () => Promise.resolve(false),
+  };
+}
+
+/** A host adapter that can be told to forget the secrets typed so far. */
+export interface RememberingAdapter extends HostAdapter {
+  /** Forgets every secret typed so far, as after the server refused one. */
+  forget(): void;
+}
+
+/**
+ * Wraps `base` so a secret typed once in a command answers the same question
+ * again without asking, for the next connection to the same account, until
+ * {@link RememberingAdapter.forget}; and so saving it is offered once.
+ */
+export function rememberTypedSecrets(base: HostAdapter): RememberingAdapter {
+  const typed = new Map<string, string>();
+  const offered = new Set<string>();
+  const key = (request: SecretRequest): string =>
+    JSON.stringify([request.ref.siteId, request.ref.serverId, request.ref.kind, request.host ?? '', request.username ?? '']);
+  const confirmCertificate = base.confirmCertificate?.bind(base);
+  const secretAccepted = base.secretAccepted?.bind(base);
+  const promptSecret = base.promptSecret.bind(base);
+  return {
+    credentials: base.credentials,
+    ...(base.interactive === undefined ? {} : { interactive: base.interactive }),
+    ...(base.logger === undefined ? {} : { logger: base.logger }),
+    confirmHostKey: base.confirmHostKey.bind(base),
+    ...(confirmCertificate === undefined ? {} : { confirmCertificate }),
+    async promptSecret(request) {
+      const known = typed.get(key(request));
+      if (known !== undefined) {
+        return known;
+      }
+      const answer = await promptSecret(request);
+      if (answer !== undefined && answer !== '') {
+        typed.set(key(request), answer);
+      }
+      return answer;
+    },
+    ...(secretAccepted === undefined
+      ? {}
+      : {
+          async secretAccepted(request: SecretRequest, secret: string): Promise<void> {
+            if (offered.has(key(request))) {
+              return;
+            }
+            offered.add(key(request));
+            await secretAccepted(request, secret);
+          },
+        }),
+    forget() {
+      typed.clear();
+      offered.clear();
+    },
   };
 }
 

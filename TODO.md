@@ -158,6 +158,35 @@ the step of the plan that specifies it.
       `1.0.0-alpha.1.0.0` and the changelog without `## [Unreleased]`
   - **Goal**: Resolve to [Phase S1, step 7](.claude/prompts/simplify-setup.prompt.md#phase-s1-connections-that-explain-themselves)
   - From: Simplify Site Setup
+- [x] `site add` takes the server options and `--server-name`; the first
+      server is named after its host and becomes the Remote server
+  - **Goal**: Resolve to [Phase S2, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
+- [x] The guided flow for `site add`, `server add` and interactive
+      `server edit`: Host parsing, connecting through `ServerProbe`, the
+      failure menus, sign-in retries, the remote root picker, the
+      root-at-top question, saving the password after success, and nothing
+      saved on Cancel
+  - **Goal**: Resolve to [Phase S2, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
+- [x] `server test` in a terminal repairs what it finds: the sign-in, the
+      remote root and the host
+  - **Goal**: Resolve to [Phase S2, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
+- [x] `config edit` and `sites.json` errors that name the site, the server
+      and the value
+  - **Goal**: Resolve to [Phase S2, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
+- [x] The only site used without asking, `~` in paths, the Protocol, Host
+      and User labels, and web URLs without a scheme
+  - **Goal**: Resolve to [Phase S2, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
+- [x] Tests of the guided setup with scripted answers against the sandbox
+  - **Goal**: Resolve to [Phase S2, step 6](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
+- [x] Documentation for S2, changelog, checks and commit
+  - **Goal**: Resolve to [Phase S2, step 7](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
+  - From: Simplify Site Setup
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -220,28 +249,6 @@ Next version: major. Phases S1 to S3 together make `1.0.0-alpha.1.0.0`:
 S1 sets the version, and S2 and S3 add to it without moving it again. The
 items of Phase S5 move no version.
 
-- [ ] `site add` takes the server options and `--server-name`; the first
-      server is named after its host and becomes the Remote server
-  - **Goal**: Resolve to [Phase S2, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
-- [ ] The guided flow for `site add`, `server add` and interactive
-      `server edit`: Host parsing, connecting through `ServerProbe`, the
-      failure menus, sign-in retries, the remote root picker, the
-      root-at-top question, saving the password after success, and nothing
-      saved on Cancel
-  - **Goal**: Resolve to [Phase S2, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
-- [ ] `server test` in a terminal repairs what it finds: the sign-in, the
-      remote root and the host
-  - **Goal**: Resolve to [Phase S2, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
-- [ ] `config edit` and `sites.json` errors that name the site, the server
-      and the value
-  - **Goal**: Resolve to [Phase S2, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
-- [ ] The only site used without asking, `~` in paths, the Protocol, Host
-      and User labels, and web URLs without a scheme
-  - **Goal**: Resolve to [Phase S2, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
-- [ ] Tests of the guided setup with scripted answers against the sandbox
-  - **Goal**: Resolve to [Phase S2, step 6](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
-- [ ] Documentation for S2, changelog, checks and commit
-  - **Goal**: Resolve to [Phase S2, step 7](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
 - [ ] The quick setup form on the Sites screen
   - **Goal**: Resolve to [Phase S3, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
 - [ ] The server editor: Basic tab order and labels, Test with unsaved

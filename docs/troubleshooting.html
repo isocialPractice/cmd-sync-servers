@@ -57,7 +57,7 @@
   <dt>An old server offers no algorithm in common</dt>
   <dd>Only modern SSH algorithms are offered. Ask for the server to be updated; if that is not possible, <code>--legacy-algorithms</code> allows older ones, with a warning on every connection.</dd>
   <dt>The remote root was not found (<code>E_REMOTE_ROOT</code>)</dt>
-  <dd>Many hosting accounts open in their own folder and see it as <code>/</code>, so a path from the control panel, such as <code>/home/&lt;user&gt;/example.com/my-site</code>, does not exist for them. The message names the folder the account opens in and the folders it holds, and <code>sync-servers server test</code> shows it on its <code>Start</code> line. Set the root as the account sees it: <code>server edit Production --remote-root /</code>, or the folder below it that holds the site.</dd>
+  <dd>Many hosting accounts open in their own folder and see it as <code>/</code>, so a path from the control panel, such as <code>/home/&lt;user&gt;/example.com/my-site</code>, does not exist for them. The message names the folder the account opens in and the folders it holds. Run <code>sync-servers server test</code> in a terminal to pick the root from what the server shows; it is saved. In a script, set the root as the account sees it: <code>server edit Production --remote-root /</code>, or the folder below it that holds the site.</dd>
 </dl>
 
 <h2 id="sign-in">Sign-in problems</h2>
@@ -69,7 +69,7 @@
   <dt>"The saved password was saved for another protocol, address or user"</dt>
   <dd>The same, in a script, where nobody can be asked. Save the password again with <code>password set</code>, or run <code>server test</code> in a terminal once.</dd>
   <dt>"did not accept the user name or password (530)"</dt>
-  <dd>Check the user name first: many hosts name FTP accounts in full, as <code>demo-user@example.com</code>, not <code>demo-user</code>. Your hosting panel shows the exact name. Then check the password, and save it again with <code>password set</code> if it changed. A saved password is read only when the server has <code>savePassword</code> on, which <code>password set</code> turns on.</dd>
+  <dd>Check the user name first: many hosts name FTP accounts in full, as <code>demo-user@example.com</code>, not <code>demo-user</code>. Your hosting panel shows the exact name. In a terminal, <code>server test</code> asks for the user name and password again and saves what the server accepts. Then check the password, and save it again with <code>password set</code> if it changed. A saved password is read only when the server has <code>savePassword</code> on, which <code>password set</code> turns on.</dd>
   <dt>The credential store cannot be used (<code>E_CREDENTIAL_STORE</code>)</dt>
   <dd>On Linux the Secret Service needs a running keyring, such as GNOME Keyring or KWallet, which headless machines often lack; use <code>SYNC_SERVERS_PASSWORD</code> there. <code>sync-servers doctor</code> says whether a store is available.</dd>
   <dt>Key sign-in fails</dt>
@@ -103,7 +103,9 @@
   <dt>The settings file is locked (<code>E_LOCKED</code>)</dt>
   <dd>Another sync-servers process, or the VS Code extension, is writing <code>sites.json</code>. Try again. A lock left by a crashed process is cleared automatically after 30 seconds.</dd>
   <dt><code>sites.json</code> is not valid (<code>E_CONFIG_INVALID</code>)</dt>
-  <dd>The message names the field. Fix it with <code>sync-servers site edit --editor</code>, or restore <code>sites.json.bak</code> from the settings folder.</dd>
+  <dd>The message names the site, the server, the field and the value, such as <code>Site "My Site", server "Production", remoteRoot "example.com/my-site"</code>. Fix it with <code>sync-servers config edit</code>, which opens the whole file with its problems listed and reopens it until it is valid, or restore <code>sites.json.bak</code> from the settings folder.</dd>
+  <dt>"'sync-servers' is not recognized" or "command not found"</dt>
+  <dd>The command is not on your <code>PATH</code>. Installed from npm, check that npm's global folder is on it: <code>npm prefix --global</code> shows the folder, and on Windows the command lives in that folder itself. From a clone, run <code>npm link</code> in the clone after <code>npm run build</code>; <code>npm unlink --global @isocialpractice/cmd-sync-servers</code> undoes it. Open a new terminal afterwards.</dd>
   <dt>The terminal interface does not start</dt>
   <dd>It needs an interactive terminal. In a pipe or a CI log use commands; in a screen reader or a limited terminal use <code>--plain</code>.</dd>
   <dt>Symbols show as boxes</dt>
@@ -131,7 +133,7 @@
     <tr><td><code>E_ROOT_DELETE</code></td><td>Deletes at the top of a server were refused.</td><td>Point the server at the site's folder, or set <code>allowRootDeletes</code>.</td></tr>
     <tr><td><code>E_STALE_ITEM</code></td><td>A file changed between the preview and its transfer.</td><td>Synchronize again.</td></tr>
     <tr><td><code>E_PLAN_INVALID</code></td><td>A row cannot take that action, or a saved plan no longer matches a fresh scan.</td><td>Choose an allowed action, or plan again.</td></tr>
-    <tr><td><code>E_CONFIG_INVALID</code></td><td>The settings, the sync records or a given value are not valid.</td><td>Fix the named field.</td></tr>
+    <tr><td><code>E_CONFIG_INVALID</code></td><td>The settings, the sync records or a given value are not valid.</td><td>Fix the named field, in <code>sites.json</code> with <code>sync-servers config edit</code>.</td></tr>
     <tr><td><code>E_SITE_NOT_FOUND</code></td><td>No site has that name or id.</td><td>List the sites with <code>sync-servers sites</code>.</td></tr>
     <tr><td><code>E_SERVER_NOT_FOUND</code></td><td>The site has no server with that name or id.</td><td>List them with <code>sync-servers server list</code>.</td></tr>
     <tr><td><code>E_CREDENTIAL_STORE</code></td><td>The credential store failed, or there is none to save to.</td><td>Use <code>SYNC_SERVERS_PASSWORD</code> instead.</td></tr>

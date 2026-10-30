@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import {
+  describeSitesFileIssues,
   formatIssues,
   serverSchema,
   siteSchema,
@@ -68,6 +69,30 @@ test('unknown keys are rejected with their path', () => {
   });
   assert.equal(result.success, false);
   assert.ok(issues(result).some((line) => line.startsWith('sites[0].servers[0]: ') && line.includes('colour')));
+});
+
+test('problems in sites.json name the site, the server, the field and the value', () => {
+  const input = {
+    schemaVersion: 1,
+    sites: [
+      site({
+        servers: [server({ name: 'Production', protocol: 'ftps', remoteRoot: 'example.com/my-site', webUrl: 'www.example.com/my-site' })],
+      }),
+      { ...site({ name: '' }), localRoot: 'sites/sample-app' },
+    ],
+  };
+  const result = sitesFileSchema.safeParse(input);
+  assert.equal(result.success, false);
+  const lines = describeSitesFileIssues(result.error.issues, input);
+  assert.ok(lines.includes('Site "My Site", server "Production", webUrl "www.example.com/my-site": Write the full address, such as https://www.example.com/.'), lines.join('\n'));
+  assert.ok(lines.includes('Site "My Site", server "Production", remoteRoot "example.com/my-site": Must be an absolute path that starts with "/".'));
+  assert.ok(lines.some((line) => line.startsWith('Site 2, localRoot "sites/sample-app": Must be the full path of a folder')));
+  const long = describeSitesFileIssues(
+    [{ code: 'custom', path: ['sites', 0, 'local', 'webUrl'], message: 'Bad.', input: undefined }],
+    { sites: [{ name: 'My Site', local: { webUrl: `x\u001b[2J${'y'.repeat(200)}` } }] },
+  )[0];
+  assert.ok(long !== undefined && !long.includes('\u001b') && long.includes('...') && long.length < 140);
+  assert.deepEqual(describeSitesFileIssues([{ code: 'custom', path: [], message: 'Expected an object.', input: undefined }], null), ['(top level): Expected an object.']);
 });
 
 test('plain FTP needs allowInsecure', () => {

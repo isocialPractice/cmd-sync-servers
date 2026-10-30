@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
-<meta name="description" content="Create a site and a server, save the password, test the connection and run the first preview.">
+<meta name="description" content="Create a site and its server in one command, decide what the first connection asks, and run the first preview.">
 <title>Getting started | cmd-sync-servers</title>
 <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -29,19 +29,32 @@
 </header>
 <main id="main">
 <h1>Getting started</h1>
-<p class="lead">From nothing to a first synchronization: a site, a server, a saved password, a connection test and a preview.</p>
+<p class="lead">From nothing to a first synchronization: a site and its server in one command, then a preview.</p>
 <p>Every step below works two ways. In a terminal, run <code>sync-servers</code> with no command and use the menus; or type the commands shown, which ask for anything you leave out. In a script, pass every value as an option and nothing is ever asked.</p>
 
-<h2 id="site">1. Create a site</h2>
-<p>A site is a name and a local folder: the folder on this computer that holds the files you publish.</p>
-<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site</code></pre>
-<p>On Windows the folder looks like <code>C:\Users\&lt;user&gt;\Sites\my-site</code>. Names are unique, ignoring case. List the sites with <code>sync-servers sites</code>.</p>
-
-<h2 id="server">2. Add a server</h2>
-<p>A server is where the site is published. SFTP is the default and the safest choice:</p>
-<pre><code>sync-servers server add --site "My Site" --name Production \
-  --host sftp.example.com --user demo-user --remote-root /var/www/my-site</code></pre>
-<p>The first server of a site becomes its <strong>Remote</strong> server, the one synchronization uses. A second server, such as a staging copy, can be made the <strong>Testing</strong> server with <code>sync-servers server set-testing</code>.</p>
+<h2 id="site">1. Create a site and its server</h2>
+<p>A site is a name, a local folder (the folder on this computer that holds the files you publish) and the server it is published to. One command sets up all three:</p>
+<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com</code></pre>
+<p>On Windows, in <code>cmd.exe</code>:</p>
+<pre><code>sync-servers site add --name "My Site" --local-root "C:\Users\&lt;user&gt;\Sites\my-site" ^
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com</code></pre>
+<p>Or run <code>sync-servers site add</code> alone and answer the questions:</p>
+<pre><code>Site name: My Site
+Local site folder [/home/&lt;user&gt;/sites/my-site]:
+Protocol
+  1. SFTP (recommended)
+  2. FTPS, explicit TLS
+  3. FTPS, implicit TLS
+  4. FTP, insecure: sends the password in clear text
+  5. Local or network folder
+Choose a number [1]: 2
+Host: 203.0.113.10
+User: demo-user@example.com
+Password:
+Connecting to 203.0.113.10:21...</code></pre>
+<p>Use the host and user your hosting panel shows for FTP or SFTP. The Host field also takes <code>host:port</code>, and <code>sftp://</code>, <code>ftpes://</code> and <code>ftps://</code> addresses. Many hosts name FTP accounts in full, as <code>demo-user@example.com</code>. A <code>~</code> at the start of a folder is your home folder, also in <code>cmd.exe</code>.</p>
+<p>The server is named after its host; rename it with <code>sync-servers server edit</code>. It becomes the site's <strong>Remote</strong> server, the one synchronization uses. Add more servers, such as a staging copy, with <code>sync-servers server add</code>, which asks the same questions; <code>--testing</code> makes one the <strong>Testing</strong> server.</p>
 <table>
   <caption>Ways to reach a server</caption>
   <thead><tr><th scope="col">Protocol</th><th scope="col">Use it for</th></tr></thead>
@@ -55,21 +68,38 @@
 </table>
 <p>To sign in with a key instead of a password: <code>--auth key --key-path ~/.ssh/id_ed25519</code>. The key file is read when connecting and never copied.</p>
 
-<h2 id="password">3. Save the password</h2>
-<pre><code>sync-servers password set Production --site "My Site"</code></pre>
-<p>The password is typed without being shown and kept in the operating system's credential store: Windows Credential Manager, the macOS Keychain, or the Secret Service keyring on Linux. It is never written to a file. Without a saved password you are asked for it when connecting, and an unattended run reads <code>SYNC_SERVERS_PASSWORD</code>. See <a href="configuration.html#secrets">Secrets</a>.</p>
+<h2 id="first-connection">2. What the first connection asks</h2>
+<p>Setup connects before it saves anything, and asks only what a person has to decide:</p>
+<ul>
+  <li><strong>An SSH host key</strong> seen for the first time is shown, such as <code>ssh-ed25519 SHA256:...</code>. Compare it with the fingerprint your host publishes, then trust it. It is pinned in the server's settings; if it ever changes, the connection stops and both fingerprints are shown. See <a href="security.html#host-keys">Host keys</a>.</li>
+  <li><strong>A TLS certificate</strong> that does not verify is shown with the names it covers. On shared hosting it often names the hosting company's machine, such as <code>server1.hosting.example.net</code>, and setup offers to connect to that name instead. See <a href="security.html#certificates">Certificates</a>.</li>
+  <li><strong>The folder that holds the site</strong> is picked from what the server shows, starting where the account opens:
+<pre><code>Signed in as demo-user@example.com. The account opens in "/", which holds:
+  1. css/
+  2. images/
+  3. js/
+Site root on the server: Enter for "/", a number to open a folder, or a path [/]:</code></pre>
+  Many hosting accounts open in their own folder and see it as <code>/</code>; a path from the control panel does not exist for them.</li>
+  <li><strong>Deletes at the top.</strong> When the site's folder is the top of what the account sees, setup asks once whether synchronizing may delete files there. Every delete is still listed in the preview first.</li>
+</ul>
+<p>When the connection fails, setup says why and offers a fix: another host, the user name and password again, or saving without testing. Cancel saves nothing.</p>
 
-<h2 id="test">4. Test the connection</h2>
-<pre><code>sync-servers server test Production --site "My Site"</code></pre>
-<p>The test connects, signs in, checks the root directory, and reports what the server offers: its software, how precise its file times are, and for FTPS the TLS version.</p>
-<p>The first time an SFTP server is reached, its <strong>host key fingerprint</strong> is shown, such as <code>ssh-ed25519 SHA256:...</code>. Compare it with the fingerprint your host publishes, then trust it. It is pinned in the server's settings; if it ever changes, the connection stops and both fingerprints are shown. See <a href="security.html#host-keys">Host keys</a>.</p>
+<h2 id="password">3. Passwords</h2>
+<p>Once the server accepts the password you typed, setup offers to save it in the operating system's credential store: Windows Credential Manager, the macOS Keychain, or the Secret Service keyring on Linux. It is never written to a file, and a password the server refused is never saved. To save or change it later:</p>
+<pre><code>sync-servers password set Production --site "My Site"</code></pre>
+<p>Without a saved password you are asked for it when connecting, and an unattended run reads <code>SYNC_SERVERS_PASSWORD</code>. See <a href="configuration.html#secrets">Secrets</a>.</p>
+
+<h2 id="test">4. Testing again later</h2>
+<pre><code>sync-servers server test</code></pre>
+<p>The test connects, signs in, checks the root directory, and reports what the server offers: the folder the account opens in, its software, how precise its file times are, and for FTPS the TLS version. With one site, nothing needs naming. In a terminal it also fixes what it finds: a refused sign-in asks for the user name and password again, a root that is not found is picked from what the server shows, and a host that is not found can be changed. Each fix is saved.</p>
+<p>To change a server later, <code>sync-servers server edit</code> asks the same questions with the current values as defaults. If <code>sites.json</code> itself stops loading, <code>sync-servers config edit</code> opens it with its problems listed.</p>
 
 <h2 id="cloak">5. Cloak what should never move</h2>
 <pre><code>sync-servers cloak --site "My Site" .psd "archive*" node_modules/ /drafts/</code></pre>
 <p>Cloaked files are never scanned, listed, transferred or deleted, on either side. <a href="configuration.html#cloaking">Cloaking patterns</a> explains the syntax.</p>
 
 <h2 id="preview">6. Preview, then synchronize</h2>
-<p>Inside the site's folder the site is chosen for you:</p>
+<p>Inside the site's folder, or with only one site, the site is chosen for you:</p>
 <pre><code>cd ~/sites/my-site
 sync-servers sync --put</code></pre>
 <p><code>--put</code> sends newer local files to the server, <code>--get</code> fetches newer files from it, and <code>--both</code> does each. Add <code>--delete</code> to also remove files that are missing on the other side.</p>

@@ -1,11 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { hasErrorCode } from '../../config/files.ts';
 import { ensurePrivateDir } from '../../config/paths.ts';
-import type { Site } from '../../config/schema.ts';
+import { checkSitesFile, replaceSitesFile, serializeSitesFile } from '../../config/registry.ts';
+import { SCHEMA_VERSION, type Site, type SitesFile } from '../../config/schema.ts';
 import type { CommandSpec } from '../command.ts';
 import { KEYRING_ENV, keyringDisabled, type CommandContext } from '../context.ts';
+import { editTextUntilValid } from '../editor.ts';
+import { UsageError } from '../errors.ts';
 import { ExitCode } from '../exit-codes.ts';
 import { formatPairs, paint } from '../output.ts';
 import { folderProblem } from './shared.ts';
@@ -29,6 +33,50 @@ export const configPathCommand: CommandSpec = {
       );
     }
     return Promise.resolve(undefined);
+  },
+};
+
+export const configEditCommand: CommandSpec = {
+  path: ['config', 'edit'],
+  summary: 'Edit the whole sites.json in your editor, also when it is not valid',
+  examples: ['sync-servers config edit'],
+  async run(ctx) {
+    if (!ctx.interactive) {
+      throw new UsageError('config edit opens your editor. Run it in a terminal.');
+    }
+    const file = ctx.paths.sitesFile;
+    let text: string;
+    try {
+      text = await readFile(file, 'utf8');
+    } catch (error) {
+      if (!hasErrorCode(error, 'ENOENT')) {
+        throw error;
+      }
+      text = serializeSitesFile({ schemaVersion: SCHEMA_VERSION, sites: [] });
+    }
+    const before = checkSitesFile(text, file);
+    const edited = await editTextUntilValid<SitesFile>(
+      text,
+      [
+        `sync-servers: edit ${file}, then save and close the editor.`,
+        'Delete everything, or close without saving, to cancel. Passwords are never stored here.',
+      ],
+      (saved) => {
+        const checked = checkSitesFile(saved, file);
+        return checked.ok ? { ok: true, value: checked.file } : { ok: false, errors: checked.problems };
+      },
+      ctx.io,
+      'sites.json',
+      before.ok ? [] : before.problems,
+    );
+    if (edited === undefined) {
+      ctx.err(before.ok ? 'No changes.\n' : `No changes. ${file} is still not valid.\n`);
+      return before.ok ? undefined : ExitCode.error;
+    }
+    await replaceSitesFile(ctx.paths, edited);
+    ctx.logger.info('Sites file replaced', { file });
+    ctx.out(`Saved ${file}. The file it replaced is kept as sites.json.bak.\n`);
+    return undefined;
   },
 };
 

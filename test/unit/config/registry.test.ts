@@ -109,7 +109,7 @@ test('an invalid change is refused and the file is left as it was', async () => 
     registry.update(site.id, (draft) => {
       draft.sync.concurrency = 99;
     }),
-    (error) => isSyncError(error, 'E_CONFIG_INVALID') && error.message.includes('sites[0].sync.concurrency'),
+    (error) => isSyncError(error, 'E_CONFIG_INVALID') && error.message.includes('Site "My Site", sync.concurrency 99: '),
   );
   assert.equal(readFileSync(paths.sitesFile, 'utf8'), before);
   await assert.rejects(registry.add({ name: 'MY SITE', localRoot: siteRoot }), (error) => isSyncError(error, 'E_CONFIG_INVALID'));

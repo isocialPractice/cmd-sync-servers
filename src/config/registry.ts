@@ -10,6 +10,7 @@ import { withFileLock } from './lock.ts';
 import { migrateSitesFile } from './migrate.ts';
 import { defaultPaths, ensurePrivateDir, type PathsOptions, type SyncServersPaths } from './paths.ts';
 import {
+  describeSitesFileIssues,
   formatIssues,
   SCHEMA_VERSION,
   serverSchema,
@@ -63,22 +64,68 @@ function realOrResolved(value: string): string {
   }
 }
 
-/** Parses the text of `sites.json`, migrating older versions. `source` names the file in errors. */
-export function parseSitesFile(text: string, source: string): { file: SitesFile; migrated: boolean } {
+/** The verdict of {@link checkSitesFile}: the file, or the problems found, one per line. */
+export type SitesFileCheck =
+  | { readonly ok: true; readonly file: SitesFile; readonly migrated: boolean }
+  | { readonly ok: false; readonly problems: readonly string[] };
+
+/**
+ * Checks the text of `sites.json`, migrating older versions, and names each
+ * problem by site, server, field and value. `source` names the file.
+ */
+export function checkSitesFile(text: string, source: string): SitesFileCheck {
   let raw: unknown;
   try {
     // A byte order mark, as some Windows editors write, is not part of the JSON.
     raw = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new SyncError('E_CONFIG_INVALID', `${source}: not valid JSON: ${reason}`);
+    return { ok: false, problems: [`The file is not valid JSON: ${reason}`] };
   }
-  const { file, migrated } = migrateSitesFile(raw, source);
-  const result = sitesFileSchema.safeParse(file);
+  let migrated: { file: unknown; migrated: boolean };
+  try {
+    migrated = migrateSitesFile(raw, source);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, problems: [message.startsWith(`${source}: `) ? message.slice(source.length + 2) : message] };
+  }
+  const result = sitesFileSchema.safeParse(migrated.file);
   if (!result.success) {
-    throw new SyncError('E_CONFIG_INVALID', [`${source} is not valid:`, ...formatIssues(result.error.issues).map((line) => `  ${line}`)].join('\n'));
+    return { ok: false, problems: describeSitesFileIssues(result.error.issues, migrated.file) };
   }
-  return { file: result.data, migrated };
+  return { ok: true, file: result.data, migrated: migrated.migrated };
+}
+
+/** Parses the text of `sites.json`, migrating older versions. `source` names the file in errors. */
+export function parseSitesFile(text: string, source: string): { file: SitesFile; migrated: boolean } {
+  const checked = checkSitesFile(text, source);
+  if (!checked.ok) {
+    throw new SyncError(
+      'E_CONFIG_INVALID',
+      [`${source} is not valid:`, ...checked.problems.map((line) => `  ${line}`), 'Fix it with "sync-servers config edit".'].join('\n'),
+    );
+  }
+  return { file: checked.file, migrated: checked.migrated };
+}
+
+/**
+ * Replaces the whole of `sites.json` with `file`, under the same lock and
+ * with the same backup as every other write. For repairing a file that does
+ * not load, so it does not read the file first.
+ *
+ * @throws {@link SyncError} `E_CONFIG_INVALID` when `file` is not valid.
+ */
+export async function replaceSitesFile(paths: SyncServersPaths, file: SitesFile, options: { readonly lockTimeoutMs?: number } = {}): Promise<void> {
+  const checked = sitesFileSchema.safeParse(file);
+  if (!checked.success) {
+    throw new SyncError('E_CONFIG_INVALID', ['The file is not valid:', ...describeSitesFileIssues(checked.error.issues, file).map((line) => `  ${line}`)].join('\n'));
+  }
+  await ensurePrivateDir(paths.configDir);
+  await withFileLock(
+    `${paths.sitesFile}.lock`,
+    () => writeFileAtomic(paths.sitesFile, serializeSitesFile(checked.data), { backup: `${paths.sitesFile}.bak` }),
+    options.lockTimeoutMs === undefined ? {} : { timeoutMs: options.lockTimeoutMs },
+  );
 }
 
 /** The text written to `sites.json`: the schema reference first, then the data. */
@@ -352,7 +399,7 @@ export class SiteRegistry {
         if (!checked.success) {
           throw new SyncError(
             'E_CONFIG_INVALID',
-            ['The change is not valid:', ...formatIssues(checked.error.issues).map((line) => `  ${line}`)].join('\n'),
+            ['The change is not valid:', ...describeSitesFileIssues(checked.error.issues, draft).map((line) => `  ${line}`)].join('\n'),
           );
         }
         await writeFileAtomic(this.paths.sitesFile, serializeSitesFile(checked.data), {

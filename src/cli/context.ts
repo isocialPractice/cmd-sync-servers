@@ -113,7 +113,8 @@ export class CommandContext {
   /**
    * The site a command means: `explicit` (a positional or `--site`), then
    * `SYNC_SERVERS_SITE`, then the site whose local root holds the current
-   * folder, then a picker in a terminal. Otherwise a usage error listing the sites.
+   * folder, then the only site when there is one, then a picker in a
+   * terminal. Otherwise a usage error listing the sites.
    */
   async chooseSite(explicit?: string): Promise<Site> {
     const registry = await this.registry();
@@ -130,8 +131,12 @@ export class CommandContext {
       return here;
     }
     const sites = registry.list();
-    if (sites.length === 0) {
+    const [only, ...others] = sites;
+    if (only === undefined) {
       throw new UsageError('There are no sites yet. Add one with "sync-servers site add".');
+    }
+    if (others.length === 0) {
+      return only;
     }
     if (this.interactive) {
       return this.prompter.choose(

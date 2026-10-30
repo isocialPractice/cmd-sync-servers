@@ -1,4 +1,5 @@
 import { statSync } from 'node:fs';
+import path from 'node:path';
 import { defaultPort, type Protocol, type Server, type Site } from '../../config/schema.ts';
 import type { SecretKind } from '../../credentials/types.ts';
 import type { CommandContext } from '../context.ts';
@@ -29,6 +30,28 @@ export function serverAddress(server: Server): string {
 /** `Production (SFTP sftp.example.com)`. */
 export function describeServer(server: Server): string {
   return `${server.name} (${protocolLabel(server.protocol)} ${serverAddress(server)})`;
+}
+
+/**
+ * `~`, `~/...` or `~\...` with the home folder in place of the `~`, since
+ * cmd.exe and PowerShell arguments do not expand it. Anything else as given.
+ */
+export function expandHome(text: string, homedir: string): string {
+  if (text === '~') {
+    return homedir;
+  }
+  return /^~[\\/]/.test(text) ? path.join(homedir, text.slice(2)) : text;
+}
+
+/** A local path from an option or an answer: `~` expanded, then made absolute against `cwd`. */
+export function localPath(text: string, ctx: Pick<CommandContext, 'io'>): string {
+  return path.resolve(ctx.io.cwd, expandHome(text, ctx.io.homedir));
+}
+
+/** A web address as typed, with `https://` added when it has no scheme. */
+export function normalizeWebUrl(text: string): string {
+  const value = text.trim();
+  return value === '' || /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value) ? value : `https://${value}`;
 }
 
 /** A problem with `dir` as a local folder, or undefined when it is an existing folder. */
