@@ -334,7 +334,7 @@ or needs a person at a real terminal.
 - [ ] Delete `test/unit/zz-probe.test.ts`, an empty file a loop run could not
       remove
 - [ ] Approve and create the first public pre-release: tag
-      `v1.0.0-alpha.0.6.0` and publish a GitHub pre-release for it;
+      `v1.0.0-alpha.1.0.0` and publish a GitHub pre-release for it;
       `release.yml` builds, attests and attaches the files. Then check
       `gh attestation verify` on the attached tarball
 - [ ] For Scorecard, outside the repository's files: enable branch and tag
