@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { defaultPort, serverSchema, type Protocol, type Server, type Site } from '../../config/schema.ts';
 import { isSyncError } from '../../errors.ts';
+import { sealSecret } from '../../credentials/binding.ts';
 import type { SecretKind } from '../../credentials/types.ts';
 import type { App, Hint, View, ViewBody } from '../app.ts';
 import { isKey, type Key } from '../keys.ts';
@@ -336,7 +337,7 @@ export class ServerEditorView implements View {
       return;
     }
     this.#services.logger.redactor.addSecret(secret);
-    await store.set({ siteId: this.#siteId, serverId: server.id, kind }, secret);
+    await store.set({ siteId: this.#siteId, serverId: server.id, kind }, sealSecret(secret, server));
     const registry = await this.#services.registry();
     this.#server = await registry.updateServer(this.#siteId, server.id, (draft) => {
       draft.auth ??= { method: 'password', savePassword: true };

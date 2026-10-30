@@ -1,5 +1,6 @@
 import type { Server, Site } from '../config/schema.ts';
 import { defaultPort } from '../config/schema.ts';
+import { secretBinding } from '../credentials/binding.ts';
 import { EnvSecretSource } from '../credentials/env.ts';
 import { lookupSecret } from '../credentials/lookup.ts';
 import type { SecretKind } from '../credentials/types.ts';
@@ -63,6 +64,7 @@ export function secretSupplier(context: TransportContext): (kind: SecretKind) =>
         {
           store: host.credentials,
           savePassword: server.auth?.savePassword ?? false,
+          binding: secretBinding(server),
           env,
           prompt: (request) => host.promptSecret(request),
           redactor: logger.redactor,

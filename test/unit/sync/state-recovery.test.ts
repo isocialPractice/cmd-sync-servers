@@ -109,7 +109,23 @@ test('pruning removes runs past keepDays, then the oldest while over the size li
     mkdirSync(path.join(runs, name), { recursive: true });
     writeFileSync(path.join(runs, name, 'f.bin'), Buffer.alloc(bytes));
   }
-  await new Recovery(state, 'site-1', { enabled: true, keepDays: 14, maxMegabytes: 1 }).prune(new Date('2026-10-29T00:00:00Z'));
+  assert.equal(await new Recovery(state, 'site-1', { enabled: true, keepDays: 14, maxMegabytes: 1 }).prune(new Date('2026-10-29T00:00:00Z')), false);
   assert.deepEqual(readdirSync(runs), ['20261028-000000-000']);
-  await new Recovery(path.join(temp.dir, 'none'), 'site-1', { enabled: true, keepDays: 1, maxMegabytes: 1 }).prune();
+  assert.equal(await new Recovery(path.join(temp.dir, 'none'), 'site-1', { enabled: true, keepDays: 1, maxMegabytes: 1 }).prune(), false);
+});
+
+test('pruning never removes the files kept by this run, however large or old the limits make them', async () => {
+  const state = path.join(temp.dir, 'state');
+  const now = new Date('2026-10-29T12:00:00Z');
+  const recovery = new Recovery(state, 'site-1', { enabled: true, keepDays: 0, maxMegabytes: 1 }, now);
+  const older = path.join(state, 'recovery', 'site-1', '20261028-000000-000');
+  mkdirSync(older, { recursive: true });
+  writeFileSync(path.join(older, 'old.bin'), Buffer.alloc(10));
+  const big = path.join(temp.dir, 'big.bin');
+  writeFileSync(big, Buffer.alloc(1_200_000));
+  const kept = await recovery.keep(big, toRemotePath('big.bin'));
+  assert.ok(kept !== undefined);
+  assert.equal(await recovery.prune(now), true, 'this run alone is over the limit');
+  assert.equal(readFileSync(kept).length, 1_200_000);
+  assert.deepEqual(readdirSync(path.join(state, 'recovery', 'site-1')), [path.basename(recovery.runDir)]);
 });

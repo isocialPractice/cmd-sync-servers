@@ -53,6 +53,21 @@ generate throwaway keys for any proof of concept.
 Please give the fix a chance to ship before disclosing details publicly.
 Coordinated disclosure dates can be agreed in the advisory.
 
+## Verifying a Release
+
+Every release is built from its tag by `.github/workflows/release.yml` and
+carries the package tarball, a CycloneDX SBOM, a Sigstore attestation bundle
+and `SHA256SUMS`. Check a download with:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+gh attestation verify isocialpractice-cmd-sync-servers-<version>.tgz --repo isocialPractice/cmd-sync-servers \
+  --signer-workflow isocialPractice/cmd-sync-servers/.github/workflows/release.yml
+```
+
+Packages on npm are published by the same workflow with npm trusted
+publishing and carry provenance; `npm audit signatures` checks it.
+
 ## Scope
 
 In scope:

@@ -1,4 +1,5 @@
 import type { Site } from '../config/schema.ts';
+import { safeText } from '../terminal-text.ts';
 import { siteAddCommand, siteEditCommand } from './commands/site.ts';
 import { serverTestCommand } from './commands/server-test.ts';
 import { protocolLabel, serverAddress } from './commands/shared.ts';
@@ -17,7 +18,7 @@ async function run(ctx: CommandContext, action: () => Promise<ExitCode | undefin
       ctx.err(`${error.message}\n`);
       return ExitCode.cancelled;
     }
-    ctx.err(`sync-servers: ${ctx.logger.redactor.redact(error instanceof Error ? error.message : String(error))}\n`);
+    ctx.err(`sync-servers: ${safeText(ctx.logger.redactor.redact(error instanceof Error ? error.message : String(error)))}\n`);
     return ExitCode.error;
   }
 }

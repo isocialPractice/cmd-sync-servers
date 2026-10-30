@@ -1,9 +1,11 @@
 import { SyncError } from '../errors.ts';
 import { childPath, type RemotePath } from '../sync/paths.ts';
+import { safeText } from '../terminal-text.ts';
 import type { EntryType, RemoteEntry } from './types.ts';
 
+/** The message of an error from a library or a server, with control characters escaped: servers write the text. */
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return safeText(error instanceof Error ? error.message : String(error));
 }
 
 function nodeCode(error: unknown): string | undefined {

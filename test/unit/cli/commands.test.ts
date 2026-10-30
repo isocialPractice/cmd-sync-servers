@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { defaultPaths } from '../../../src/config/paths.ts';
 import { SiteRegistry } from '../../../src/config/registry.ts';
+import { openSecret } from '../../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../../src/credentials/memory.ts';
 import { cli, filesContaining, makeFolder, tempDir } from '../../helpers/cli.ts';
 
@@ -25,6 +26,14 @@ afterEach(() => {
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a typed JSON.parse keeps the assertions readable
 function json<T>(text: string): T {
   return JSON.parse(text) as T;
+}
+
+/** The saved password of a server, opened against the server as it is now in sites.json. */
+async function savedSecret(store: MemoryCredentialStore, siteId: string, serverId: string): Promise<string | undefined> {
+  const registry = await SiteRegistry.open({ paths: defaultPaths({}, { platform: process.platform, env: { SYNC_SERVERS_HOME: home }, homedir: home, cwd: home }) });
+  const server = registry.get(siteId)?.servers.find((candidate) => candidate.id === serverId);
+  const stored = await store.get({ siteId, serverId, kind: 'password' });
+  return server === undefined || stored === undefined ? undefined : openSecret(stored, server);
 }
 
 async function addSite(name = 'My Site', localRoot = root): Promise<string> {
@@ -195,7 +204,7 @@ test('passwords go to the credential store only, never to a file', async () => {
   ).site;
   const server = site.servers[0];
   assert.equal(server?.auth.savePassword, true);
-  assert.equal(await store.get({ siteId: site.id, serverId: server.id, kind: 'password' }), secret);
+  assert.equal(await savedSecret(store, site.id, server.id), secret);
   assert.deepEqual(filesContaining(home, secret), []);
   assert.ok(!saved.stdout.includes(secret) && !saved.stderr.includes(secret));
 
@@ -276,7 +285,7 @@ test('site add in a terminal asks for the site, its first server and its passwor
   assert.equal(server?.username, 'demo-user');
   assert.equal(server.port, undefined);
   assert.deepEqual(server.auth, { method: 'password', savePassword: true });
-  assert.equal(await store.get({ siteId: site.id, serverId: server.id, kind: 'password' }), 'hunter2');
+  assert.equal(await savedSecret(store, site.id, server.id), 'hunter2');
   assert.deepEqual(filesContaining(home, 'hunter2'), []);
   assert.ok(!result.stderr.includes('hunter2'));
 });

@@ -99,6 +99,18 @@ test('IPv4 addresses are loopback or documentation addresses only', () => {
   assert.deepEqual(found, []);
 });
 
+test('no file holds invisible control or bidi characters, which can make code read differently from what it does', () => {
+  const codes = [
+    ...Array.from({ length: 32 }, (_, code) => code).filter((code) => code !== 9 && code !== 10 && code !== 13),
+    ...Array.from({ length: 33 }, (_, offset) => 0x7f + offset),
+    0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069, 0xfeff,
+  ];
+  const hidden = new RegExp(`[${codes.map((code) => String.fromCharCode(code)).join('').replace(/[\]\\^-]/g, '\\$&')}]`);
+  // Files of the cmd shell use CRLF; every other file uses LF.
+  const found = SOURCES.filter(({ name, text }) => hidden.test(text) || (!name.endsWith('.cmd') && !name.endsWith('.bat') && text.includes('\r'))).map(({ name }) => name);
+  assert.deepEqual(found, []);
+});
+
 test('nothing on the local denylist appears', (context) => {
   const file = path.join(root, '.claude', 'leak-denylist.txt');
   if (!existsSync(file)) {

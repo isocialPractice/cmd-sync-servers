@@ -7,6 +7,7 @@ import { hasErrorCode, writeFileAtomic } from '../config/files.ts';
 import { ensurePrivateDir } from '../config/paths.ts';
 import type { Cloak } from './cloak.ts';
 import { STATUS, unsafeNameStatus } from './messages.ts';
+import { isPartName } from './part.ts';
 import { childPath, isInside, joinLocal, parentPath, ROOT, type RemotePath } from './paths.ts';
 import type { Observation, ScanProblem } from './types.ts';
 
@@ -184,6 +185,10 @@ export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> 
     }
     const folder = joinLocal(realRoot, next);
     for await (const dirent of await opendir(folder)) {
+      if (isPartName(dirent.name)) {
+        // A partial copy left by an interrupted transfer is never synchronized as a file.
+        continue;
+      }
       const child = childPath(next, dirent.name, platform);
       if (!child.ok) {
         result.problems.push({

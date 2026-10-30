@@ -19,10 +19,13 @@ export const ROOT = '' as RemotePath;
 /** The verdict of {@link checkPath}: a validated path, or the reason it was refused. */
 export type PathCheck = { readonly ok: true; readonly path: RemotePath } | { readonly ok: false; readonly reason: string };
 
+/** C0 controls, DEL and C1 controls: terminals act on all of them, so no name may hold one. */
 // eslint-disable-next-line no-control-regex -- control characters are exactly what this rejects
-const CONTROL = /[\u0000-\u001f\u007f]/;
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 const WINDOWS_FORBIDDEN = /[<>:"|?*]/;
 const WINDOWS_RESERVED = /^(?:CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³])\s*(?:\..*)?$/i;
+/** The shape of a Windows 8.3 short name, such as `GIT~1` or `PROGRA~1.TXT`: another name for a file or folder. */
+const WINDOWS_SHORT_NAME = /^[^.~]{1,6}~\d{1,6}(?:\.[^.]{0,3})?$/;
 const MAX_NAME_BYTES = 255;
 
 /** Why one path segment cannot be used, or `undefined` when it can. */
@@ -36,6 +39,10 @@ export function nameProblem(name: string, platform: NodeJS.Platform = process.pl
   if (name.includes('/')) {
     return 'contains a slash';
   }
+  // A backslash is a separator on Windows servers as well as Windows clients, so it is refused everywhere.
+  if (name.includes('\\')) {
+    return 'contains a backslash';
+  }
   if (CONTROL.test(name)) {
     return 'contains a control character';
   }
@@ -43,9 +50,6 @@ export function nameProblem(name: string, platform: NodeJS.Platform = process.pl
     return `longer than ${String(MAX_NAME_BYTES)} bytes`;
   }
   if (platform === 'win32') {
-    if (name.includes('\\')) {
-      return 'contains a backslash';
-    }
     if (WINDOWS_FORBIDDEN.test(name)) {
       return 'contains a character Windows does not allow (< > : " | ? *)';
     }
@@ -54,6 +58,9 @@ export function nameProblem(name: string, platform: NodeJS.Platform = process.pl
     }
     if (WINDOWS_RESERVED.test(name)) {
       return 'reserved device name';
+    }
+    if (WINDOWS_SHORT_NAME.test(name)) {
+      return 'shaped like a short 8.3 name, which Windows may read as another file or folder';
     }
   }
   return undefined;
@@ -150,33 +157,45 @@ function hasCode(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 
-/** The real path of `target`, or of its nearest folder that exists. `resolve` is replaceable in tests. */
-export async function realpathOfNearest(target: string, resolve: (file: string) => Promise<string> = realpath): Promise<string> {
+/** The nearest of `target` and its folders that exists, with its real path. */
+async function nearestExisting(target: string, resolve: (file: string) => Promise<string>): Promise<{ path: string; real: string }> {
   try {
-    return await resolve(target);
+    return { path: target, real: await resolve(target) };
   } catch (error) {
     const parent = path.dirname(target);
     if (!hasCode(error, 'ENOENT') || parent === target) {
       throw error;
     }
-    return realpathOfNearest(parent, resolve);
+    return nearestExisting(parent, resolve);
   }
+}
+
+/** The real path of `target`, or of its nearest folder that exists. `resolve` is replaceable in tests. */
+export async function realpathOfNearest(target: string, resolve: (file: string) => Promise<string> = realpath): Promise<string> {
+  return (await nearestExisting(target, resolve)).real;
 }
 
 /**
  * The local path of `target`, safe to write: its parent's real path is inside
- * the real local root (so no linked folder leads out of it), and the target
- * itself is not a symbolic link or junction.
+ * the real local root (so no linked folder leads out of it), and is the very
+ * folder the path names, so no link, junction or Windows short name stands
+ * in for another folder. The target itself is not a symbolic link or
+ * junction. `resolve` is replaceable in tests.
  */
-export async function safeLocalTarget(localRoot: string, target: RemotePath): Promise<string> {
-  const realRoot = await realpath(localRoot);
+export async function safeLocalTarget(localRoot: string, target: RemotePath, resolve: (file: string) => Promise<string> = realpath): Promise<string> {
+  const realRoot = await resolve(localRoot);
   const full = joinLocal(realRoot, target);
   if (target === ROOT) {
     return realRoot;
   }
-  const realParent = await realpathOfNearest(path.dirname(full));
-  if (!isInside(realRoot, realParent)) {
+  const parent = await nearestExisting(path.dirname(full), resolve);
+  if (!isInside(realRoot, parent.real)) {
     throw new SyncError('E_PATH_UNSAFE', `${JSON.stringify(target)} leads out of the local root through a linked folder.`);
+  }
+  const named = parent.path.normalize('NFC');
+  const real = parent.real.normalize('NFC');
+  if (!isInside(named, real) || !isInside(real, named)) {
+    throw new SyncError('E_PATH_UNSAFE', `${JSON.stringify(target)} is reached through a linked folder or another name for a folder, and is not written through.`);
   }
   try {
     if ((await lstat(full)).isSymbolicLink()) {

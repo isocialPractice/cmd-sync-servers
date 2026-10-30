@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Server, Site } from '../config/schema.ts';
 import type { PlanItem, SyncPlan } from '../sync/plan.ts';
 import { DIRECTION_TITLES, type Action } from '../sync/types.ts';
+import { safeLine } from '../terminal-text.ts';
 import { protocolLabel } from './commands/shared.ts';
 import { runEditor, type EditorEnvironment } from './editor.ts';
 
@@ -12,10 +13,9 @@ const WORDS: readonly Action[] = ['put', 'get', 'skip', 'synced', 'delete-remote
 
 const ERROR_PREFIX = '# ! ';
 
-/** A path as one line of text: control characters are escaped. */
+/** A path as one line of text: control and bidi characters are escaped. */
 export function editorPath(target: string): string {
-  // eslint-disable-next-line no-control-regex -- control characters are what this escapes
-  return /[\u0000-\u001f\u007f]/.test(target) ? JSON.stringify(target).slice(1, -1) : target;
+  return safeLine(target);
 }
 
 function box(item: PlanItem): string {

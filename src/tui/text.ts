@@ -1,4 +1,5 @@
 /** Display width of terminal text: wide East Asian characters take two columns, combining marks none. */
+import { replaceUnsafe } from '../terminal-text.ts';
 
 const WIDE: readonly (readonly [number, number])[] = [
   [0x1100, 0x115f],
@@ -45,10 +46,12 @@ export function textWidth(text: string): number {
   return width;
 }
 
-/** Replaces control characters, which would act on the terminal, with `?`. */
+/**
+ * Replaces control characters, which would act on the terminal, and bidi
+ * formatting characters, which would reorder what is shown, with `?`.
+ */
 export function printable(text: string): string {
-  // eslint-disable-next-line no-control-regex -- control characters are what this replaces
-  return text.replace(/[\u0000-\u001f\u007f-\u009f]/g, '?');
+  return replaceUnsafe(text, '?');
 }
 
 /** The columns `start` to `start + width` of `text`, never splitting a wide character. */

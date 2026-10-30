@@ -1,4 +1,5 @@
 import type { Server, Site } from '../../config/schema.ts';
+import { sealSecret } from '../../credentials/binding.ts';
 import type { CredentialStore, SecretKind } from '../../credentials/types.ts';
 import { SyncError } from '../../errors.ts';
 import { choiceOption, flag, type CommandSpec } from '../command.ts';
@@ -107,7 +108,7 @@ async function saveSecret(
 ): Promise<void> {
   const secret = await readSecret(ctx, kind, fromStdin);
   ctx.logger.redactor.addSecret(secret);
-  await store.set({ siteId: site.id, serverId: server.id, kind }, secret);
+  await store.set({ siteId: site.id, serverId: server.id, kind }, sealSecret(secret, server));
   await (await ctx.registry()).updateServer(site.id, server.id, (draft) => {
     draft.auth ??= { method: 'password', savePassword: true };
     draft.auth.savePassword = true;

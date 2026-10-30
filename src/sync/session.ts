@@ -1,4 +1,3 @@
-import { createWriteStream } from 'node:fs';
 import { lstat, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,6 +14,7 @@ import type { SyncState } from './classify.ts';
 import { siteCloak, type Cloak } from './cloak.ts';
 import { executePlan, type ExecuteOptions, type SyncResult } from './execute.ts';
 import { siteGuard } from './guard.ts';
+import { cappedFile } from './part.ts';
 import { isCaseSensitive, joinRemote, ROOT, safeLocalTarget, toRemotePath, type RemotePath } from './paths.ts';
 import { SyncPlan } from './plan.ts';
 import { Recovery } from './recovery.ts';
@@ -102,6 +102,19 @@ export interface Comparison {
   readonly remote: ComparedSide | undefined;
   /** Removes the temp copy. Call it when done reading. */
   dispose(): Promise<void>;
+}
+
+/**
+ * True when a server's root directory is the top of the server: `/`, a drive
+ * as a Windows server shows it (`/C:` or `/C:/`), or the root of a local or
+ * network drive. Deletes there are refused unless the server allows them.
+ */
+export function remoteRootIsTop(server: Pick<Server, 'protocol' | 'remoteRoot'>): boolean {
+  if (server.protocol === 'local') {
+    const resolved = path.resolve(server.remoteRoot);
+    return path.parse(resolved).root === resolved;
+  }
+  return /^\/(?:[A-Za-z]:\/?)?$/.test(joinRemote(server.remoteRoot, ROOT));
 }
 
 const LOCAL_STATES: ReadonlySet<SyncState> = new Set(['local-changed', 'local-only', 'local-deleted', 'first-sync-local-newer']);
@@ -225,12 +238,7 @@ export class SyncSession {
   }
 
   #remoteRootIsTop(): boolean {
-    const root = this.server.remoteRoot;
-    if (this.server.protocol === 'local') {
-      const resolved = path.resolve(root);
-      return path.parse(resolved).root === resolved;
-    }
-    return joinRemote(root, ROOT) === '/';
+    return remoteRootIsTop(this.server);
   }
 
   #scopes(scope: Scope): RemotePath[] {
@@ -410,7 +418,8 @@ export class SyncSession {
       let remote: ComparedSide | undefined;
       if (remoteEntry?.type === 'file') {
         const file = path.join(dir, path.basename(localFile));
-        await pool.runWithRetry((transport) => transport.get(remotePath, createWriteStream(file, { mode: 0o600 }), signal), { ...this.#retry, signal });
+        const size = remoteEntry.size;
+        await pool.runWithRetry((transport) => transport.get(remotePath, cappedFile(file, { flags: 'w', maxBytes: size, what: `Comparing ${remotePath}` }), signal), { ...this.#retry, signal });
         remote = { file, size: remoteEntry.size, mtimeMs: remoteEntry.mtimeMs };
       }
       return {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { test } from 'node:test';
+import { sealSecret } from '../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../src/credentials/memory.ts';
 import { createLogger } from '../../src/log/logger.ts';
 import type { App } from '../../src/tui/app.ts';
@@ -258,7 +259,8 @@ test('the server editor saves secrets only in the credential store, and leaving 
     await type(app, 'p4ss-word');
     assert.doesNotMatch(screen(app), /p4ss-word/);
     await press(app, 'enter');
-    assert.equal(await store.get({ siteId: rig.site.id, serverId: saved.id, kind: 'password' }), 'p4ss-word');
+    const stored = await store.get({ siteId: rig.site.id, serverId: saved.id, kind: 'password' });
+    assert.equal(stored, sealSecret('p4ss-word', saved));
     assert.match(screen(app), /Saved the password in the memory/);
     assert.ok(!JSON.stringify(rig.registry.get(rig.site.id)).includes('p4ss-word'));
 

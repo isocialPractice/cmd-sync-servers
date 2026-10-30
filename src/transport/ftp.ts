@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import type { Readable, Writable } from 'node:stream';
-import type { ConnectionOptions, TLSSocket } from 'node:tls';
+import { rootCertificates, type ConnectionOptions, type TLSSocket } from 'node:tls';
 import basicFtp, { type FileInfo } from 'basic-ftp';
 import type { SecretKind } from '../credentials/types.ts';
 import { SyncError } from '../errors.ts';
 import { silentLogger, type Logger } from '../log/logger.ts';
 import { baseName, joinRemote, parentPath, ROOT, type RemotePath } from '../sync/paths.ts';
+import { safeLine, safeText } from '../terminal-text.ts';
 import { checkListingLimit, errorMessage, isCertificateError, makeEntry, networkError, throwIfAborted } from './common.ts';
 import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEntry, type Transport } from './types.ts';
 
@@ -136,7 +137,7 @@ export class FtpTransport implements Transport {
     }
     // Protocol traces go to the redacting logger at debug level; basic-ftp already masks PASS.
     client.ftp.log = (message: string) => {
-      this.#logger.debug(message);
+      this.#logger.debug(safeText(message));
     };
     const tls = this.#options.tls;
     const secureOptions: ConnectionOptions = {
@@ -144,7 +145,8 @@ export class FtpTransport implements Transport {
       minVersion: tls?.minVersion ?? 'TLSv1.2',
       host,
       ...(tls?.servername === undefined ? {} : { servername: tls.servername }),
-      ...(tls?.caFile === undefined ? {} : { ca: await readFile(tls.caFile) }),
+      // Node replaces its trusted authorities with `ca`, so the extra one is added to them.
+      ...(tls?.caFile === undefined ? {} : { ca: [...rootCertificates, (await readFile(tls.caFile)).toString('utf8')] }),
     };
     const onAbort = (): void => {
       client.close();
@@ -184,10 +186,11 @@ export class FtpTransport implements Transport {
       canSetMtime: this.#features.has('MFMT'),
       canChmod: true,
       atomicReplace: false,
-      software: welcome.replace(/^\d{3}[ -]/, '').trim(),
+      // The banner and the feature names are the server's own text.
+      software: safeLine(welcome.replace(/^\d{3}[ -]/, '').trim()),
       tls: protocolName === undefined || protocolName === null ? undefined : `${protocolName}${cipher === undefined ? '' : `, ${cipher.name}`}`,
       hostKey: undefined,
-      features: [...this.#features.keys()].sort(),
+      features: [...this.#features.keys()].map(safeLine).sort(),
     };
   }
 

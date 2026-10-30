@@ -1,10 +1,17 @@
+import { SyncError } from '../errors.ts';
 import type { TransportPool } from '../transport/pool.ts';
 import type { RetryOptions } from '../transport/retry.ts';
 import type { RemoteEntry } from '../transport/types.ts';
 import type { Cloak } from './cloak.ts';
 import { STATUS, unsafeNameStatus } from './messages.ts';
+import { isPartName } from './part.ts';
 import { ROOT, type RemotePath } from './paths.ts';
 import { underCloak, type ScanResult } from './scan-local.ts';
+
+/** The deepest folder a scan descends into, so a server cannot keep a scan going forever. */
+export const MAX_REMOTE_DEPTH = 64;
+/** The most entries one scan takes in, across every folder. */
+export const MAX_REMOTE_ENTRIES = 1_000_000;
 
 export interface RemoteScanOptions {
   readonly pool: TransportPool;
@@ -30,8 +37,17 @@ export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult
   const retry = { ...options.retry, signal: options.signal };
   const untimed: RemotePath[] = [];
   let queue: RemotePath[] = [];
+  let entries = 0;
 
   const take = (parent: RemotePath, entry: RemoteEntry): void => {
+    entries += 1;
+    if (entries > MAX_REMOTE_ENTRIES) {
+      throw new SyncError('E_LISTING_LIMIT', `The server lists more than ${String(MAX_REMOTE_ENTRIES)} entries under its root; the scan was stopped. Cloak large folders, or synchronize some paths only.`);
+    }
+    if (isPartName(entry.name)) {
+      // A partial copy left by an interrupted transfer is never synchronized as a file.
+      return;
+    }
     if (entry.path === undefined) {
       result.problems.push({
         path: parent === ROOT ? entry.name : `${parent}/${entry.name}`,
@@ -47,6 +63,8 @@ export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult
     } else if (entry.type === 'dir') {
       if (cloak.isCloaked(target, true)) {
         mutable.cloaked += 1;
+      } else if (target.split('/').length > MAX_REMOTE_DEPTH) {
+        throw new SyncError('E_LISTING_LIMIT', `The server's folders go deeper than ${String(MAX_REMOTE_DEPTH)} levels at ${target.slice(0, 200)}; the scan was stopped.`);
       } else {
         result.dirs.add(target);
         queue.push(target);

@@ -114,12 +114,19 @@ the step of the plan that specifies it.
       the leak scan
   - **Goal**: Resolve to [Phase E5, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e5-library-api-and-documentation)
   - From: Phase E5 - Library API and Documentation
-- [ ] `release.yml` with the tag, version and changelog checks, SBOM,
+- [x] `release.yml` with the tag, version and changelog checks, SBOM,
       checksums and attestations on the GitHub pre-release
   - **Goal**: Resolve to [Phase E6, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
   - From: Phase E6 - Release Pipeline and First Public Alpha
-- [ ] The gated `publish-npm` job with trusted publishing and `--tag alpha`
+- [x] The gated `publish-npm` job with trusted publishing and `--tag alpha`
   - **Goal**: Resolve to [Phase E6, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
+  - From: Phase E6 - Release Pipeline and First Public Alpha
+- [x] A full security pass against the threat model, with every finding fixed
+      and the checks recorded in `docs/security.html`
+  - **Goal**: Resolve to [Phase E6, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
+  - From: Phase E6 - Release Pipeline and First Public Alpha
+- [x] Resolve the Scorecard findings that are in the repository's control
+  - **Goal**: Resolve to [Phase E6, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
   - From: Phase E6 - Release Pipeline and First Public Alpha
 
 ## Phase E1 - Configuration and Site Registry
@@ -174,11 +181,8 @@ Next version: minor.
 
 Next version: minor.
 
-- [ ] A full security pass against the threat model, with every finding fixed
-      and the checks recorded in `docs/security.html`
-  - **Goal**: Resolve to [Phase E6, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
-- [ ] Resolve the Scorecard findings that are in the repository's control
-  - **Goal**: Resolve to [Phase E6, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e6-release-pipeline-and-first-public-alpha)
+All items moved to Current and done. The first public alpha waits on the
+owner steps under User Use Only.
 
 ## Later Roadmap - paused
 
@@ -223,8 +227,20 @@ or needs a person at a real terminal.
 - [ ] Apply the repository and account settings of plan section 11.7
 - [ ] Select "GitHub Actions" as the Pages source if the first `pages.yml`
       run cannot enable Pages itself
-- [ ] Create the `isocialpractice` npm organization, the trusted publisher and
-      the `npm` environment, then set `NPM_PUBLISH` to `true` when ready
-- [ ] Approve and create the first public pre-release
+- [ ] Create the `isocialpractice` npm organization, the trusted publisher
+      (workflow `release.yml`, and require the environment `npm` there so no
+      other job can publish) and the GitHub `npm` environment with yourself as
+      required reviewer, then set the repository variable `NPM_PUBLISH` to
+      `true` when ready. If npm needs the package to exist first, publish the
+      first alpha from your machine with 2FA
+- [ ] Delete `test/unit/zz-probe.test.ts`, an empty file a loop run could not
+      remove
+- [ ] Approve and create the first public pre-release: tag
+      `v1.0.0-alpha.0.6.0` and publish a GitHub pre-release for it;
+      `release.yml` builds, attests and attaches the files. Then check
+      `gh attestation verify` on the attached tarball
+- [ ] For Scorecard, outside the repository's files: enable branch and tag
+      rulesets (section 11.7) and register for the OpenSSF Best Practices
+      badge; fuzzing is not set up
 - [ ] Fill the git-ignored `.claude/leak-denylist.txt` with personal names,
       hosts and paths for the docs leak scan

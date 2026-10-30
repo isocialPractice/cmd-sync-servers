@@ -162,6 +162,31 @@ Until `1.0.0`, versions use the pre-release form `1.0.0-alpha.x.y.z`:
 A version bump changes `package.json`, `package-lock.json`, `src/version.ts`
 and `CHANGELOG.md` in one commit. A unit test fails when they disagree.
 
+## Releases
+
+A maintainer creates the tag `v<version>` and publishes a GitHub
+pre-release for it; `.github/workflows/release.yml` does the rest:
+
+1. `build` checks out `refs/tags/v<version>` and runs
+   `node scripts/release-check.ts v<version>`, which fails unless the tag,
+   `package.json`, `package-lock.json`, `src/version.ts` and a dated
+   `CHANGELOG.md` heading agree. It runs `npm test` and `npm run pack:check`,
+   packs the tarball and writes a CycloneDX SBOM with `npm sbom`. It can read
+   the repository and nothing more.
+2. `attest` attests the tarball and the SBOM with
+   `actions/attest-build-provenance`. It runs no code from the repository, so
+   nothing it installs can use its signing token.
+3. `attach` adds the tarball, the SBOM, the Sigstore bundle and `SHA256SUMS`
+   to the release, and fails rather than replace files already there.
+4. When the repository variable `NPM_PUBLISH` is `true`, `publish-npm` waits
+   for approval in the `npm` environment, checks the tarball's attestation
+   against this workflow, and publishes it with npm trusted publishing and the
+   `alpha` tag. No npm token is stored anywhere.
+
+A failed run can be repeated by hand from the Actions tab with the tag as
+input. Builds never run from npm lifecycle scripts: installs use
+`--ignore-scripts`, and every step is an explicit command.
+
 ## Dependencies
 
 Runtime dependencies are kept to a short list. A pull request that adds one

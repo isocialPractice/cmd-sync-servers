@@ -65,6 +65,7 @@
 <ul>
   <li>Passwords and key passphrases are kept only in the operating system's credential store, when you choose to save them. They are never written to <code>sites.json</code>, a log, a plan file or a temporary file.</li>
   <li>A password is asked for, and sent, only after the server's host key or TLS certificate has been verified.</li>
+  <li>A saved password is tied to the protocol, address, port and user it was saved for. If the settings change any of them, by mistake or by someone else, the saved password is not sent: you are asked again, and an unattended run stops with <code>E_AUTH</code>.</li>
   <li>Every secret is registered with the logger the moment it is read and replaced with <code>[redacted]</code> in every log line and error message, including FTP <code>PASS</code> commands and passwords inside URLs.</li>
   <li>Private keys are read from their file when connecting and never copied.</li>
   <li>For scripts, <code>SYNC_SERVERS_PASSWORD</code> supplies the password. Treat it like the password itself: keep it in your CI system's secret store.</li>
@@ -78,19 +79,23 @@
   <li>Deletes at the top of a server (<code>/</code> or a drive root) are refused unless the server allows them.</li>
   <li>Each file is checked again just before it moves; one that changed since the preview is skipped.</li>
   <li>Files are written to a partial copy and renamed into place only when complete.</li>
-  <li>Local files a run deletes or overwrites are kept in the recovery folder for 14 days.</li>
+  <li>Local files a run deletes or overwrites are kept in the recovery folder for 14 days. Pruning the folder never touches the files of the run that just finished.</li>
+  <li>A file spelled one way here and only another way on the server, as after renaming it by case, is held back: a server that ignores case would take its upload and the delete of the old spelling for the same file.</li>
+  <li>When a server cannot replace a file in one step and the replacement fails after the old copy was removed, the new copy is kept on the server under its partial name rather than deleted.</li>
   <li>Sensitive files such as <code>.env</code>, private keys and credential folders are held back unchecked, and never moved by an unattended run.</li>
 </ul>
 
 <h2 id="hostile-servers">A server you do not fully trust</h2>
 <p>A compromised or malicious server can return any names it likes. Before a name becomes a local path it is checked:</p>
 <ul>
-  <li>The names <code>.</code> and <code>..</code>, and names with a slash, a control character, or more than 255 bytes, are refused and listed as problems.</li>
-  <li>Names that are not valid on Windows, such as <code>CON</code>, <code>name.</code> or a name with <code>:</code> or a backslash, are refused on Windows.</li>
+  <li>The names <code>.</code> and <code>..</code>, and names with a slash, a backslash, a control character, or more than 255 bytes, are refused and listed as problems.</li>
+  <li>Names that are not valid on Windows, such as <code>CON</code>, <code>name.</code> or a name with <code>:</code>, are refused on Windows, and so are names shaped like short 8.3 names such as <code>GIT~1</code>, which Windows may read as another folder.</li>
   <li>Two names that differ only by case are both refused on a file system that cannot tell them apart.</li>
-  <li>Writes never follow a symbolic link or junction out of the site.</li>
-  <li>A folder listing with more than 100,000 entries is refused, so a server cannot exhaust memory.</li>
-  <li>Control characters in names and messages are shown escaped or as <code>?</code>, never sent to your terminal.</li>
+  <li>Writes never go through a symbolic link, a junction or another name for a folder, inside the site or out of it, and nothing inside a linked folder on either side is transferred.</li>
+  <li>A local file is uploaded only if the file opened is the one that was checked, so a link swapped in at the last moment is not followed.</li>
+  <li>A download stops as soon as a server sends more than the size it listed, so a server cannot fill your disk.</li>
+  <li>A folder listing with more than 100,000 entries, a scan of more than 1,000,000 entries, and folders nested more than 64 levels deep are refused, so a server cannot exhaust memory or keep a scan going forever.</li>
+  <li>Control and bidirectional characters in names, server replies and file contents are shown escaped or as <code>?</code>, never sent to your terminal.</li>
 </ul>
 
 <h2 id="local-data">What stays on your computer</h2>
@@ -100,6 +105,38 @@
   <li>The temporary files of a diff and of editor mode live in a private temporary folder and are removed when done.</li>
   <li>Nothing is sent anywhere but to your servers: no analytics, no update checks.</li>
 </ul>
+
+<h2 id="checked">What was checked</h2>
+<p>Each threat below has a defence in the code and a test that proves it, run on every change in CI on Linux, macOS and Windows. The list was last walked row by row for the 1.0.0-alpha.0.6.0 release, together with two independent reviews of the whole source tree, one of the transports and the engine and one of secrets, the command line, settings and workflows. Every finding was fixed in that release.</p>
+<table>
+  <caption>Threats, defences and the tests that prove them</caption>
+  <thead><tr><th scope="col">Threat</th><th scope="col">Defence</th><th scope="col">Proved by</th></tr></thead>
+  <tbody>
+    <tr><td>A password read off the network</td><td>SFTP by default; FTPS with verified certificates and TLS 1.2 or later; plain FTP refused without <code>allowInsecure</code> and warned on each connection</td><td>A self-signed certificate is refused before the password is sent; plain FTP is refused before any connection</td></tr>
+    <tr><td>A machine in the middle on SSH</td><td>Host keys confirmed on first use and pinned; a changed key is fatal; unattended runs refuse unknown keys</td><td>A changed key is refused with both fingerprints before any password is sent; an unattended run refuses an unknown key unless the expected fingerprint matches</td></tr>
+    <tr><td>Secrets at rest</td><td>The operating system's credential store; the environment for CI; a question otherwise; no file fallback</td><td>After every scenario, every settings, state, log and local file is searched for the server password</td></tr>
+    <tr><td>Secrets in output</td><td>A redacting logger, scrubbed errors, and <code>--json</code> built from chosen fields</td><td>Standard output and standard error of <code>sync</code>, <code>status</code>, <code>diff</code> and <code>server test</code> with <code>--debug</code> are searched for the password</td></tr>
+    <tr><td>A saved password sent to the wrong server</td><td>Saved passwords are tied to the protocol, address, port and user they were saved for</td><td>A saved password is refused after a change of host, port, user, or a switch to plain FTP</td></tr>
+    <tr><td>Hostile names from a server</td><td>Every listed name is validated before it becomes a path</td><td>A sandbox server lists <code>../escape</code>, <code>CON.txt</code>, <code>a\b.txt</code>, case twins and a NUL; none is written</td></tr>
+    <tr><td>Symbolic link escapes</td><td>Scans never follow links by default; writes refuse link and junction targets and folders reached by another name; nothing inside a linked folder is transferred</td><td>Links, junctions and short names are refused as write targets; files under a linked folder on either side become problem rows</td></tr>
+    <tr><td>Secrets uploaded by accident</td><td>The sensitive-file guard lists matches unchecked</td><td>Guard tests in every direction, over every protocol</td></tr>
+    <tr><td>Mass deletion from a wrong root</td><td>The delete option, unchecked never-synchronized deletes, the typed count, the empty-root and top-of-server refusals, and the recovery folder</td><td>An emptied local root against a full server stops before anything moves</td></tr>
+    <tr><td>Half-written files</td><td>Partial copies renamed into place only when complete; sizes checked; each file checked again just before it moves</td><td>A download that keeps dropping and an upload that keeps stalling both leave the old copy as it was, with no partial file</td></tr>
+    <tr><td>Tampered plans</td><td>Editor mode and saved plans can only choose among the planned rows; a saved plan must match a fresh scan</td><td>Edited files and saved plans that add a path, renumber a row or choose an impossible action are refused whole</td></tr>
+    <tr><td>Corrupt settings or racing writers</td><td>Schema validation, atomic writes with a backup, and a lock file</td><td>Two registries writing at once lose nothing; an invalid change leaves the file as it was</td></tr>
+    <tr><td>Exhausted memory, a full disk or a hung run</td><td>Streams only, bounded concurrency, listing, scan and depth limits, downloads capped at their listed size, and timeouts</td><td>An oversized listing and an endless folder tree are refused; a download that sends too much fails; stalled downloads and uploads time out</td></tr>
+    <tr><td>Escape sequences from a server</td><td>Control and bidirectional characters in names, server replies, logs and diffs are escaped or replaced before they reach the terminal</td><td>Previews, error messages and debug lines with escape sequences in them are checked; no source file may hold such characters either</td></tr>
+    <tr><td>A compromised dependency or workflow</td><td>Few dependencies, a lock file, no install scripts, pinned actions, least-privilege workflows, CodeQL, dependency review and Scorecard</td><td>A test reads every workflow and fails on an unpinned action, a missing <code>permissions: {}</code>, a kept checkout credential or an expression inside a script</td></tr>
+    <tr><td>Personal data in public files</td><td>Ignore rules, the package allowlist, and a leak scan</td><td>The package-contents check and the documentation leak scan</td></tr>
+  </tbody>
+</table>
+
+<h2 id="releases">Verifying a release</h2>
+<p>Every release is built from its tag by a GitHub Actions workflow that runs the full test suite first. The job that builds and tests holds no signing or publishing rights; a separate job that runs no code from the repository attests the files. The release carries the package tarball, a CycloneDX software bill of materials, a Sigstore attestation bundle and a <code>SHA256SUMS</code> file. To check what you downloaded:</p>
+<pre><code>sha256sum --check --ignore-missing SHA256SUMS
+gh attestation verify isocialpractice-cmd-sync-servers-&lt;version&gt;.tgz --repo isocialPractice/cmd-sync-servers \
+  --signer-workflow isocialPractice/cmd-sync-servers/.github/workflows/release.yml</code></pre>
+<p>Packages on npm are published from that same workflow with npm trusted publishing, so each carries provenance that links it to the commit and the workflow run that built it. <code>npm audit signatures</code> checks it after installing.</p>
 
 <h2 id="your-part">What stays your job</h2>
 <ul>

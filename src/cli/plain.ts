@@ -3,6 +3,7 @@ import { createTwoFilesPatch } from 'diff';
 import type { PlanItem, SyncPlan } from '../sync/plan.ts';
 import type { SyncSession } from '../sync/session.ts';
 import type { Action } from '../sync/types.ts';
+import { safeText } from '../terminal-text.ts';
 import type { CommandContext } from './context.ts';
 import { paint } from './output.ts';
 import { editorPath } from './preview-editor.ts';
@@ -94,7 +95,8 @@ async function diffText(session: SyncSession, item: PlanItem, signal: AbortSigna
       const size = (data: Buffer | undefined): string => (data === undefined ? 'missing' : `${String(data.length)} bytes`);
       return `Local:  ${size(local)}\nRemote: ${size(remote)}\n`;
     }
-    return createTwoFilesPatch(`local/${item.path}`, `remote/${item.path}`, local?.toString('utf8') ?? '', remote?.toString('utf8') ?? '');
+    // File contents are shown with their control characters escaped, so a file cannot drive the terminal.
+    return safeText(createTwoFilesPatch(`local/${item.path}`, `remote/${item.path}`, local?.toString('utf8') ?? '', remote?.toString('utf8') ?? ''));
   } finally {
     await comparison.dispose();
   }

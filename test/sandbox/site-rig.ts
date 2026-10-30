@@ -5,6 +5,7 @@ import path from 'node:path';
 import { defaultPaths } from '../../src/config/paths.ts';
 import { SiteRegistry, type NewServer } from '../../src/config/registry.ts';
 import type { Site, SiteInput } from '../../src/config/schema.ts';
+import { sealSecret } from '../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../src/credentials/memory.ts';
 import type { HostAdapter, HostKeyDecision, HostKeyInfo } from '../../src/host.ts';
 import { createLogger, memorySink, type LogRecord } from '../../src/log/logger.ts';
@@ -95,8 +96,9 @@ export async function startSiteRig(kind: Kind, options: SiteRigOptions = {}): Pr
     open: async (sessionOptions = {}) => {
       const credentials = new MemoryCredentialStore();
       const site = registry.get(added.id) ?? added;
-      const serverId = site.servers[0]?.id ?? '';
-      await credentials.set({ siteId: site.id, serverId, kind: 'password' }, rig.password);
+      const server = site.servers[0];
+      const serverId = server?.id ?? '';
+      await credentials.set({ siteId: site.id, serverId, kind: 'password' }, server === undefined ? rig.password : sealSecret(rig.password, server));
       const logger = createLogger({ level: 'debug', sinks: [sink] });
       const host: HostAdapter = {
         credentials,

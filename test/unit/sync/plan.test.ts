@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { formatPreview } from '../../../src/cli/commands/sync.ts';
+import { CommandContext } from '../../../src/cli/context.ts';
+import { formatNumberedPreview } from '../../../src/cli/plain.ts';
+import { formatPlanForEditor } from '../../../src/cli/preview-editor.ts';
+import type { Server, Site } from '../../../src/config/schema.ts';
 import { isSyncError } from '../../../src/errors.ts';
+import { fakeIo, tempDir } from '../../helpers/cli.ts';
 import { guardedStatus, STATUS } from '../../../src/sync/messages.ts';
 import { toRemotePath, type RemotePath } from '../../../src/sync/paths.ts';
 import { SyncPlan, type PlanInput } from '../../../src/sync/plan.ts';
@@ -156,8 +162,24 @@ test('on a case-insensitive file system, names that differ only by case are neve
     ['About.html', 'Index.html', 'about.html', 'index.html'],
   );
   assert.equal(insensitive.items.some((item) => item.problem === undefined && /index|about/i.test(item.path)), false);
+  // Here both spellings of index.html can live side by side, but a name spelled one way here and only
+  // another way on the server, as after renaming by case, is held back: the server may ignore case.
   const sensitive = plan({ ...input, caseInsensitive: false });
-  assert.equal(sensitive.items.some((item) => item.problem === 'case'), false);
+  const renamed = sensitive.items.filter((item) => item.problem === 'case');
+  assert.deepEqual(renamed.map((item) => item.path).sort(), ['About.html', 'about.html']);
+  assert.ok(renamed.every((item) => item.status === STATUS.caseRename));
+  assert.equal(sensitive.items.some((item) => item.problem === undefined && /about/i.test(item.path)), false);
+});
+
+test('nothing is transferred inside a linked folder on either side', () => {
+  const result = plan({
+    local: scan({ 'docs/readme.html': obs(1), 'index.html': obs(1) }, [{ path: 'assets', side: 'local', kind: 'symlink', status: STATUS.symlink }]),
+    remote: scan({ 'assets/app.js': obs(2) }, [{ path: 'docs', side: 'remote', kind: 'symlink', status: STATUS.symlink }]),
+    direction: 'both',
+  });
+  const held = result.items.filter((item) => item.status === STATUS.underLink).map((item) => item.path);
+  assert.deepEqual(held.sort(), ['assets/app.js', 'docs/readme.html']);
+  assert.deepEqual(result.items.filter((item) => item.state !== 'problem').map((item) => item.path), ['index.html']);
 });
 
 test('a saved plan round-trips through JSON and is refused once the scan changes', () => {
@@ -174,6 +196,51 @@ test('a saved plan round-trips through JSON and is refused once the scan changes
     changed.applySaved(saved);
   }, (error) => isSyncError(error, 'E_STALE_ITEM'));
   assert.throws(() => SyncPlan.fromJSON({ schema: 'other' }), (error) => isSyncError(error, 'E_PLAN_INVALID'));
+});
+
+test('a tampered saved plan is refused whole: added paths, wrong numbers and impossible actions', () => {
+  const local = scan({ 'a.html': obs(1), 'b.html': obs(2) });
+  const saved = SyncPlan.fromJSON(JSON.parse(JSON.stringify(plan({ local }).toJSON())));
+  const tamper = (items: typeof saved.items): typeof saved => ({ ...saved, items });
+  const [a, b] = saved.items;
+  assert.ok(a !== undefined && b !== undefined);
+  const cases: (typeof saved)[] = [
+    tamper([...saved.items, { id: 3, path: '../../etc/passwd', action: 'get', checked: true }]),
+    tamper([{ ...a, checked: false }, { ...b, id: 7 }]),
+    tamper([{ ...a, checked: false }, { ...b, action: 'get' }]),
+    tamper([{ ...a, checked: false }, { ...b, action: 'resolve' }]),
+  ];
+  for (const tampered of cases) {
+    const fresh = plan({ local });
+    assert.throws(() => {
+      fresh.applySaved(tampered);
+    }, (error) => isSyncError(error, 'E_PLAN_INVALID'));
+    assert.equal(fresh.item('a.html')?.checked, true, 'nothing was applied');
+    assert.equal(fresh.items.length, 2);
+  }
+});
+
+test('a hostile name with escape sequences is shown escaped in every printed preview', () => {
+  const hostile = 'evil\u001b]0;owned\u0007\u001b[2Jname.html';
+  const result = plan({
+    local: scan({ 'index.html': obs(1) }),
+    remote: scan({}, [{ path: hostile, side: 'remote', kind: 'unsafe', status: 'Name is not valid on this system: contains a control character.' }]),
+  });
+  const home = tempDir();
+  try {
+    const ctx = new CommandContext(fakeIo({ home: home.dir }).io, { json: false, plain: false, debug: false });
+    const site = { name: 'My Site' } as Site;
+    const server = { name: 'Production', protocol: 'sftp' } as Server;
+    const outputs = [formatPreview(ctx, result, site, server), formatNumberedPreview(ctx, result), formatPlanForEditor(result, site, server)];
+    for (const output of outputs) {
+      assert.ok(output.includes('evil'), output);
+      // eslint-disable-next-line no-control-regex -- control characters are what must not appear
+      assert.ok(!/[\u0000-\u0008\u000b-\u001f\u007f]/.test(output.replaceAll('\n', '')), JSON.stringify(output));
+    }
+    ctx.close();
+  } finally {
+    home.cleanup();
+  }
 });
 
 test('toJSON never carries more than paths, sizes and times', () => {

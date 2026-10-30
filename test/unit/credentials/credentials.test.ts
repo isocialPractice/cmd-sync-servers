@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { openSecret, sealSecret, secretBinding } from '../../../src/credentials/binding.ts';
 import { EnvSecretSource } from '../../../src/credentials/env.ts';
 import { createKeyringStore, keyringName, openKeyringStore, type KeyringEntry } from '../../../src/credentials/keyring.ts';
 import { lookupSecret } from '../../../src/credentials/lookup.ts';
@@ -81,6 +82,30 @@ test('lookup reads the saved store only when the server saves its password', asy
   const env = new EnvSecretSource({ SYNC_SERVERS_PASSWORD: 'from-env' });
   assert.equal(await lookupSecret(request, { store, env, savePassword: true }), 'saved');
   assert.equal(await lookupSecret(request, { store, env, savePassword: false }), 'from-env');
+});
+
+test('a saved secret is sent only to the protocol, address and user it was saved for', async () => {
+  const server = { protocol: 'sftp', host: 'sftp.example.com', port: undefined, username: 'demo-user' } as const;
+  const store = new MemoryCredentialStore();
+  await store.set(ref, sealSecret('saved', server));
+  const binding = secretBinding(server);
+  assert.equal(await lookupSecret(request, { store, savePassword: true, binding }), 'saved');
+  assert.equal(secretBinding({ ...server, port: 22, host: 'SFTP.example.com' }), binding, 'the default port and the case of the host do not matter');
+  for (const changed of [
+    { ...server, host: 'sftp.example.org' },
+    { ...server, port: 2222 },
+    { ...server, username: 'jane.doe' },
+    { ...server, protocol: 'ftp' as const },
+  ]) {
+    await assert.rejects(
+      lookupSecret(request, { store, savePassword: true, binding: secretBinding(changed), env: new EnvSecretSource({}) }),
+      (error) => isSyncError(error, 'E_AUTH') && error.message.includes('saved for another protocol, address or user'),
+    );
+  }
+  const env = new EnvSecretSource({ SYNC_SERVERS_PASSWORD: 'from-env' });
+  assert.equal(await lookupSecret(request, { store, env, savePassword: true, binding: secretBinding({ ...server, port: 2222 }) }), 'from-env');
+  assert.equal(openSecret('saved', server), undefined, 'an unsealed value is never sent');
+  assert.equal(secretBinding({ protocol: 'local', host: undefined, port: undefined, username: undefined }).length, 64);
 });
 
 test('lookup asks last, and registers what it finds with the redactor', async () => {

@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
 import { isSyncError } from '../errors.ts';
+import { safeText } from '../terminal-text.ts';
 import { VERSION } from '../version.ts';
 import { stringOption, type CommandSpec, type OptionSpecs, type OptionValues } from './command.ts';
 import { cloakCommand, uncloakCommand } from './commands/cloak.ts';
@@ -166,7 +167,8 @@ function errorCode(error: unknown): string {
 }
 
 function report(ctx: CommandContext, command: CommandSpec, error: unknown): void {
-  const redact = (text: string): string => ctx.logger.redactor.redact(text);
+  // Messages can carry a server's reply or a file name: secrets removed, control characters escaped.
+  const redact = (text: string): string => safeText(ctx.logger.redactor.redact(text));
   const message = redact(error instanceof Error ? error.message : String(error));
   ctx.logger.error(message, { code: errorCode(error) });
   if (ctx.flags.json) {

@@ -1,7 +1,7 @@
-import { randomBytes } from 'node:crypto';
-import { createReadStream, createWriteStream, type Stats } from 'node:fs';
-import { lstat, mkdir, rename, rm, rmdir, utimes } from 'node:fs/promises';
+import { constants as fsConstants, type Stats } from 'node:fs';
+import { lstat, mkdir, open, rename, rm, rmdir, utimes, type FileHandle } from 'node:fs/promises';
 import path from 'node:path';
+import type { Readable } from 'node:stream';
 import type { Server, Site } from '../config/schema.ts';
 import { isSyncError, SyncError } from '../errors.ts';
 import type { Logger } from '../log/logger.ts';
@@ -9,7 +9,8 @@ import type { TransportPool } from '../transport/pool.ts';
 import { withRetry, type RetryOptions } from '../transport/retry.ts';
 import type { Capabilities, RemoteEntry, Transport } from '../transport/types.ts';
 import { STATUS } from './messages.ts';
-import { baseName, childPath, parentPath, ROOT, safeLocalTarget, toRemotePath, type RemotePath } from './paths.ts';
+import { cappedFile, partName, partPath } from './part.ts';
+import { parentPath, ROOT, safeLocalTarget, toRemotePath, type RemotePath } from './paths.ts';
 import type { PlanItem, SyncPlan } from './plan.ts';
 import type { Recovery } from './recovery.ts';
 import type { SyncRecords } from './state.ts';
@@ -115,17 +116,35 @@ function stale(target: string): SyncError {
   return new SyncError('E_STALE_ITEM', `${target}: ${STATUS.stale}`);
 }
 
-/** A sibling name for the partial copy, valid on every system. */
-function partName(target: RemotePath): string {
-  const random = randomBytes(4).toString('hex');
-  const name = `.${baseName(target)}.sync-servers-${random}.part`;
-  return Buffer.byteLength(name, 'utf8') <= 255 ? name : `.sync-servers-${random}.part`;
-}
-
-function partPath(target: RemotePath): RemotePath {
-  const parent = parentPath(target) ?? ROOT;
-  const checked = childPath(parent, partName(target));
-  return checked.ok ? checked.path : toRemotePath(`${parent === ROOT ? '' : `${parent}/`}.sync-servers-${randomBytes(4).toString('hex')}.part`);
+/**
+ * Opens a local file to upload, refusing it when it is no longer the file
+ * that was checked: a link put in its place after the check is not followed
+ * on POSIX, and on every system the open file must be the same one (device
+ * and inode) with the same size.
+ */
+async function openUnchanged(file: string, checked: Stats, target: RemotePath): Promise<Readable> {
+  const flags = fsConstants.O_RDONLY | (process.platform === 'win32' ? 0 : fsConstants.O_NOFOLLOW);
+  let handle: FileHandle;
+  try {
+    handle = await open(file, flags);
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && (error.code === 'ELOOP' || error.code === 'ENOENT')) {
+      throw stale(target);
+    }
+    throw error;
+  }
+  try {
+    const info = await handle.stat();
+    // Windows reports no device number for a path, only for an open file, so there the inode decides.
+    const sameDevice = process.platform === 'win32' || info.dev === checked.dev;
+    if (!info.isFile() || !sameDevice || info.ino !== checked.ino || info.size !== checked.size) {
+      throw stale(target);
+    }
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
+  return handle.createReadStream();
 }
 
 class Run {
@@ -214,9 +233,15 @@ class Run {
       await this.#removeEmptiedFolders(deletes);
     }
     await records.save();
-    await recovery.prune().catch((error: unknown) => {
+    const overLimit = await recovery.prune().catch((error: unknown) => {
       this.#context.logger.warn('The recovery folder could not be pruned.', { error });
+      return false;
     });
+    if (overLimit) {
+      this.#context.logger.warn(`The local files kept from this run hold more than the recovery limit of ${String(this.#context.site.sync.recovery.maxMegabytes)} MB. They are kept until the next run; older runs were removed.`, {
+        folder: recovery.runDir,
+      });
+    }
 
     const listed = new Set(this.#results.map((result) => result.id));
     for (const item of plan.items) {
@@ -344,15 +369,24 @@ class Run {
     const capabilities = await this.#context.capabilities();
     await this.#ensureRemoteDirs(parentPath(target), transport);
     const part = partPath(target);
+    let renaming = false;
     try {
-      await transport.put(createReadStream(localFile), part, this.#options.signal);
+      await transport.put(await openUnchanged(localFile, localInfo, target), part, this.#options.signal);
       const uploaded = await transport.stat(part);
       if (uploaded?.size !== localInfo.size) {
         throw new SyncError('E_REMOTE', `Uploading ${target}: the server holds ${String(uploaded?.size ?? 0)} of ${String(localInfo.size)} bytes.`, { transient: true });
       }
+      renaming = true;
       await transport.rename(part, target, true);
     } catch (error) {
-      await transport.remove(part).catch(() => undefined);
+      // A server without an atomic replace removes the old copy before the rename; if the
+      // rename then fails, the partial copy is the only one left, so it stays.
+      const oldCopyThere = !renaming || (await transport.stat(target).catch(() => undefined)) !== undefined;
+      if (oldCopyThere) {
+        await transport.remove(part).catch(() => undefined);
+      } else {
+        logger.warn(`The new copy of ${target} could not replace the old one, which is gone. It is kept on the server as ${part}.`);
+      }
       throw error;
     }
     this.#bytes += localInfo.size;
@@ -382,12 +416,13 @@ class Run {
     const part = path.join(path.dirname(safeFile), partName(target));
     let kept: string | undefined;
     try {
-      await transport.get(target, createWriteStream(part, { flags: 'wx' }), this.#options.signal);
+      await transport.get(target, cappedFile(part, { flags: 'wx', maxBytes: remoteNow.size, what: `Downloading ${target}` }), this.#options.signal);
       const downloaded = await lstat(part);
       if (downloaded.size !== remoteNow.size) {
         throw new SyncError('E_REMOTE', `Downloading ${target}: received ${String(downloaded.size)} of ${String(remoteNow.size)} bytes.`, { transient: true });
       }
-      if (localInfo !== undefined) {
+      // With recovery off, the rename replaces the old file in one step, so it is never removed first.
+      if (localInfo !== undefined && recovery.enabled) {
         kept = await recovery.keep(safeFile, target);
       }
       try {

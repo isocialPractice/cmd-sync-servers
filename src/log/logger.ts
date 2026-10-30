@@ -1,5 +1,6 @@
 import { closeSync, mkdirSync, openSync, readdirSync, rmSync, writeSync } from 'node:fs';
 import path from 'node:path';
+import { safeLine } from '../terminal-text.ts';
 
 /** How much a logger records, from `error` only to everything with `debug`. */
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
@@ -170,12 +171,16 @@ export function memorySink(): LogSink & { readonly records: LogRecord[] } {
   };
 }
 
-/** Writes records as text lines, such as `warn: message {"key":"value"}`, to a stream like stderr. */
+/**
+ * Writes records as text lines, such as `warn: message {"key":"value"}`, to a
+ * stream like stderr. Control characters are escaped, since protocol traces
+ * carry a server's own text.
+ */
 export function textSink(stream: { write(text: string): unknown }): LogSink {
   return {
     write: (record) => {
       const fields = record.fields === undefined ? '' : ` ${JSON.stringify(record.fields)}`;
-      stream.write(`${record.level}: ${record.message}${fields}\n`);
+      stream.write(`${safeLine(`${record.level}: ${record.message}${fields}`)}\n`);
     },
   };
 }

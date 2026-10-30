@@ -17,7 +17,9 @@ export const STATUS = {
   deleteRemoteNeverSynced: 'On the server only and never synchronized. Check to delete it.',
   deleteLocalNeverSynced: 'On this computer only and never synchronized. Check to delete it.',
   caseCollision: 'Another file differs from this name only by case. Neither is transferred.',
+  caseRename: 'Spelled differently on the other side only by case, which some servers cannot tell apart. Neither is transferred: use one spelling on both sides.',
   symlink: 'Symbolic link skipped.',
+  underLink: 'Inside a linked folder, which is never written through. Skipped.',
   notAFile: 'Not a regular file. Skipped.',
   stale: 'Changed since the preview. Skipped.',
 } as const;

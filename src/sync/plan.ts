@@ -296,7 +296,25 @@ export class SyncPlan {
           }
         }
       }
+    } else {
+      // A name spelled one way here and only another way on the server, as after renaming by
+      // case: a server that ignores case would take the Put and the delete for the same file.
+      const remoteByFold = new Map<string, RemotePath[]>();
+      for (const target of input.remote.files.keys()) {
+        remoteByFold.set(fold(target), [...(remoteByFold.get(fold(target)) ?? []), target]);
+      }
+      for (const target of input.local.files.keys()) {
+        const others = input.remote.files.has(target) ? [] : (remoteByFold.get(fold(target)) ?? []).filter((other) => !input.local.files.has(other));
+        for (const twin of others.length === 0 ? [] : [target, ...others]) {
+          if (!blocked.has(twin)) {
+            problemRow(twin, 'case', STATUS.caseRename, input.local.files.get(twin), input.remote.files.get(twin));
+            blocked.add(twin);
+          }
+        }
+      }
     }
+    // Nothing is transferred inside a linked folder on either side: a server can follow a link out of its root.
+    const links = [...input.local.problems, ...input.remote.problems].filter((problem) => problem.kind === 'symlink').map((problem) => `${problem.path}/`);
 
     const paths = new Set<string>([...input.local.files.keys(), ...input.remote.files.keys(), ...input.records.keys()]);
     const rows: Omit<MutableItem, 'id'>[] = [];
@@ -312,6 +330,10 @@ export class SyncPlan {
       }
       const local = input.local.files.get(checked.path);
       const remote = input.remote.files.get(checked.path);
+      if (links.some((link) => target.startsWith(link))) {
+        problemRow(target, 'symlink', STATUS.underLink, local, remote);
+        continue;
+      }
       const record = input.records.get(target);
       const state = classify(local, remote, record, input.compare);
       if (state === undefined) {
@@ -504,18 +526,27 @@ export class SyncPlan {
   /**
    * Copies the choices of a saved plan onto this fresh one, after checking
    * that both were built from the same scan. A plan whose scan no longer
-   * matches is refused.
+   * matches is refused, and so is a saved row this plan does not hold or an
+   * action its file cannot take; every row is checked before any is applied,
+   * so a refused plan leaves this one as it was.
    */
   applySaved(saved: SavedPlan): void {
     if (saved.fingerprint !== this.fingerprint || saved.siteId !== this.siteId || saved.serverId !== this.serverId) {
       throw new SyncError('E_STALE_ITEM', 'The site or the server changed since the plan was saved. Make a new plan.');
     }
-    for (const row of saved.items) {
+    const rows = saved.items.map((row) => {
       const item = this.#require(row.path);
       if (item.id !== row.id) {
         throw new SyncError('E_PLAN_INVALID', `Row ${String(row.id)} of the saved plan does not match "${row.path}".`);
       }
-      if (row.action !== item.action) {
+      const keeps = row.action === item.action;
+      if (!keeps && (row.action === 'resolve' || !this.allowedActions(item.id).includes(row.action))) {
+        throw new SyncError('E_PLAN_INVALID', `"${item.path}" cannot take the action ${row.action}.`);
+      }
+      return { item, row, keeps };
+    });
+    for (const { item, row, keeps } of rows) {
+      if (!keeps) {
         this.setAction(item.id, row.action);
       }
       if (row.checked !== null && item.state !== 'problem' && item.action !== 'resolve') {

@@ -42,7 +42,7 @@ describe('nameProblem', () => {
   });
 
   test('rejects NUL and every control character', () => {
-    for (const name of ['bad\u0000name', 'line\nbreak', 'tab\there', 'bell\u0007', 'del\u007f', '\u001b[31m']) {
+    for (const name of ['bad\u0000name', 'line\nbreak', 'tab\there', 'bell\u0007', 'del\u007f', '\u001b[31m', 'csi\u009b2J', 'c1\u0080']) {
       assert.equal(nameProblem(name, 'linux'), 'contains a control character', JSON.stringify(name));
     }
   });
@@ -54,9 +54,22 @@ describe('nameProblem', () => {
     assert.equal(nameProblem('é'.repeat(127)), undefined);
   });
 
-  test('on Windows, rejects backslashes, forbidden characters and trailing dots or spaces', () => {
+  test('rejects backslashes everywhere, since Windows servers read them as separators', () => {
     assert.equal(nameProblem('a\\b.txt', 'win32'), 'contains a backslash');
-    assert.equal(nameProblem('a\\b.txt', 'linux'), undefined);
+    assert.equal(nameProblem('..\\..\\x', 'linux'), 'contains a backslash');
+  });
+
+  test('on Windows, rejects names shaped like short 8.3 names', () => {
+    for (const name of ['GIT~1', 'git~1', 'PROGRA~1', 'NOTES~12.TXT', 'a~1.b']) {
+      assert.match(nameProblem(name, 'win32') ?? '', /short 8\.3 name/, name);
+      assert.equal(nameProblem(name, 'linux'), undefined, name);
+    }
+    for (const name of ['backup~', 'a~b.txt', 'longname~1.txt', 'file~1.html']) {
+      assert.equal(nameProblem(name, 'win32'), undefined, name);
+    }
+  });
+
+  test('on Windows, rejects forbidden characters and trailing dots or spaces', () => {
     for (const char of ['<', '>', ':', '"', '|', '?', '*']) {
       assert.match(nameProblem(`a${char}b`, 'win32') ?? '', /character Windows does not allow/);
       assert.equal(nameProblem(`a${char}b`, 'darwin'), undefined);
@@ -233,6 +246,19 @@ describe('safeLocalTarget', () => {
       return;
     }
     await assert.rejects(safeLocalTarget(path.join(root, 'site'), toRemotePath('linked/secret.txt')), unsafe);
+  });
+
+  test('refuses a target reached through another name for a folder: a link inside the root, or a short name', async () => {
+    const site = path.join(root, 'site');
+    const another = (error: unknown): boolean => unsafe(error) && error instanceof Error && error.message.includes('another name for a folder');
+    const realCss = path.join(site, 'css');
+    // The folder css answers to the real path of another folder, as GIT~1 does for .git on Windows.
+    const elsewhere = (file: string): Promise<string> => Promise.resolve(file === realCss ? path.join(site, 'other') : file);
+    await assert.rejects(safeLocalTarget(site, toRemotePath('css/site.css'), elsewhere), another);
+    const deeper = (file: string): Promise<string> => Promise.resolve(file === realCss ? path.join(realCss, 'inner') : file);
+    await assert.rejects(safeLocalTarget(site, toRemotePath('css/site.css'), deeper), another);
+    const identity = (file: string): Promise<string> => Promise.resolve(file);
+    assert.equal(await safeLocalTarget(site, toRemotePath('css/site.css'), identity), path.join(realCss, 'site.css'));
   });
 
   test('refuses a target that is itself a symbolic link or junction', async (t) => {

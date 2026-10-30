@@ -5,6 +5,7 @@ import { createTwoFilesPatch } from 'diff';
 import type { Server, Site } from '../../config/schema.ts';
 import { resultLine, type SyncResult } from '../../sync/execute.ts';
 import { isInside, ROOT, toRemotePath } from '../../sync/paths.ts';
+import { safeLine, safeText } from '../../terminal-text.ts';
 import { SyncPlan, type PlanItem, type SavedPlan } from '../../sync/plan.ts';
 import { SyncSession, type StatusEntry } from '../../sync/session.ts';
 import { DIRECTION_TITLES, type Action, type Direction } from '../../sync/types.ts';
@@ -41,11 +42,8 @@ const PREVIEW_OPTION: OptionSpecs = {
   preview: { type: 'string', value: '<mode>', description: 'Show the preview in the terminal UI (tui), your editor, plain prompts, or print it (none)' },
 };
 
-/** A path for display: control characters are shown escaped, never sent to the terminal. */
-function displayPath(target: string): string {
-  // eslint-disable-next-line no-control-regex -- control characters are what this escapes
-  return /[\u0000-\u001f\u007f]/.test(target) ? JSON.stringify(target).slice(1, -1) : target;
-}
+/** A path for display: control and bidi characters are shown escaped, never sent to the terminal. */
+const displayPath = safeLine;
 
 /** The site-relative paths of command-line arguments, which must lie inside the site's local root. */
 export function sitePaths(ctx: CommandContext, site: Site, args: readonly string[]): string[] {
@@ -104,7 +102,7 @@ function printResult(ctx: CommandContext, result: SyncResult): void {
   ctx.out(`${resultLine(result)}\n`);
   for (const item of result.items) {
     if (item.outcome === 'failed' || item.outcome === 'stale') {
-      ctx.out(`  ${paint(item.outcome === 'stale' ? 'stale' : 'failed', 'red', ctx.color)}  ${displayPath(item.path)}: ${item.error?.message ?? ''}\n`);
+      ctx.out(`  ${paint(item.outcome === 'stale' ? 'stale' : 'failed', 'red', ctx.color)}  ${displayPath(item.path)}: ${safeText(item.error?.message ?? '')}\n`);
     }
   }
   if (result.unresolved > 0) {
@@ -469,7 +467,8 @@ export const diffCommand: CommandSpec = {
         if (identical) {
           ctx.out('The local and remote copies are identical.\n');
         } else if (patch !== undefined) {
-          ctx.out(patch);
+          // File contents are shown with their control characters escaped, so a file cannot drive the terminal.
+          ctx.out(safeText(patch));
         } else {
           const row = (info: typeof comparison.local, hash: string | undefined): string =>
             info === undefined ? 'missing' : `${String(info.size)} bytes, ${info.mtimeMs === undefined ? 'time unknown' : new Date(info.mtimeMs).toISOString()}, sha256 ${hash ?? ''}`;

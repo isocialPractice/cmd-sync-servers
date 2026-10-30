@@ -8,6 +8,64 @@ Until the first stable release, versions use the pre-release form
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0.6.0] - 2026-10-29
+
+### Added
+
+- A release workflow: each published GitHub release is built from its tag
+  after checking that the tag, the version files and the changelog agree and
+  that every test passes. The release carries the package tarball, a
+  CycloneDX SBOM, a Sigstore attestation bundle and `SHA256SUMS`. When
+  switched on, the same attested tarball is published to npm with trusted
+  publishing and provenance, under the `alpha` tag.
+- How to verify a release, and the threats checked with the test that
+  proves each, on the security page.
+
+- `secretBinding`, `sealSecret` and `openSecret` in the library API, for
+  credential stores that keep saved passwords for the engine.
+
+### Changed
+
+- A local or remote folder that is a symbolic link is never written
+  through, and the files inside it become problem rows. With
+  `follow-inside-root`, linked folders are still read for uploads.
+
+### Security
+
+- A saved password is tied to the protocol, address, port and user it was
+  saved for, and is not sent after any of them changes. Passwords saved by
+  earlier alphas are asked for once more.
+- Server replies, the FTP banner, debug traces, diffs and names are shown
+  with control and bidirectional characters escaped, so a server cannot send
+  escape sequences to the terminal. Names with C1 control characters are
+  refused.
+- Backslashes are refused in names on every platform, and names shaped like
+  Windows short 8.3 names, such as `GIT~1`, on Windows. A download is never
+  written through a folder reached by another name, a link or a junction,
+  and an upload refuses a file swapped for a link after it was checked.
+- A download stops as soon as a server sends more than the size it listed.
+  A remote scan stops beyond 1,000,000 entries or 64 levels of folders.
+- A file renamed only by case on one side is held back, so a server that
+  ignores case never takes its upload and the delete of the old spelling
+  for the same file.
+- The recovery folder keeps the files of the current run when it is
+  pruned. With recovery off, a Get replaces the local file in one step, and
+  a failed replacement on a server without atomic renames keeps the new copy
+  under its partial name. Partial copies left by a crash are never
+  synchronized as files.
+- Deletes are refused at the top of a Windows server's drive (`/C:/`) as at
+  `/`.
+- Taking over a stale settings lock lets one waiter in at a time, and a
+  process only ever removes its own lock.
+- A saved plan (`--plan-in`) that adds a path, renumbers a row or chooses an
+  action its file cannot take is refused whole, leaving the fresh plan as it
+  was.
+- FTPS with `--ca-file` trusts the given authority in addition to the
+  system's, as documented.
+- The release workflow builds and tests without signing or publishing
+  rights, attests in a job that runs no repository code, checks out the tag
+  by its full ref, and never replaces files already attached to a release.
+
 ## [1.0.0-alpha.0.5.0] - 2026-10-29
 
 ### Added
@@ -174,7 +232,8 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...HEAD
+[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.0...HEAD
+[1.0.0-alpha.0.6.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...v1.0.0-alpha.0.6.0
 [1.0.0-alpha.0.5.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...v1.0.0-alpha.0.5.0
 [1.0.0-alpha.0.4.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...v1.0.0-alpha.0.4.0
 [1.0.0-alpha.0.3.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...v1.0.0-alpha.0.3.0

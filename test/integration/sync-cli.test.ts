@@ -206,12 +206,23 @@ test('put, get, diff, mark-synced and state reset', async () => {
   });
 });
 
-test('sync over SFTP from the CLI, with the password from the environment', async () => {
+test('sync over SFTP from the CLI, with the password from the environment, never shows it in any output', async () => {
   await withSite('sftp', async (rig, run) => {
     rig.write('local', 'index.html', 'home');
-    const result = await run('sync', '--put', '--yes', '--debug');
-    assert.equal(result.code, 0, result.stderr);
+    const first = await run('sync', '--put', '--yes', '--debug');
+    assert.equal(first.code, 0, first.stderr);
     assert.equal(rig.read('remote', 'index.html'), 'home');
-    assert.ok(!result.stderr.includes(rig.rig.password));
+    assert.match(first.stderr, /debug: /, 'the debug traces were on');
+    const runs = [
+      first,
+      await run('status', '--json', '--debug'),
+      await run('sync', '--both', '--json', '--debug'),
+      await run('diff', 'index.html', '--debug'),
+      await run('server', 'test', '--json', '--debug'),
+    ];
+    for (const result of runs) {
+      assert.ok(!result.stdout.includes(rig.rig.password), 'stdout holds the password');
+      assert.ok(!result.stderr.includes(rig.rig.password), 'stderr holds the password');
+    }
   });
 });

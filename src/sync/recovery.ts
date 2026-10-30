@@ -82,28 +82,37 @@ export class Recovery {
     }
   }
 
-  /** Removes runs older than `keepDays`, then the oldest runs while the total is over `maxMegabytes`. */
-  async prune(now: Date = new Date()): Promise<void> {
+  /**
+   * Removes runs older than `keepDays`, then the oldest runs while the total
+   * is over `maxMegabytes`. The files of this run are never removed, however
+   * old or large: they are what a mistake in this run would need. Resolves
+   * `true` when this run alone holds more than `maxMegabytes`.
+   */
+  async prune(now: Date = new Date()): Promise<boolean> {
     let runs: string[];
     try {
       runs = (await readdir(this.siteDir)).sort();
     } catch (error) {
       if (hasErrorCode(error, 'ENOENT')) {
-        return;
+        return false;
       }
       throw error;
     }
+    const current = path.basename(this.runDir);
     const cutoff = stamp(new Date(now.getTime() - this.#settings.keepDays * 86_400_000));
     const kept: { name: string; size: number }[] = [];
+    let currentSize = 0;
     for (const name of runs) {
       const full = path.join(this.siteDir, name);
-      if (name < cutoff) {
+      if (name === current) {
+        currentSize = await sizeOf(full);
+      } else if (name < cutoff) {
         await rm(full, { recursive: true, force: true });
       } else {
         kept.push({ name, size: await sizeOf(full) });
       }
     }
-    let total = kept.reduce((sum, run) => sum + run.size, 0);
+    let total = kept.reduce((sum, run) => sum + run.size, currentSize);
     const limit = this.#settings.maxMegabytes * 1024 * 1024;
     for (const run of kept) {
       if (total <= limit) {
@@ -112,5 +121,6 @@ export class Recovery {
       await rm(path.join(this.siteDir, run.name), { recursive: true, force: true });
       total -= run.size;
     }
+    return currentSize > limit;
   }
 }

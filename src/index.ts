@@ -48,6 +48,7 @@ export {
   type SecretSource,
 } from './credentials/types.ts';
 export { MemoryCredentialStore } from './credentials/memory.ts';
+export { openSecret, sealSecret, secretBinding, type BoundServer } from './credentials/binding.ts';
 export { EnvSecretSource, PASSPHRASE_ENV, PASSWORD_ENV } from './credentials/env.ts';
 export { PromptSecretSource, secretQuestion, type SecretPrompt } from './credentials/prompt.ts';
 export { lookupSecret, type SecretLookupOptions } from './credentials/lookup.ts';

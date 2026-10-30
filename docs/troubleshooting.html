@@ -58,6 +58,8 @@
 <dl>
   <dt>No password is found (<code>E_AUTH</code>)</dt>
   <dd>In a script nothing is asked. Save the password with <code>sync-servers password set</code>, or set <code>SYNC_SERVERS_PASSWORD</code> for the run. In a terminal you are asked when no other source has it.</dd>
+  <dt>"The saved password was saved for another protocol, address or user"</dt>
+  <dd>The server's host, port, user name or protocol changed since the password was saved, so the saved password is not sent there. If the change is yours, save the password again with <code>password set</code>. If it is not, check <code>sites.json</code>: someone may have pointed the server elsewhere.</dd>
   <dt>The password is refused</dt>
   <dd>Save it again with <code>password set</code>. A saved password is read only when the server has <code>savePassword</code> on, which <code>password set</code> turns on.</dd>
   <dt>The credential store cannot be used (<code>E_CREDENTIAL_STORE</code>)</dt>
@@ -80,8 +82,12 @@
 <dl>
   <dt>"Another file differs from this name only by case"</dt>
   <dd>The server has <code>Logo.png</code> and <code>logo.png</code>, and this computer's file system cannot hold both. Neither is transferred. Rename one on the server, then synchronize again.</dd>
+  <dt>"Spelled differently on the other side only by case"</dt>
+  <dd>The file is <code>Logo.png</code> here and <code>logo.png</code> on the server, as after renaming it by case. A server that ignores case would take the upload and the delete for the same file, so neither runs. Rename it on the server to match, then synchronize again.</dd>
   <dt>"Name is not valid on this system"</dt>
-  <dd>The server has a name Windows does not allow, such as one ending in a dot or containing <code>:</code>. Rename it on the server.</dd>
+  <dd>The name holds a backslash, or a name Windows does not allow: one ending in a dot, containing <code>:</code>, or shaped like a short 8.3 name such as <code>GIT~1</code>. Rename it on the server.</dd>
+  <dt>"Inside a linked folder"</dt>
+  <dd>A folder on one side is a symbolic link, so nothing inside it is transferred: a link can lead out of the site. Replace the link with a real folder to synchronize its files.</dd>
 </dl>
 
 <h2 id="other">Other problems</h2>

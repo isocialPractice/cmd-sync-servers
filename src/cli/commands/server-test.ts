@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { ROOT } from '../../sync/paths.ts';
+import { safeLine } from '../../terminal-text.ts';
 import { createTransport } from '../../transport/index.ts';
 import type { Capabilities } from '../../transport/types.ts';
 import { stringOption, type CommandSpec } from '../command.ts';
@@ -87,11 +88,11 @@ export const serverTestCommand: CommandSpec = {
       formatPairs([
         ...(hostKey === undefined ? [] : [['Host key', `${hostKey.algorithm} ${hostKey.fingerprint} (${hostKeyState ?? ''})`] as const]),
         ...(capabilities.tls === undefined ? [] : [['TLS', capabilities.tls] as const]),
-        ...(capabilities.software === undefined || capabilities.software === '' ? [] : [['Server', capabilities.software] as const]),
+        ...(capabilities.software === undefined || capabilities.software === '' ? [] : [['Server', safeLine(capabilities.software)] as const]),
         ['Root', `${server.remoteRoot}, a folder with ${String(entries)} entr${entries === 1 ? 'y' : 'ies'}`],
         ['Times', `${precision(capabilities)}${capabilities.canSetMtime ? '; can be set' : '; cannot be set'}`],
         ['Replace', capabilities.atomicReplace ? 'in one step' : 'remove, then rename'],
-        ...(capabilities.features.length === 0 ? [] : [['Features', capabilities.features.join(', ')] as const]),
+        ...(capabilities.features.length === 0 ? [] : [['Features', safeLine(capabilities.features.join(', '))] as const]),
       ]),
     );
     for (const warning of warnings) {

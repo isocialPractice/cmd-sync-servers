@@ -353,6 +353,22 @@ describe('faults and hostile servers', () => {
       });
     });
 
+    test(`${kind}: a download that keeps failing leaves the local copy as it was`, async () => {
+      await withSite(kind, { faults: { dropAfterBytes: 65_536, dropTransfers: 10 } }, async (rig) => {
+        rig.write('local', 'big.bin', 'old local copy');
+        rig.write('remote', 'big.bin', 'x'.repeat(400_000), LATER);
+        const session = await rig.open();
+        try {
+          const result = await session.execute(await session.plan({ direction: 'get' }));
+          assert.equal(result.failed, 1, JSON.stringify(result.items));
+          assert.equal(rig.read('local', 'big.bin'), 'old local copy');
+          assert.deepEqual(readdirSync(rig.localDir).filter((name) => name.includes('.part')), []);
+        } finally {
+          await session.close();
+        }
+      });
+    });
+
     test(`${kind}: hostile names and case twins become rows that are never written locally`, async () => {
       const names = ['../escape', 'CON.txt', 'a\\b.txt', 'Index.html', 'bad\u0000name'];
       await withSite(kind, { faults: { hostileNames: names, listingFolder: '/site' } }, async (rig) => {
@@ -378,6 +394,57 @@ describe('faults and hostile servers', () => {
       });
     });
   }
+
+  test('local: with recovery off, a Get replaces the local file in one step and keeps nothing', async () => {
+    await withSite('local', { site: { sync: { recovery: { enabled: false } } } }, async (rig) => {
+      rig.write('local', 'page.html', 'old local copy');
+      rig.write('remote', 'page.html', 'new server copy', LATER);
+      const session = await rig.open();
+      try {
+        const result = await session.execute(await session.plan({ direction: 'get' }));
+        assert.equal(result.done, 1, JSON.stringify(result.items));
+        assert.equal(rig.read('local', 'page.html'), 'new server copy');
+        assert.equal(result.items[0]?.recoveredTo, undefined);
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  test('local: partial copies left by a crash are never synchronized', async () => {
+    await withSite('local', {}, async (rig) => {
+      rig.write('local', 'index.html', 'home');
+      rig.write('local', '.index.html.sync-servers-0a1b2c3d.part', 'half a file');
+      rig.write('remote', 'css/.site.css.sync-servers-99887766.part', 'half');
+      const session = await rig.open();
+      try {
+        const plan = await session.plan({ direction: 'both' });
+        assert.deepEqual(plan.items.map((item) => item.path), ['index.html']);
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  test('sftp: an upload that keeps stalling leaves the server copy as it was', async () => {
+    await withSite('sftp', { faults: { stallTransfers: 20 } }, async (rig) => {
+      const serverId = rig.site.servers[0]?.id ?? '';
+      await rig.registry.updateServer(rig.site.id, serverId, (server) => {
+        server.options.timeoutSeconds = 1;
+      });
+      rig.write('remote', 'page.html', 'old server copy');
+      rig.write('local', 'page.html', 'new local copy', LATER);
+      const session = await rig.open();
+      try {
+        const result = await session.execute(await session.plan({ direction: 'put' }));
+        assert.equal(result.failed, 1, JSON.stringify(result.items));
+        assert.equal(rig.read('remote', 'page.html'), 'old server copy');
+        assert.deepEqual(readdirSync(rig.remoteDir).filter((name) => name.includes('.part')), []);
+      } finally {
+        await session.close();
+      }
+    });
+  });
 
   test('sftp: a new host key is pinned through the session, and a refused one stops the plan', async () => {
     await withSite('sftp', { unpinned: true }, async (rig) => {

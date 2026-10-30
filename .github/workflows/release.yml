@@ -1,0 +1,177 @@
+name: Release
+
+# Runs when a GitHub release is published, or by hand for an existing tag.
+# Each job holds only what it needs:
+#   build    checks out the tag, checks that it agrees with the version files
+#            and the changelog, runs every test, packs the tarball and writes
+#            the SBOM. It can read the repository and nothing more.
+#   attest   attests the tarball and the SBOM. It runs no code from the
+#            repository, so nothing it installs can use its signing token.
+#   attach   adds the files, the attestation bundle and SHA256SUMS to the
+#            release, refusing to replace files already there.
+#   publish  runs only when the repository variable NPM_PUBLISH is "true", in
+#            the "npm" environment, and publishes the attested tarball with
+#            npm trusted publishing and the alpha tag.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag of an existing release, such as v1.0.0-alpha.0.6.0'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  build:
+    name: Check, test and pack
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      base: ${{ steps.pack.outputs.base }}
+    steps:
+      - name: Check the tag name
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "\"$TAG\" is not a version tag such as v1.0.0-alpha.0.6.0." >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A full ref, so a branch with the same name as the tag can never be built instead.
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Check the tag, the version files and the changelog
+        run: node scripts/release-check.ts "$TAG"
+      - name: Test
+        run: npm test
+      - name: Check the package contents
+        run: npm run pack:check
+      - name: Pack and write the SBOM
+        id: pack
+        run: |
+          mkdir dist
+          npm pack --ignore-scripts --pack-destination dist
+          tarball="$(cd dist && ls -- *.tgz)"
+          base="${tarball%.tgz}"
+          npm sbom --sbom-format cyclonedx --omit dev > "dist/${base}.cdx.json"
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files
+          path: |
+            dist/*.tgz
+            dist/*.cdx.json
+          retention-days: 7
+          if-no-files-found: error
+
+  attest:
+    name: Attest
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      - name: Attest the tarball and the SBOM
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.tgz
+            dist/*.cdx.json
+      - name: Keep the attestation bundle
+        env:
+          BASE: ${{ needs.build.outputs.base }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          mkdir bundle
+          cp -- "$BUNDLE" "bundle/${BASE}.sigstore.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: attestation
+          path: bundle/*.sigstore.json
+          retention-days: 7
+          if-no-files-found: error
+
+  attach:
+    name: Attach to the release
+    needs: [build, attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: attestation
+          path: dist
+      - name: Write SHA256SUMS
+        run: |
+          cd dist
+          sha256sum -- *.tgz *.cdx.json *.sigstore.json > SHA256SUMS
+          cat SHA256SUMS
+      - name: Attach the files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" dist/*.tgz dist/*.cdx.json dist/*.sigstore.json dist/SHA256SUMS --repo "$GITHUB_REPOSITORY"
+
+  publish-npm:
+    name: Publish to npm
+    needs: [build, attach]
+    if: vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+      attestations: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Check the tarball against its attestation from this workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify dist/*.tgz --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+      - name: Check that npm can publish with trusted publishing
+        run: |
+          version="$(npm --version)"
+          if ! printf '%s\n%s\n' 11.5.1 "$version" | sort --version-sort --check=quiet; then
+            echo "npm $version cannot use trusted publishing; it needs 11.5.1 or later." >&2
+            exit 1
+          fi
+      - name: Publish with the alpha tag
+        run: npm publish dist/*.tgz --tag alpha --access public --provenance --ignore-scripts
