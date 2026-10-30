@@ -8,6 +8,15 @@ Until the first stable release, versions use the pre-release form
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0.6.1] - 2026-10-30
+
+### Fixed
+
+- A local file saved again within the time tolerance of its last sync, at
+  the same size, counted as unchanged and was not put. A local file is now
+  held to its own record exactly; the tolerance applies to server times
+  only.
+
 ## [1.0.0-alpha.0.6.0] - 2026-10-29
 
 ### Added
@@ -232,7 +241,8 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.0...HEAD
+[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.1...HEAD
+[1.0.0-alpha.0.6.1]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.0...v1.0.0-alpha.0.6.1
 [1.0.0-alpha.0.6.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...v1.0.0-alpha.0.6.0
 [1.0.0-alpha.0.5.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...v1.0.0-alpha.0.5.0
 [1.0.0-alpha.0.4.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...v1.0.0-alpha.0.4.0

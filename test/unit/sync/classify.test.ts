@@ -86,6 +86,11 @@ describe('classify', () => {
     });
   }
 
+  test('a local file saved again within the tolerance is a change; a server time within it is not', () => {
+    assert.equal(classify(obs(10, T + 1000), base, recorded, options), 'local-changed');
+    assert.equal(classify(base, obs(10, T + 1000), recorded, options), 'in-sync');
+  });
+
   test('the two clocks never have to agree once a record exists', () => {
     const skewed = record(obs(10, T), obs(10, T + 3_600_000));
     assert.equal(classify(obs(10, T), obs(10, T + 3_600_000), skewed, options), 'in-sync');

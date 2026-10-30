@@ -88,7 +88,11 @@ function withRecord(local: Observation | undefined, remote: Observation | undefi
     }
     return hasChanged(remote, record.remote, options) ? 'deleted-locally-changed-remotely' : 'local-deleted';
   }
-  const localChanged = hasChanged(local, record.local, options);
+  // The local disk reports the same time for an unchanged file every time, so
+  // a local file is held to its own record exactly; only server times, which
+  // listings round, get the tolerance. A file saved again within the
+  // tolerance with the same size is still a change.
+  const localChanged = hasChanged(local, record.local, { ...options, toleranceMs: 0 });
   if (remote === undefined) {
     return localChanged ? 'changed-locally-deleted-remotely' : 'remote-deleted';
   }
