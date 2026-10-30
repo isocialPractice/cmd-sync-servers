@@ -15,6 +15,7 @@ import {
   serverSetRemoteCommand,
   serverSetTestingCommand,
 } from './commands/server.ts';
+import { serverTestCommand } from './commands/server-test.ts';
 import { folderProblem } from './commands/shared.ts';
 import { shellInitCommand } from './commands/shell.ts';
 import { siteAddCommand, siteEditCommand, sitePathCommand, siteRemoveCommand, siteShowCommand, sitesCommand } from './commands/site.ts';
@@ -68,6 +69,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   serverAddCommand,
   serverEditCommand,
   serverRemoveCommand,
+  serverTestCommand,
   serverSetRemoteCommand,
   serverSetTestingCommand,
   passwordSetCommand,

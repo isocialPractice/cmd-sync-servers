@@ -29,6 +29,9 @@ task.bat
 # repository beside this one.
 /vscode-sync-servers/
 
+# Throwaway certificates for the Docker interop sandbox
+sandbox/run/
+
 # Built output, installed dependencies and packages
 out/
 _site/

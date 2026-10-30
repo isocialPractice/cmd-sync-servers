@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { SyncError } from '../errors.ts';
 import { silentLogger, type Logger } from '../log/logger.ts';
+import { isInside } from '../sync/paths.ts';
 import { hasErrorCode, writeFileAtomic } from './files.ts';
 import { withFileLock } from './lock.ts';
 import { migrateSitesFile } from './migrate.ts';
@@ -58,15 +59,6 @@ function realOrResolved(value: string): string {
   } catch {
     return path.resolve(value);
   }
-}
-
-/** True when `target` is `root` or inside it. Ignores case where the platform's file systems usually do. */
-export function isInside(root: string, target: string): boolean {
-  const ignoreCase = process.platform === 'win32' || process.platform === 'darwin';
-  const a = ignoreCase ? root.toLowerCase() : root;
-  const b = ignoreCase ? target.toLowerCase() : target;
-  const relative = path.relative(a, b);
-  return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 /** Parses the text of `sites.json`, migrating older versions. `source` names the file in errors. */

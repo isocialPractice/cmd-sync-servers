@@ -37,6 +37,8 @@ explicitly with the commands below, never from npm lifecycle hooks.
 | `npm run test:integration` | Integration tests in `test/integration/` |
 | `npm run test:e2e` | Builds, then runs the CLI as a child process from `test/e2e/` |
 | `npm run test:docs` | Documentation checks in `test/docs/` |
+| `npm run test:docker` | The interop tests against real OpenSSH and vsftpd containers (see below) |
+| `npm run sandbox` | Starts local SFTP, FTPS and FTP test servers with throwaway credentials, until Ctrl+C |
 | `npm run pack:check` | Builds, then fails if `npm pack` would ship anything outside the `files` allowlist |
 | `npm run docs:api` | Generates the API reference into `_site/api/` |
 
@@ -57,7 +59,17 @@ request. CI runs the same commands on Linux, macOS and Windows with Node.js
 - A unit test fails when `schema/site.schema.json` differs from the zod
   schema. Run `npm run schema` and commit the file after changing the schema.
 - Tests never connect to a real server. Protocol tests run against sandbox
-  servers bound to `127.0.0.1` with credentials generated for each run.
+  servers bound to `127.0.0.1` with credentials generated for each run: an
+  SFTP server on `ssh2` and an FTP and FTPS server in `test/sandbox/`, which
+  can also drop or stall a connection, refuse a rename, answer 421, or list
+  hostile names. Their certificates and host keys are generated in memory.
+- `test/docker/` runs the same transport contract against real OpenSSH and
+  vsftpd containers (`sandbox/compose.yaml`). CI runs it on Linux. To run it
+  locally, write a certificate with
+  `node test/sandbox/docker-setup.ts sandbox/run/tls`, set `SANDBOX_USER`
+  and a generated `SANDBOX_PASSWORD`, run
+  `docker compose -f sandbox/compose.yaml up -d --build`, then
+  `SANDBOX_DOCKER=1 npm run test:docker`.
 - Never commit a private key, certificate or password, even a test one.
   Generate them during the test.
 

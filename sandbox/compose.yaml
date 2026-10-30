@@ -1,0 +1,32 @@
+# Real servers for the interop tests: OpenSSH for SFTP and vsftpd for FTPS.
+# Every port is bound to 127.0.0.1 only. The user name and password come from
+# the environment and are generated per run; the FTPS certificate is written
+# to ./run/tls by test/sandbox/docker-setup.ts and is never committed.
+#
+#   SANDBOX_USER=demo-user SANDBOX_PASSWORD=<generated> \
+#     docker compose -f sandbox/compose.yaml up -d --build
+name: sync-servers-sandbox
+
+services:
+  sftp:
+    build:
+      context: .
+      dockerfile: sftp.Dockerfile
+    environment:
+      SANDBOX_USER: ${SANDBOX_USER:?set SANDBOX_USER}
+      SANDBOX_PASSWORD: ${SANDBOX_PASSWORD:?set SANDBOX_PASSWORD}
+    ports:
+      - 127.0.0.1:2222:22
+
+  ftps:
+    build:
+      context: .
+      dockerfile: ftps.Dockerfile
+    environment:
+      SANDBOX_USER: ${SANDBOX_USER:?set SANDBOX_USER}
+      SANDBOX_PASSWORD: ${SANDBOX_PASSWORD:?set SANDBOX_PASSWORD}
+    volumes:
+      - ./run/tls:/etc/sandbox-tls:ro
+    ports:
+      - 127.0.0.1:2121:21
+      - 127.0.0.1:21100-21110:21100-21110

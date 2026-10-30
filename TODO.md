@@ -50,23 +50,42 @@ the step of the plan that specifies it.
 - [x] The redacting logger, used by every module from here on
   - **Goal**: Resolve to [Phase E1, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e1-configuration-and-site-registry)
   - From: Phase E1 - Configuration and Site Registry
-- [ ] Path safety in `sync/paths.ts`, with the exhaustive hostile-name tests
+- [x] Path safety in `sync/paths.ts`, with the exhaustive hostile-name tests
   - **Goal**: Resolve to [Phase E2, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
   - From: Phase E2 - Transports and Sandbox
-- [ ] The transport interface, the `local` transport and the sandbox harness
+- [x] The transport interface, the `local` transport and the sandbox harness
   - **Goal**: Resolve to [Phase E2, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
   - From: Phase E2 - Transports and Sandbox
-- [ ] The SFTP transport with host key pinning and modern algorithms, and the
+- [x] The SFTP transport with host key pinning and modern algorithms, and the
       in-process SFTP sandbox with fault injection
   - **Goal**: Resolve to [Phase E2, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
   - From: Phase E2 - Transports and Sandbox
-- [ ] The FTP and FTPS transport with certificate verification and the
+- [x] The FTP and FTPS transport with certificate verification and the
       insecure opt-in, and the in-process FTP and FTPS sandbox
   - **Goal**: Resolve to [Phase E2, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
   - From: Phase E2 - Transports and Sandbox
-- [ ] Connection pool, retries and timeouts, and `server test`
+- [x] Connection pool, retries and timeouts, and `server test`
   - **Goal**: Resolve to [Phase E2, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
   - From: Phase E2 - Transports and Sandbox
+- [ ] Local and remote scanners with cloaking, the sensitive-file guard, the
+      symbolic link policy and the scan cache
+  - **Goal**: Resolve to [Phase E3, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
+  - From: Phase E3 - Sync Engine
+- [ ] Sync records and the classification matrix, as table-driven tests of
+      every state, direction and delete option
+  - **Goal**: Resolve to [Phase E3, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
+  - From: Phase E3 - Sync Engine
+- [ ] The sync plan model with its fingerprint, and the empty-root and
+      mass-delete guards
+  - **Goal**: Resolve to [Phase E3, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
+  - From: Phase E3 - Sync Engine
+- [ ] The executor and the recovery folder: stale re-checks, atomic
+      transfers, times, ordering, retries and cancellation
+  - **Goal**: Resolve to [Phase E3, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
+  - From: Phase E3 - Sync Engine
+- [ ] `SyncSession` and the public library API
+  - **Goal**: Resolve to [Phase E3, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
+  - From: Phase E3 - Sync Engine
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -83,27 +102,13 @@ Next version: minor.
 
 Next version: minor.
 
-- [ ] The Docker interop sandbox, its Linux CI job, and `npm run sandbox`
+- [x] The Docker interop sandbox, its Linux CI job, and `npm run sandbox`
   - **Goal**: Resolve to [Phase E2, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e2-transports-and-sandbox)
 
 ## Phase E3 - Sync Engine
 
 Next version: minor.
 
-- [ ] Local and remote scanners with cloaking, the sensitive-file guard, the
-      symbolic link policy and the scan cache
-  - **Goal**: Resolve to [Phase E3, step 1](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
-- [ ] Sync records and the classification matrix, as table-driven tests of
-      every state, direction and delete option
-  - **Goal**: Resolve to [Phase E3, step 2](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
-- [ ] The sync plan model with its fingerprint, and the empty-root and
-      mass-delete guards
-  - **Goal**: Resolve to [Phase E3, step 3](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
-- [ ] The executor and the recovery folder: stale re-checks, atomic
-      transfers, times, ordering, retries and cancellation
-  - **Goal**: Resolve to [Phase E3, step 4](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
-- [ ] `SyncSession` and the public library API
-  - **Goal**: Resolve to [Phase E3, step 5](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
 - [ ] The `sync`, `status`, `put`, `get`, `mark-synced`, `state reset` and
       `diff` commands, unattended and with `--json`
   - **Goal**: Resolve to [Phase E3, step 6](.claude/prompts/init-sync-servers.prompt.md#phase-e3-sync-engine)
@@ -199,6 +204,8 @@ Steps only the owner takes, because each changes state outside this machine.
       cannot write it
 - [ ] Create the public repository `isocialPractice/cmd-sync-servers` and push
       `main` once Phase E0 is committed
+- [ ] After the first push, check that the CI job "Interop with OpenSSH and
+      vsftpd (Docker)" passes; it cannot run on the development machine
 - [ ] Apply the repository and account settings of plan section 11.7
 - [ ] Select "GitHub Actions" as the Pages source if the first `pages.yml`
       run cannot enable Pages itself

@@ -12,7 +12,20 @@ export type SyncErrorCode =
   | 'E_SITE_NOT_FOUND'
   | 'E_SERVER_NOT_FOUND'
   | 'E_CREDENTIAL_STORE'
-  | 'E_LOCKED';
+  | 'E_LOCKED'
+  | 'E_CONNECTION'
+  | 'E_TIMEOUT'
+  | 'E_REMOTE'
+  | 'E_REMOTE_ROOT'
+  | 'E_LISTING_LIMIT'
+  | 'E_CANCELLED';
+
+export interface SyncErrorOptions extends ErrorOptions {
+  /** True when trying again, on a fresh connection, may succeed. */
+  readonly transient?: boolean;
+  /** The server's reply code, such as an FTP `550` or an SFTP status, when there is one. */
+  readonly serverCode?: number;
+}
 
 /**
  * The error type of the engine. `code` is stable across versions; `message`
@@ -20,11 +33,15 @@ export type SyncErrorCode =
  */
 export class SyncError extends Error {
   readonly code: SyncErrorCode;
+  readonly transient: boolean;
+  readonly serverCode: number | undefined;
 
-  constructor(code: SyncErrorCode, message: string, options?: ErrorOptions) {
-    super(message, options);
+  constructor(code: SyncErrorCode, message: string, options: SyncErrorOptions = {}) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = 'SyncError';
     this.code = code;
+    this.transient = options.transient ?? false;
+    this.serverCode = options.serverCode;
   }
 }
 

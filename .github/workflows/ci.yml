@@ -57,6 +57,39 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm test
 
+  interop:
+    name: Interop with OpenSSH and vsftpd (Docker)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate throwaway credentials and a certificate
+        run: |
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          {
+            echo "SANDBOX_USER=demo-user"
+            echo "SANDBOX_PASSWORD=$password"
+          } >> "$GITHUB_ENV"
+          node test/sandbox/docker-setup.ts sandbox/run/tls
+      - run: docker compose -f sandbox/compose.yaml up -d --build
+      - run: npm run test:docker
+        env:
+          SANDBOX_DOCKER: '1'
+          SANDBOX_CA_FILE: sandbox/run/tls/cert.pem
+      - if: always()
+        run: docker compose -f sandbox/compose.yaml logs --no-color
+      - if: always()
+        run: docker compose -f sandbox/compose.yaml down --volumes
+
   pack:
     name: Package contents
     runs-on: ubuntu-latest

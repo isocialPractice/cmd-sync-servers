@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isInside } from '../../config/registry.ts';
+import { isInside } from '../../sync/paths.ts';
 import type { Site } from '../../config/schema.ts';
 import { flag, type CommandSpec, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';

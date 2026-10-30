@@ -9,8 +9,8 @@ The same engine is a library: the `vscode-sync-servers` extension for VS Code
 uses it in-process, and both read one shared list of sites.
 
 > **Status: early alpha.** This release manages sites, servers, saved
-> passwords and cloaking. Connecting, transfers and the terminal UI are not
-> available yet.
+> passwords and cloaking, and tests connections to servers. Synchronizing
+> and the terminal UI are not available yet.
 
 ## Goals
 
@@ -59,6 +59,9 @@ sync-servers server add --site "My Site" --name Production \
 # Keep the password in the operating system's credential store
 sync-servers password set Production --site "My Site"
 
+# Connect, confirm the server's host key, and see what it offers
+sync-servers server test Production --site "My Site"
+
 # Cloak what no operation should touch: suffixes, names, folders or paths
 sync-servers cloak --site "My Site" .psd "archive*" node_modules/
 
@@ -71,6 +74,14 @@ Run a command inside a site's folder and that site is chosen; elsewhere,
 pass `--site`. In a terminal, a command asks for anything it is missing, and
 `site edit --editor` or `server edit --editor` opens the settings as JSON in
 your own editor. Every listing command takes `--json`.
+
+The first connection to an SFTP server shows its host key fingerprint and
+asks whether to trust it; the answer is pinned, and a changed key later stops
+the connection. FTPS certificates are verified; a server with a private
+certificate authority takes `--ca-file`. Plain FTP needs `--allow-insecure`.
+
+To try it without a real server, `npm run sandbox` in a clone starts local
+SFTP, FTPS and FTP servers and prints throwaway credentials.
 
 ### Change to a site's folder
 

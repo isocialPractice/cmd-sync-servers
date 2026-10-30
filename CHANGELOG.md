@@ -8,6 +8,40 @@ Until the first stable release, versions use the pre-release form
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0.2.0] - 2026-10-29
+
+### Added
+
+- `server test`: connects, signs in, checks the remote root, and reports the
+  SSH host key, the TLS version, the server software, how precise its file
+  times are, and the features it offers.
+- Transports for SFTP, FTPS with explicit or implicit TLS, plain FTP, and
+  local or network folders, in the library API with a connection pool and
+  retries.
+- `npm run sandbox` starts local SFTP, FTPS and FTP test servers with
+  throwaway credentials, for trying the tool without a real host.
+
+### Security
+
+- SSH host keys are confirmed on first use and pinned in the server's
+  settings. A changed key stops the connection, shows both fingerprints, and
+  is never accepted silently. Unattended runs refuse an unknown key unless
+  `--host-key` names it.
+- SSH uses modern key exchange, host key, cipher and MAC algorithms only,
+  unless a server sets `legacyAlgorithms`, which warns on every connection.
+- FTPS verifies the certificate chain and host name and requires TLS 1.2 or
+  later; a private certificate authority is trusted through `--ca-file`.
+  Plain FTP is refused unless the server sets `allowInsecure`, and warns on
+  every connection.
+- Passwords are asked for and sent only after the SSH host key or the TLS
+  certificate has been verified.
+- Names a server returns that would leave the site, are not valid on this
+  system, contain control characters, or are too long are never used as
+  paths. Writes never follow a symbolic link or junction out of the site.
+- Dropped and stalled connections fail with a transient error and are
+  retried on a fresh connection; an FTP server that answers 421 gets fewer
+  connections. Very large folder listings are refused.
+
 ## [1.0.0-alpha.0.1.0] - 2026-10-29
 
 ### Added
@@ -52,6 +86,7 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.1.0...HEAD
+[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...HEAD
+[1.0.0-alpha.0.2.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.1.0...v1.0.0-alpha.0.2.0
 [1.0.0-alpha.0.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.0.0...v1.0.0-alpha.0.1.0
 [1.0.0-alpha.0.0.0]: https://github.com/isocialPractice/cmd-sync-servers/releases/tag/v1.0.0-alpha.0.0.0
