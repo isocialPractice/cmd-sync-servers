@@ -31,7 +31,14 @@ Until the first stable release, versions use the pre-release form
   offers to save the password the server accepted. A failed connection
   offers another host, the user name and password again, saving without
   testing, or cancel; cancel saves nothing.
-- Questions and tables say Protocol, Host and User.
+- Questions and tables say Protocol, Host and User, in the terminal
+  interface too.
+- In the terminal interface, `n` on the Sites screen opens one form for a
+  new site and its server; `Shift+N` opens Site Setup for a new site.
+- The server editor's Test connects with the values the form shows, without
+  saving them first. Web URL moved to the Advanced tab, which also shows the
+  trusted certificate with a Forget certificate button. `host:port` typed in
+  Host fills Port.
 - A password is offered for saving only after the server accepts it, and
   the offer defaults to yes.
 - A refused FTP or SFTP sign-in says to check the user name, since many
@@ -80,6 +87,14 @@ Until the first stable release, versions use the pre-release form
 - A leading `~` in a local folder, key file or CA file is the home folder,
   also in `cmd.exe` and PowerShell.
 - A web URL given without a scheme gets `https://`.
+- The terminal interface's new-site form: Site name, Local folder,
+  Protocol, Host, User, Password and Save password, then Connect, which
+  signs in, asks about a new host key or certificate, lets you pick the
+  site's folder from what the server shows, and saves the site and its
+  server together. A refused sign-in shows under User.
+- A folder picker in the terminal interface, for the new-site form and the
+  server editor's Browse... button: Enter opens a folder, Backspace goes
+  up, and `s` or Use this folder accepts the folder shown in the title.
 - Library: `parseServerAddress`, `ServerProbe` (experimental) to connect
   with settings not saved yet and list folders by absolute path,
   `findCoveredNames`, `normalizeCertificateFingerprint`, the

@@ -62,6 +62,7 @@ export function tuiServices(ctx: CommandContext): TuiServices {
     logger: ctx.logger,
     env: ctx.io.env,
     cwd: ctx.io.cwd,
+    homedir: ctx.io.homedir,
     platform: ctx.io.platform,
   };
 }

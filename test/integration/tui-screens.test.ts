@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { test } from 'node:test';
+import { defaultPaths } from '../../src/config/paths.ts';
+import { SiteRegistry } from '../../src/config/registry.ts';
 import { sealSecret } from '../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../src/credentials/memory.ts';
 import { createLogger } from '../../src/log/logger.ts';
@@ -9,8 +11,11 @@ import { ServerEditorView } from '../../src/tui/screens/server-editor.ts';
 import { SiteSetupView } from '../../src/tui/screens/site-setup.ts';
 import { SitesView } from '../../src/tui/screens/sites.ts';
 import type { TuiServices } from '../../src/tui/services.ts';
-import { makeFolder } from '../helpers/cli.ts';
+import { makeFolder, tempDir } from '../helpers/cli.ts';
 import { matchSnapshot, press, screen, testApp, type } from '../helpers/tui.ts';
+import { testCertificate, type TestCertificate } from '../sandbox/cert.ts';
+import type { FtpSandbox } from '../sandbox/ftp-server.ts';
+import { startRig, type Rig } from '../sandbox/rig.ts';
 import { startSiteRig, type SiteRig } from '../sandbox/site-rig.ts';
 
 function services(rig: SiteRig, store = new MemoryCredentialStore()): TuiServices {
@@ -149,7 +154,7 @@ test('site setup adds a site, a server and cloaking, and checks each field befor
     const svc = services(rig, store);
     const app = testApp();
     await open(app, new SitesView(svc));
-    await press(app, 'n');
+    await press(app, 'N');
     assert.match(screen(app), /^ Site Setup: New site +Ctrl\+S Save$/m);
     await press(app, 'tab', 'ctrl+u');
     await press(app, 'ctrl+s');
@@ -177,8 +182,8 @@ test('site setup adds a site, a server and cloaking, and checks each field befor
     assert.match(problems, /^ ! Enter a name\.$/m);
     await type(app, 'Backup');
     await press(app, 'down', 'right', 'right', 'right', 'right');
-    assert.match(screen(app), /Connect using +< Local or network folder >/);
-    assert.doesNotMatch(screen(app), /Address/);
+    assert.match(screen(app), /Protocol +< Local or network folder >/);
+    assert.doesNotMatch(screen(app), /Host|Browse/);
     const backupDir = makeFolder(rig.home, '..', 'backup');
     await press(app, 'down');
     await type(app, backupDir);
@@ -188,7 +193,7 @@ test('site setup adds a site, a server and cloaking, and checks each field befor
     assert.match(screen(app), /Saved "Backup"\./);
     await press(app, 'escape');
     const servers = screen(app);
-    assert.match(servers, /^ {2}Site {18}Name +Address +Type +Remote +Testing$/m);
+    assert.match(servers, /^ {2}Site {18}Name +Host +Protocol +Remote +Testing$/m);
     assert.match(servers, /^> Servers {15}Backup .+Local\/Network +\(\*\) +\( \)$/m);
 
     await press(app, 't');
@@ -279,6 +284,190 @@ test('the server editor saves secrets only in the credential store, and leaving 
     await press(app, 'escape', 'left', 'enter');
     assert.match(screen(app), /^ Sites/m);
   });
+});
+
+/** An FTPS sandbox whose self-signed certificate names only `localhost`, and whose account sees its own folder as "/". */
+async function quickRig(): Promise<{ rig: Rig; certificate: TestCertificate; svc: TuiServices; registry: SiteRegistry; store: MemoryCredentialStore; local: string; close(): Promise<void> }> {
+  const certificate = testCertificate({ dnsNames: ['localhost'], ipAddresses: [] });
+  const rig = await startRig('ftps', { certificate });
+  for (const name of ['css', 'images', 'js']) {
+    makeFolder(path.dirname(rig.siteDir), name);
+  }
+  const temp = tempDir();
+  const home = makeFolder(temp.dir, 'home');
+  const local = makeFolder(temp.dir, 'sites', 'my-site');
+  const registry = await SiteRegistry.open({ paths: defaultPaths({}, { platform: process.platform, env: { SYNC_SERVERS_HOME: home }, homedir: home, cwd: home }) });
+  const store = new MemoryCredentialStore();
+  const svc: TuiServices = {
+    registry: () => Promise.resolve(registry),
+    credentialStore: () => Promise.resolve(store),
+    logger: createLogger({ level: 'debug', sinks: [] }),
+    env: {},
+    cwd: local,
+    homedir: home,
+    platform: process.platform,
+  };
+  return {
+    rig,
+    certificate,
+    svc,
+    registry,
+    store,
+    local,
+    close: async () => {
+      temp.cleanup();
+      await rig.close();
+    },
+  };
+}
+
+test('quick setup adds a site and its server from one form: connects, trusts the certificate, picks the folder', async () => {
+  const q = await quickRig();
+  try {
+    const app = testApp();
+    await open(app, new SitesView(q.svc));
+    await press(app, 'n');
+    const form = screen(app);
+    assert.match(form, /^ New site +Ctrl\+S Connect$/m);
+    assert.match(form, /^ {2}Site name +▏$/m);
+    assert.match(form, /^ {2}Protocol +< SFTP >$/m);
+    assert.match(form, /^ {2}Save password +\[x\]$/m);
+    assert.match(form, /\[ Connect \]/);
+
+    await press(app, 'ctrl+s');
+    assert.match(screen(app), /^ {2,}! Enter a name\.$/m);
+    await type(app, 'My Site');
+    await press(app, 'down', 'down', 'right');
+    assert.match(screen(app), /^ {2}Protocol +< FTPS, explicit TLS >$/m);
+    const port = (q.rig.sandbox as FtpSandbox).port;
+    await press(app, 'down');
+    await type(app, `127.0.0.1:${String(port)}`);
+    await press(app, 'down');
+    await type(app, q.rig.user);
+    await press(app, 'down');
+    await type(app, 'not-the-password');
+    assert.doesNotMatch(screen(app), /not-the-password/);
+    await press(app, 'down', 'down', 'enter');
+
+    const dialog = screen(app);
+    assert.match(dialog, /Certificate not verified/);
+    assert.match(dialog, /Issued to {2}localhost/);
+    assert.match(dialog, /> Cancel/);
+    await press(app, 'up', 'enter');
+    assert.match(screen(app), /^ {2}User +demo-user▏\n {2,}! 127\.0\.0\.1 did not accept the user name or password \(530\)/m);
+    assert.equal(q.registry.list().length, 0);
+
+    await press(app, 'down', 'ctrl+u');
+    await type(app, q.rig.password);
+    await press(app, 'ctrl+s');
+    const picker = screen(app);
+    assert.doesNotMatch(picker, /Certificate not verified/, 'the certificate trusted on the first attempt is not asked about again');
+    assert.match(picker, /Choose the site's folder: \//);
+    assert.match(picker, /> Use this folder/);
+    assert.match(picker, /css\/[\s\S]*images\/[\s\S]*js\/[\s\S]*site\//);
+    assert.doesNotMatch(picker, /^\s*\|?\s*\.\.\s*\|?$/m);
+
+    await press(app, 'end', 'enter');
+    assert.match(screen(app), /Choose the site's folder: \/site/);
+    assert.match(screen(app), /\.\./);
+    await press(app, 'backspace');
+    assert.match(screen(app), /Choose the site's folder: \/ /);
+    await press(app, 's');
+    assert.match(screen(app), /"\/" is the top of what this account can see\./);
+    await press(app, 'y');
+
+    const sites = screen(app);
+    assert.match(sites, /^ Sites +Enter Open$/m);
+    assert.match(sites, /^ {2}My Site +.+ +127\.0\.0\.1$/m);
+    assert.match(sites, /Added "My Site" with the server 127\.0\.0\.1\. The password is saved in the memory\./);
+    const site = q.registry.list()[0];
+    const server = site?.servers[0];
+    assert.equal(site?.localRoot, q.local);
+    assert.deepEqual(
+      [server?.protocol, server?.host, server?.port, server?.username, server?.remoteRoot, server?.options.allowRootDeletes, server?.auth?.savePassword],
+      ['ftps', '127.0.0.1', port, q.rig.user, '/', true, true],
+    );
+    assert.equal(server?.options.tls?.trustedCertificate?.sha256, q.certificate.sha256);
+    assert.equal(await q.store.get({ siteId: site.id, serverId: server.id, kind: 'password' }), sealSecret(q.rig.password, server));
+    assert.ok(!JSON.stringify(q.registry.list()).includes(q.rig.password));
+  } finally {
+    await q.close();
+  }
+});
+
+test('quick setup asks before dropping what was typed, and Esc in the folder picker saves nothing', async () => {
+  const q = await quickRig();
+  try {
+    const app = testApp();
+    await open(app, new SitesView(q.svc));
+    await press(app, 'n');
+    await type(app, 'My Site');
+    await press(app, 'escape');
+    assert.match(screen(app), /Leave without adding the site\?/);
+    await press(app, 'escape');
+    assert.match(screen(app), /^ New site/m);
+    await press(app, 'down', 'down', 'right', 'down');
+    await type(app, `127.0.0.1:${String((q.rig.sandbox as FtpSandbox).port)}`);
+    await press(app, 'down');
+    await type(app, q.rig.user);
+    await press(app, 'down');
+    await type(app, q.rig.password);
+    await press(app, 'ctrl+s', 'up', 'enter');
+    assert.match(screen(app), /Choose the site's folder/);
+    await press(app, 'escape');
+    assert.match(screen(app), /No folder was chosen, so nothing was saved\./);
+    assert.equal(q.registry.list().length, 0);
+    await press(app, 'escape', 'y');
+    assert.match(screen(app), /^ Sites/m);
+    assert.match(screen(app), /No sites yet/);
+  } finally {
+    await q.close();
+  }
+});
+
+test('the server editor tests and browses with the values it shows, and saves only on Ctrl+S', async () => {
+  const rig = await startSiteRig('ftps');
+  try {
+    const store = new MemoryCredentialStore();
+    const server = await rig.registry.updateServer(rig.site.id, rig.site.servers[0]?.id ?? '', (draft) => {
+      draft.remoteRoot = '/nope';
+    });
+    await store.set({ siteId: rig.site.id, serverId: server.id, kind: 'password' }, sealSecret(rig.rig.password, server));
+    const svc = services(rig, store);
+    const app = testApp();
+    await open(app, new SitesView(svc), new ServerEditorView(svc, rig.site.id, server.id));
+    const basic = screen(app);
+    assert.match(basic, /^ {2}Protocol +< FTPS, explicit TLS >$/m);
+    assert.match(basic, /^ {2}Host +127\.0\.0\.1$/m);
+    assert.match(basic, /^ {2}User +demo-user$/m);
+    assert.match(basic, /^ {2}Root directory +\/nope$/m);
+    assert.match(basic, /\[ Browse\.\.\. \]/);
+    assert.doesNotMatch(basic, /Web URL/);
+
+    await press(app, ...Array.from({ length: 9 }, () => 'down'));
+    assert.match(screen(app), /Connects with the values shown, without saving them/);
+    await press(app, 'enter');
+    assert.match(screen(app, 160), /Connected, but the root directory \/nope was not found: Browse picks it\. The account opens in "\/"\./);
+
+    await press(app, 'up', 'enter');
+    assert.match(screen(app), /Choose the site's folder: \//);
+    await press(app, 'end', 'enter');
+    assert.match(screen(app), /Choose the site's folder: \/site/);
+    await press(app, 'up', 'up', 'enter');
+    assert.match(screen(app), /^ {2}Root directory +\/site$/m);
+    assert.match(screen(app), /Not saved yet: Ctrl\+S saves it\./);
+    assert.equal(rig.registry.get(rig.site.id)?.servers[0]?.remoteRoot, '/nope');
+
+    await press(app, 'tab');
+    const advanced = screen(app);
+    assert.match(advanced, /^ {2}Web URL/m);
+    assert.match(advanced, /^ {2}Certificate +Verified normally; none is trusted by fingerprint\.$/m);
+    assert.match(advanced, /\[ Forget certificate \]/);
+    await press(app, 'tab', 'ctrl+s');
+    assert.equal(rig.registry.get(rig.site.id)?.servers[0]?.remoteRoot, '/site');
+  } finally {
+    await rig.close();
+  }
 });
 
 test('removing a site leaves its folder and asks first; a site setup for a missing folder refuses to save', async () => {

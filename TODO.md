@@ -187,6 +187,25 @@ the step of the plan that specifies it.
 - [x] Documentation for S2, changelog, checks and commit
   - **Goal**: Resolve to [Phase S2, step 7](.claude/prompts/simplify-setup.prompt.md#phase-s2-guided-setup-in-the-command-line)
   - From: Simplify Site Setup
+- [x] The quick setup form on the Sites screen
+  - **Goal**: Resolve to [Phase S3, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+  - From: Simplify Site Setup
+- [x] The server editor: Basic tab order and labels, Test with unsaved
+      values, Browse, and Web URL and the trusted certificate on the
+      Advanced tab
+  - **Goal**: Resolve to [Phase S3, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+  - From: Simplify Site Setup
+- [x] The folder picker dialog, and the certificate and save-password
+      dialogs reviewed against `DESIGN_LANGUAGE.md`
+  - **Goal**: Resolve to [Phase S3, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+  - From: Simplify Site Setup
+- [x] Terminal UI tests of quick setup, the certificate choice, the picker
+      and Esc with unsaved changes
+  - **Goal**: Resolve to [Phase S3, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+  - From: Simplify Site Setup
+- [x] Documentation for S3, changelog, checks and commit
+  - **Goal**: Resolve to [Phase S3, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
+  - From: Simplify Site Setup
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -249,20 +268,6 @@ Next version: major. Phases S1 to S3 together make `1.0.0-alpha.1.0.0`:
 S1 sets the version, and S2 and S3 add to it without moving it again. The
 items of Phase S5 move no version.
 
-- [ ] The quick setup form on the Sites screen
-  - **Goal**: Resolve to [Phase S3, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
-- [ ] The server editor: Basic tab order and labels, Test with unsaved
-      values, Browse, and Web URL and the trusted certificate on the
-      Advanced tab
-  - **Goal**: Resolve to [Phase S3, step 2](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
-- [ ] The folder picker dialog, and the certificate and save-password
-      dialogs reviewed against `DESIGN_LANGUAGE.md`
-  - **Goal**: Resolve to [Phase S3, step 3](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
-- [ ] Terminal UI tests of quick setup, the certificate choice, the picker
-      and Esc with unsaved changes
-  - **Goal**: Resolve to [Phase S3, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
-- [ ] Documentation for S3, changelog, checks and commit
-  - **Goal**: Resolve to [Phase S3, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
 - [ ] Run the engine's and the extension's checks once more from clean
       builds
   - **Goal**: Resolve to [Phase S5, step 1](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)

@@ -227,7 +227,7 @@ export class SiteSetupView implements View {
         return { lines: [[span('  Save the site first (Ctrl+S), then add its servers here.')]] };
       }
       const site = this.#site;
-      // Name, address, type, Remote; Testing takes the rest. The message bar shows the full address.
+      // Name, host, protocol, Remote; Testing takes the rest. The message bar shows the full address.
       const widths = [12, Math.max(8, width - 48), 13, 6];
       const rows = this.#servers.items.map((server, index) =>
         tableRow(
@@ -246,7 +246,7 @@ export class SiteSetupView implements View {
       );
       return {
         lines: [
-          headerRow(['Name', 'Address', 'Type', 'Remote', 'Testing'], widths),
+          headerRow(['Name', 'Host', 'Protocol', 'Remote', 'Testing'], widths),
           ...(rows.length === 0 ? [[span('  No servers yet. Press a to add one.')]] : rows),
         ],
       };

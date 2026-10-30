@@ -3,15 +3,15 @@
    Basic    Advanced    SFTP
 
   Server name     ▏
-  Connect using   < SFTP >
-  Address
+  Protocol        < SFTP >
+  Host
   Port
-  Username
+  User
   Sign in with    < Password >
   Save password   [ ]
   [ Set password... ]
   Root directory  /
-  Web URL
+  [ Browse... ]
   [ Test ]
 
 

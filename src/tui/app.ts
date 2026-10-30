@@ -62,6 +62,7 @@ export class App {
   readonly #views: View[] = [];
   readonly #dialogs: OpenDialog[] = [];
   readonly #pending = new Set<Promise<unknown>>();
+  readonly #background = new Set<Promise<unknown>>();
   readonly #dialogWaiters: (() => void)[] = [];
   #message: { text: string; tone: Tone; at: number } | undefined;
   #busy: { label: string; controller: AbortController } | undefined;
@@ -257,11 +258,32 @@ export class App {
   }
 
   /**
+   * Runs work a dialog started, such as loading a folder listing, and redraws
+   * when it settles. {@link idle} waits for it even while the dialog is open.
+   */
+  background<T>(work: Promise<T>): Promise<T> {
+    this.#background.add(work);
+    const settled = (): void => {
+      this.#background.delete(work);
+      this.redraw();
+    };
+    work.then(settled, settled);
+    return work;
+  }
+
+  /**
    * Resolves when every key handler and task started so far has finished, or
-   * when a dialog is waiting for a key.
+   * when a dialog is waiting for a key and has no work of its own running.
    */
   async idle(): Promise<void> {
-    while (this.#pending.size > 0 && this.#dialogs.length === 0) {
+    for (;;) {
+      if (this.#background.size > 0) {
+        await Promise.allSettled([...this.#background]);
+        continue;
+      }
+      if (this.#pending.size === 0 || this.#dialogs.length > 0) {
+        return;
+      }
       await Promise.race([
         Promise.all([...this.#pending]),
         new Promise<void>((resolve) => {

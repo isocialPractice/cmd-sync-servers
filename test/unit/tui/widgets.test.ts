@@ -5,6 +5,7 @@ import { isKey, key, type Key } from '../../../src/tui/keys.ts';
 import { span, type Line } from '../../../src/tui/style.ts';
 import { hintLine, progressBar } from '../../../src/tui/widgets/chrome.ts';
 import { choiceDialog, confirmDialog, inputDialog, messageDialog, wrap } from '../../../src/tui/widgets/dialog.ts';
+import { folderPickerDialog } from '../../../src/tui/widgets/folder-picker.ts';
 import { field, Form } from '../../../src/tui/widgets/form.ts';
 import { ListState } from '../../../src/tui/widgets/list.ts';
 import { ASCII, frameText, matchSnapshot, press, screen, testApp, type, UNICODE } from '../../helpers/tui.ts';
@@ -230,6 +231,48 @@ class SampleView implements View {
     }
   }
 }
+
+test('the folder picker lists, scrolls, counts files, opens and goes up, and shows a folder it cannot open', async () => {
+  const folders = Array.from({ length: 15 }, (_, index) => `folder-${String(index + 1).padStart(2, '0')}`);
+  const listings: Record<string, { folders: string[]; files: number }> = {
+    '/': { folders: ['site', ...folders], files: 2 },
+    '/site': { folders: [], files: 0 },
+  };
+  const probe = {
+    folders: (folder: string) => {
+      const found = listings[folder];
+      return found === undefined ? Promise.reject(new Error('No such folder.')) : Promise.resolve({ path: folder, ...found });
+    },
+  };
+  const app = testApp();
+  const chosen = app.dialog(folderPickerDialog(probe, '/', (work) => app.background(work)));
+  await app.idle();
+  let text = screen(app);
+  assert.match(text, /Choose the site's folder: \//);
+  assert.match(text, /> Use this folder/);
+  assert.match(text, /site\//);
+  assert.match(text, /and 5 more below/);
+  assert.match(text, /and 2 files/);
+  await press(app, 'backspace');
+  assert.match(screen(app), /Choose the site's folder: \/ /, 'there is nothing above "/"');
+  await press(app, 'down', 'enter');
+  text = screen(app);
+  assert.match(text, /Choose the site's folder: \/site/);
+  assert.match(text, /> Use this folder[^\n]*\n[^\n]*\| {3}\.\. /);
+  assert.doesNotMatch(text, /files?$/m);
+  await press(app, 'down', 'enter');
+  assert.match(screen(app), /Choose the site's folder: \/ /);
+  await press(app, 'end');
+  assert.match(screen(app), /> folder-15\//);
+  await press(app, 's');
+  assert.equal(await chosen, '/');
+
+  const broken = app.dialog(folderPickerDialog(probe, '/gone', (work) => app.background(work)));
+  await app.idle();
+  assert.match(screen(app), /! \/gone cannot be opened: No such folder\./);
+  await press(app, 'escape');
+  assert.equal(await broken, undefined);
+});
 
 test('the chrome lays out title, summary, rules, body, message bar and at most seven hints', () => {
   const app = testApp(ASCII);

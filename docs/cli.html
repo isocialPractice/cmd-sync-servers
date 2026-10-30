@@ -550,10 +550,12 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
   <caption>Screens and their own keys</caption>
   <thead><tr><th scope="col">Screen</th><th scope="col">Keys</th></tr></thead>
   <tbody>
-    <tr><td>Sites</td><td><kbd>n</kbd> new site, <kbd>e</kbd> edit, <kbd>Enter</kbd> open, <kbd>d</kbd> remove (the folder and server files are not touched)</td></tr>
+    <tr><td>Sites</td><td><kbd>n</kbd> new site in one form, <kbd>Shift</kbd>+<kbd>N</kbd> new site in Site Setup, <kbd>e</kbd> edit, <kbd>Enter</kbd> open, <kbd>d</kbd> remove (the folder and server files are not touched)</td></tr>
+    <tr><td>New site</td><td>Site name, Local folder, Protocol, Host, User, Password and Save password, then <kbd>Ctrl</kbd>+<kbd>S</kbd> or the Connect button: signs in, asks about a new host key or certificate, opens the folder picker, and saves the site and its server together. A refused sign-in shows under User. <kbd>Esc</kbd> asks before dropping what you typed</td></tr>
+    <tr><td>Folder picker</td><td>The folders of the server, starting where the account opens, with the folder shown in the title: <kbd>Enter</kbd> opens a folder, <kbd>Backspace</kbd> goes up, <kbd>s</kbd> or Use this folder accepts, <kbd>Esc</kbd> cancels</td></tr>
     <tr><td>Site home</td><td><kbd>s</kbd> Synchronize, <kbd>r</kbd> check for changes, <kbd>e</kbd> site settings; Put and Get newer files from the list</td></tr>
     <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing</td></tr>
-    <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced; Set password, Test and Forget host key are buttons</td></tr>
+    <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the host key and the trusted certificate, with Forget buttons</td></tr>
     <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview</td></tr>
     <tr><td>Preview</td><td><kbd>Space</kbd> check, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize</td></tr>
     <tr><td>Progress</td><td><kbd>Esc</kbd> cancels cleanly between files</td></tr>

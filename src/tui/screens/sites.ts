@@ -9,6 +9,7 @@ import { truncatePath } from '../text.ts';
 import { confirmDialog } from '../widgets/dialog.ts';
 import { ListState } from '../widgets/list.ts';
 import { headerRow, remoteServer, tableRow } from './common.ts';
+import { QuickSetupView } from './quick-setup.ts';
 import { SiteHomeView } from './site-home.ts';
 import { SiteSetupView } from './site-setup.ts';
 
@@ -44,7 +45,9 @@ export class SitesView implements View {
   keys(): readonly Hint[] {
     return [
       { key: 'Up/Down', label: 'Move' },
-      ...this.hints(),
+      { key: 'n', label: 'New site: its server, connected and picked from the server, in one form' },
+      { key: 'N', label: 'New site in Site Setup, every setting' },
+      ...this.hints().filter((hint) => hint.key !== 'n'),
       { key: 'Esc', label: 'Clear the filter' },
       { key: '?', label: 'These keys' },
     ];
@@ -98,6 +101,8 @@ export class SitesView implements View {
     if (press.text === 'q') {
       app.quit();
     } else if (press.text === 'n') {
+      app.push(new QuickSetupView(this.#services));
+    } else if (press.text === 'N') {
       app.push(new SiteSetupView(this.#services, undefined));
     } else if (press.text === 'e' && site !== undefined) {
       app.push(new SiteSetupView(this.#services, site.id));

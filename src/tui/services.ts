@@ -1,12 +1,17 @@
+import { homedir } from 'node:os';
+import path from 'node:path';
 import type { SiteRegistry } from '../config/registry.ts';
+import type { Server } from '../config/schema.ts';
 import { sealSecret } from '../credentials/binding.ts';
+import { PASSWORD_ENV } from '../credentials/env.ts';
 import { secretQuestion } from '../credentials/prompt.ts';
-import type { CredentialStore } from '../credentials/types.ts';
+import type { CredentialStore, SecretKind } from '../credentials/types.ts';
 import { SyncError } from '../errors.ts';
 import type { CertificateDecision, HostAdapter, HostKeyDecision } from '../host.ts';
 import type { Logger } from '../log/logger.ts';
 import { SyncSession } from '../sync/session.ts';
 import { certificateQuestion, certificateSummary } from '../transport/certificates.ts';
+import { ServerProbe } from '../transport/probe.ts';
 import type { App } from './app.ts';
 import { choiceDialog, confirmDialog, inputDialog } from './widgets/dialog.ts';
 
@@ -18,7 +23,88 @@ export interface TuiServices {
   readonly logger: Logger;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly cwd: string;
+  /** The home folder a leading `~` in a typed path stands for. Default: this user's. */
+  readonly homedir?: string;
   readonly platform: NodeJS.Platform;
+}
+
+/** A typed local path: `~` expanded, then made absolute against the working folder. */
+export function typedPath(services: TuiServices, text: string): string {
+  const home = services.homedir ?? homedir();
+  const expanded = text === '~' ? home : /^~[\\/]/.test(text) ? path.join(home, text.slice(2)) : text;
+  return path.resolve(services.cwd, expanded);
+}
+
+/** What connecting with settings that are not saved yet gave: the result, or the error, and the settings with every decision applied. */
+export type ProbeOutcome<T> =
+  | { readonly ok: true; readonly value: T; readonly server: Server; readonly typed: { readonly kind: SecretKind; readonly secret: string } | undefined }
+  | { readonly ok: false; readonly error: unknown; readonly server: Server };
+
+/**
+ * Connects with `server` as a person filled it in, without saving it, and
+ * runs `use` on the connection, with a spinner. Host key and certificate
+ * decisions are asked in dialogs and applied to the returned settings only;
+ * nothing is written to `sites.json` or the credential store. `password`,
+ * when given, answers the password question.
+ */
+export async function probeUnsaved<T>(
+  app: App,
+  services: TuiServices,
+  options: {
+    readonly site: { readonly id: string; readonly name: string };
+    readonly server: Server;
+    readonly password?: string | undefined;
+    readonly label: string;
+    readonly use: (probe: ServerProbe) => Promise<T>;
+  },
+): Promise<ProbeOutcome<T>> {
+  const working = structuredClone(options.server);
+  const base = await tuiHost(app, services);
+  let typed: { kind: SecretKind; secret: string } | undefined;
+  const promptSecret = base.promptSecret.bind(base);
+  const confirmCertificate = base.confirmCertificate?.bind(base);
+  const host: HostAdapter = {
+    credentials: base.credentials,
+    interactive: true,
+    logger: services.logger,
+    confirmHostKey: base.confirmHostKey.bind(base),
+    ...(confirmCertificate === undefined ? {} : { confirmCertificate }),
+    promptSecret: async (request) => {
+      if (request.ref.kind === 'password' && options.password !== undefined && options.password !== '') {
+        typed = { kind: 'password', secret: options.password };
+        return options.password;
+      }
+      const answer = await promptSecret(request);
+      if (answer !== undefined && answer !== '') {
+        typed = { kind: request.ref.kind, secret: answer };
+      }
+      return answer;
+    },
+  };
+  const outcome = await app.task(options.label, async (signal): Promise<ProbeOutcome<T>> => {
+    try {
+      const probe = await ServerProbe.open({
+        site: options.site,
+        server: options.server,
+        host,
+        updateServer: (change) => {
+          change(working);
+          return Promise.resolve();
+        },
+        env: options.password === undefined || options.password === '' ? services.env : { ...services.env, [PASSWORD_ENV]: undefined },
+        logger: services.logger,
+        signal,
+      });
+      try {
+        return { ok: true, value: await options.use(probe), server: working, typed };
+      } finally {
+        await probe.close();
+      }
+    } catch (error) {
+      return { ok: false, error, server: working };
+    }
+  });
+  return outcome ?? { ok: false, error: new SyncError('E_CANCELLED', 'Cancelled.'), server: working };
 }
 
 function emptyStore(): CredentialStore {

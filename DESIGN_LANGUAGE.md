@@ -156,6 +156,59 @@ through the `ssv` shell function, changes the shell to its folder on exit.
   n New   e Edit   Enter Open   d Remove   / Filter   q Quit
 ```
 
+`n` opens the new-site form; `Shift+N` opens Site Setup for a new site, with
+every setting.
+
+### New site
+
+A site and its first server in one form, as a site manager entry. Nothing
+is saved until Connect has signed in and the site's folder has been picked
+from what the server shows; then the site and its server are saved
+together. A refused sign-in shows under User, and fields that the chosen
+protocol does not use are hidden.
+
+```text
+ New site                                                        Ctrl+S Connect
+ ------------------------------------------------------------------------------
+  FTPS
+
+  Site name      My Site
+  Local folder   ~/sites/my-site
+  Protocol       < FTPS, explicit TLS >
+  Host           203.0.113.10
+> User           demo-user@example.com
+  Password       ********
+  Save password  [x]
+  [ Connect ]
+ ------------------------------------------------------------------------------
+ Many hosts name FTP accounts in full, such as demo-user@example.com.
+  Up/Down Move   Space Change   Ctrl+S Connect   Esc Back
+```
+
+### Folder picker
+
+A dialog over the screen that called it, listing the folders of the server.
+The title carries the folder shown, the first row accepts it, and `..` goes
+up. It starts where the account opens, or at the current root when that
+exists. Listing happens in the background; the dialog says so while it
+waits. Names come from the server and are shown escaped.
+
+```text
+    +- Choose the site's folder: / ----------------------------------------+
+    | > Use this folder                                                    |
+    |   css/                                                               |
+    |   images/                                                            |
+    |   js/                                                                |
+    |   and 3 files                                                        |
+    |                                                                      |
+    | Enter Open   Backspace Up   s Use this folder   Esc Cancel           |
+    +----------------------------------------------------------------------+
+```
+
+When the picked folder is the top of what the account sees, a confirm
+dialog asks once whether synchronizing may delete files there, with Not now
+focused.
+
 ### Site home
 
 One site at a glance, as the Files panel. The changes are counted in the
@@ -189,7 +242,7 @@ their own editor, so the Servers table acts at once.
 ```text
  Site Setup: My Site                                                Ctrl+S Save
  ------------------------------------------------------------------------------
-  Site                  Name          Address    Type           Remote  Testing
+  Site                  Name          Host       Protocol       Remote  Testing
 > Servers               Production    sftp.e...  SFTP           (*)     ( )
   Advanced Settings     Staging       stagin...  FTPS           ( )     (*)
     Local Info
@@ -225,7 +278,12 @@ editor ported from kilo:
 
 Dreamweaver's server dialog: a Basic tab with the connection and an Advanced
 tab with the rest, switched with `Tab`. Fields the chosen protocol does not
-use are hidden. Set password and Test work on the saved server.
+use are hidden. `host:port` typed in Host fills Port. Test and Browse
+connect with the values the form shows, without saving them; a trusted key
+or certificate, or another host the certificate covers, goes into the form
+and is saved with the server on `Ctrl+S`. Set password works on the saved
+server. The Advanced tab starts with the Web URL and ends with the host key
+or the trusted certificate and their Forget buttons.
 
 ```text
  My Site: Production                                                Ctrl+S Save
@@ -233,20 +291,38 @@ use are hidden. Set password and Test work on the saved server.
    Basic    Advanced    SFTP
 
   Server name     Production
-  Connect using   < SFTP >
-  Address         sftp.example.com
+  Protocol        < SFTP >
+  Host            sftp.example.com
   Port
-  Username        demo-user
+  User            demo-user
   Sign in with    < Password >
   Save password   [x]
   [ Set password... ]
   Root directory  /var/www/my-site
-  Web URL         https://www.example.com/
+  [ Browse... ]
   [ Test ]
  ------------------------------------------------------------------------------
- The host name or IP address, such as sftp.example.com.
+ The host name or IP address, such as sftp.example.com. host:port fills Port.
   Tab Advanced   Up/Down Move   Space Change   Ctrl+S Save   Esc Back
 ```
+
+### Trust and password dialogs
+
+Choices about trust are choice dialogs that show what is being trusted
+before the choices: the host key's algorithm and fingerprint, or the
+certificate's names, issuer, validity dates and SHA-256 fingerprint, and both
+fingerprints when a trusted certificate changed. The focus starts on the
+safe answer:
+
+| Dialog | Focused at first | Why |
+| --- | --- | --- |
+| New host key | Do not trust it | Trust is a decision to check first |
+| Certificate, with a host name it covers | Connect to that name | Full verification stays on |
+| Certificate, with no covered name, or changed | Cancel | Trust is a decision to check first |
+| Save password, once the server accepted it | Save | It goes only to the credential store, and the person just typed it to sign in |
+
+Expired and not-yet-valid certificates never open a dialog: they are
+refused with the reason in the message bar.
 
 ### Synchronize
 
