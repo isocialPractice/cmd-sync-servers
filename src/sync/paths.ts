@@ -16,6 +16,7 @@ export type RemotePath = string & { readonly [remotePathBrand]: true };
 /** The site root. */
 export const ROOT = '' as RemotePath;
 
+/** The verdict of {@link checkPath}: a validated path, or the reason it was refused. */
 export type PathCheck = { readonly ok: true; readonly path: RemotePath } | { readonly ok: false; readonly reason: string };
 
 // eslint-disable-next-line no-control-regex -- control characters are exactly what this rejects

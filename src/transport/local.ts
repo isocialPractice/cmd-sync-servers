@@ -8,10 +8,17 @@ import { baseName, joinLocal, parentPath, ROOT, safeLocalTarget, type RemotePath
 import { checkListingLimit, errorMessage, makeEntry } from './common.ts';
 import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEntry, type Transport } from './types.ts';
 
+/**
+ * Options of {@link LocalTransport}.
+ *
+ * @experimental
+ */
 export interface LocalTransportOptions {
   /** The folder that plays the server: local, a mounted drive, or a network share. */
   readonly root: string;
+  /** The most entries one folder listing may hold. */
   readonly listingLimit?: number;
+  /** The platform whose name rules apply. Default: this one. */
   readonly platform?: NodeJS.Platform;
 }
 
@@ -44,6 +51,8 @@ function fsError(error: unknown, what: string): SyncError {
  * The `local` protocol: the "server" is another folder, such as a mounted
  * drive or a UNC share. Symbolic links are listed but never followed or
  * written through.
+ *
+ * @experimental
  */
 export class LocalTransport implements Transport {
   readonly #root: string;

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Use the cmd-sync-servers engine from your own program: sites, sessions, plans, progress, cancellation and errors.">
+<title>Library API | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html" aria-current="page">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Library API</h1>
+<p class="lead">The engine behind the command line is a library. The VS Code extension uses it in-process, and so can your own program.</p>
+<p>The <a href="api/index.html">API reference</a> lists every export with its types. This page shows how the parts fit.</p>
+
+<h2 id="install">Install and import</h2>
+<pre><code>npm install @isocialpractice/cmd-sync-servers@alpha</code></pre>
+<p>The package is ESM only and needs Node.js 22.14 or later. It has one entry point, plus an optional one for the operating system's credential store:</p>
+<table>
+  <caption>What the package exports</caption>
+  <thead><tr><th scope="col">Import</th><th scope="col">Holds</th></tr></thead>
+  <tbody>
+    <tr><td><code>@isocialpractice/cmd-sync-servers</code></td><td>Everything else: the site registry, sessions, plans, credentials, errors and the logger.</td></tr>
+    <tr><td><code>@isocialpractice/cmd-sync-servers/credentials/keyring</code></td><td>The credential store backed by Windows Credential Manager, the macOS Keychain or the Secret Service keyring.</td></tr>
+    <tr><td><code>@isocialpractice/cmd-sync-servers/schema/site.schema.json</code></td><td>The JSON Schema of <code>sites.json</code>.</td></tr>
+  </tbody>
+</table>
+<div class="note">
+  <p><strong>Alpha.</strong> Names marked <em>experimental</em> in the reference, such as the transports, the connection pool and the classification helpers, may change before 1.0.0. <code>SiteRegistry</code>, <code>SyncSession</code> and <code>SyncPlan</code> are the parts to build on.</p>
+</div>
+
+<h2 id="first-run">A first synchronization</h2>
+<p>This program puts newer local files of <em>My Site</em> to its Remote server and prints what happened. Save it as <code>put.mjs</code> and run it with <code>node put.mjs</code>.</p>
+<pre><code>import { MemoryCredentialStore, SiteRegistry, SyncSession, isSyncError } from '@isocialpractice/cmd-sync-servers';
+
+const registry = await SiteRegistry.open();
+const site = registry.resolve({ name: 'My Site' }) ?? registry.resolve({ path: process.cwd() });
+if (site === undefined) {
+  throw new Error('Add the site first: sync-servers site add');
+}
+
+// What the engine needs from the program around it.
+const host = {
+  credentials: new MemoryCredentialStore(),
+  interactive: false,                       // never ask: unknown host keys are refused
+  confirmHostKey: async () =&gt; 'reject',
+  promptSecret: async () =&gt; undefined,      // the password comes from SYNC_SERVERS_PASSWORD
+};
+
+const controller = new AbortController();
+process.once('SIGINT', () =&gt; controller.abort());
+
+const session = await SyncSession.open({ registry, siteId: site.id, host });
+try {
+  const plan = await session.plan({ direction: 'put', signal: controller.signal });
+  console.log(plan.summaryLine());
+
+  const result = await session.execute(plan, {
+    signal: controller.signal,
+    onProgress: (event) =&gt; {
+      if (event.type === 'transfer') {
+        console.log(`${event.completed}/${event.total} ${event.outcome} ${event.path}`);
+      }
+    },
+  });
+  console.log(`${result.done} done, ${result.failed} failed, ${result.unresolved} waiting for a decision`);
+} catch (error) {
+  if (isSyncError(error, 'E_HOST_KEY_MISMATCH')) {
+    console.error('The server is not the one that was trusted. Check its host key.');
+  }
+  throw error;
+} finally {
+  await session.close();
+}</code></pre>
+<p>Run it after trusting the server's host key once with <code>sync-servers server test</code>, which pins it in <code>sites.json</code>.</p>
+
+<h2 id="registry">Sites and servers</h2>
+<p><code>SiteRegistry</code> reads and writes <code>sites.json</code>, the same list the command line and the extension use. Every write takes the lock file, re-reads the file, validates the result and replaces the file atomically, so concurrent programs never lose each other's changes.</p>
+<pre><code>const registry = await SiteRegistry.open();          // or open({ configDir, stateDir })
+
+const site = await registry.add({ name: 'My Site', localRoot: '/home/&lt;user&gt;/sites/my-site' });
+const server = await registry.addServer(site.id, {
+  name: 'Production',
+  protocol: 'sftp',
+  host: 'sftp.example.com',
+  username: 'demo-user',
+  remoteRoot: '/var/www/my-site',
+});
+await registry.update(site.id, (draft) =&gt; {
+  draft.cloaking.patterns.push('.psd');
+});
+console.log(registry.list().map((item) =&gt; item.name));</code></pre>
+<p>A site's first server becomes its Remote server. <code>resolve()</code> finds a site by id, by name ignoring case, or by a path inside its local folder.</p>
+
+<h2 id="host">The host adapter</h2>
+<p>A <code>HostAdapter</code> is what the engine asks of the program it runs in:</p>
+<table>
+  <caption>Members of HostAdapter</caption>
+  <thead><tr><th scope="col">Member</th><th scope="col">Answers</th></tr></thead>
+  <tbody>
+    <tr><td><code>credentials</code></td><td>Where saved passwords and key passphrases are read and kept.</td></tr>
+    <tr><td><code>confirmHostKey(info)</code></td><td>Whether to trust an SSH host key seen for the first time: <code>'accept-and-pin'</code>, <code>'accept-once'</code> or <code>'reject'</code>.</td></tr>
+    <tr><td><code>promptSecret(request)</code></td><td>A password typed by a person, or <code>undefined</code>.</td></tr>
+    <tr><td><code>interactive</code></td><td><code>false</code> when nobody can answer, so new host keys are refused without asking.</td></tr>
+    <tr><td><code>logger</code></td><td>Where the engine logs, with every secret already removed.</td></tr>
+  </tbody>
+</table>
+<p>To use the operating system's credential store, as the command line does:</p>
+<pre><code>import { openKeyringStore } from '@isocialpractice/cmd-sync-servers/credentials/keyring';
+import { MemoryCredentialStore } from '@isocialpractice/cmd-sync-servers';
+
+const credentials = (await openKeyringStore()) ?? new MemoryCredentialStore();</code></pre>
+<p><code>openKeyringStore()</code> resolves <code>undefined</code> when the optional <code>@napi-rs/keyring</code> package has no build for the platform.</p>
+
+<h2 id="plans">Plans</h2>
+<p><code>session.plan()</code> scans both sides and returns a <code>SyncPlan</code>; it transfers nothing. The plan holds one row per file with a difference, as the preview shows them, and can be changed before it runs:</p>
+<pre><code>const plan = await session.plan({ direction: 'both', deleteOrphans: false, scope: { kind: 'paths', paths: ['css'] } });
+
+plan.summary;                       // { update: 3, delete: 0, skip: 41, resolve: 1, guarded: 0, errors: 0 }
+for (const item of plan.items) {
+  console.log(item.id, item.action, item.checked, item.path, item.status);
+}
+plan.allowedActions('css/site.css');        // ['put', 'get', 'skip', 'synced', ...]
+plan.setAction('css/site.css', 'get');      // a Resolve row needs an action before it can run
+plan.setChecked('css/print.css', false);
+
+const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.fromJSON and applySaved</code></pre>
+<p><a href="synchronization.html#actions">Synchronization</a> explains which action each change gets.</p>
+
+<h2 id="session">Other session calls</h2>
+<table>
+  <caption>SyncSession methods</caption>
+  <thead><tr><th scope="col">Method</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>testConnection(signal)</code></td><td>Connects, signs in, checks the root directory and reports what the server offers.</td></tr>
+    <tr><td><code>status(options)</code></td><td>What changed on each side since the last sync, without a plan.</td></tr>
+    <tr><td><code>put(paths)</code>, <code>get(paths)</code></td><td>Moves single files or folders at once; returns a plan instead when a decision is needed.</td></tr>
+    <tr><td><code>compare(path, signal)</code></td><td>Both copies of a file for a diff; the server copy is a private temporary file removed by <code>dispose()</code>.</td></tr>
+    <tr><td><code>markSynchronized(paths, signal)</code></td><td>Records files as in sync without moving them.</td></tr>
+    <tr><td><code>resetState()</code></td><td>Forgets the sync records of the site and server.</td></tr>
+    <tr><td><code>close()</code></td><td>Saves the records and closes every connection.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="progress">Progress and cancelling</h2>
+<p>Every call that can take long takes an <code>AbortSignal</code>. Aborting a run starts no new transfer, removes partial files and records what finished; the result says <code>cancelled: true</code>. Aborting a scan rejects with <code>E_CANCELLED</code>.</p>
+<p>Progress events carry counts and bytes, never file contents:</p>
+<table>
+  <caption>Progress events</caption>
+  <thead><tr><th scope="col">Type</th><th scope="col">Carries</th></tr></thead>
+  <tbody>
+    <tr><td><code>scan-local</code></td><td><code>files</code> found so far</td></tr>
+    <tr><td><code>scan-remote</code></td><td><code>files</code> and <code>folders</code> found so far</td></tr>
+    <tr><td><code>compare</code></td><td><code>files</code> compared</td></tr>
+    <tr><td><code>transfer</code></td><td><code>path</code>, <code>action</code>, <code>outcome</code>, <code>completed</code>, <code>total</code> and <code>bytes</code></td></tr>
+    <tr><td><code>done</code></td><td><code>completed</code> and <code>failed</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="errors">Errors</h2>
+<p>Failures are <code>SyncError</code> instances. Their <code>code</code> is stable across versions and their message never contains a secret. <code>transient</code> says whether trying again on a fresh connection may help.</p>
+<pre><code>import { isSyncError } from '@isocialpractice/cmd-sync-servers';
+
+try {
+  await session.testConnection();
+} catch (error) {
+  if (isSyncError(error, 'E_AUTH')) {
+    // ask for the password again
+  } else if (isSyncError(error) &amp;&amp; error.transient) {
+    // try again later
+  } else {
+    throw error;
+  }
+}</code></pre>
+<p>Every code, with what to do about it, is listed in <a href="troubleshooting.html#error-codes">Troubleshooting</a>.</p>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

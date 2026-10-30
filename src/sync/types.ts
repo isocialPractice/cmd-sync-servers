@@ -20,8 +20,18 @@ export const DIRECTION_TITLES: Readonly<Record<Direction, string>> = {
 /** The whole site, or some files and folders of it. */
 export type Scope = { readonly kind: 'site' } | { readonly kind: 'paths'; readonly paths: readonly string[] };
 
+/**
+ * What a preview row does: upload (`put`), download (`get`), wait for a
+ * decision (`resolve`), delete on one side, nothing (`skip`), or record both
+ * copies as in sync without a transfer (`synced`).
+ */
 export type Action = 'put' | 'get' | 'resolve' | 'delete-remote' | 'delete-local' | 'skip' | 'synced';
 
+/**
+ * Why a name cannot be synchronized: not valid on the other system
+ * (`unsafe`), clashing with another name that differs only by case
+ * (`case`), a symbolic link (`symlink`), or anything else.
+ */
 export type ProblemKind = 'unsafe' | 'case' | 'symlink' | 'other';
 
 /** A name a scan could not use, on either side. */

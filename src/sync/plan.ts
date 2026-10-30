@@ -14,23 +14,31 @@ import type { Action, Direction, Observation, ProblemKind, Scope } from './types
 export interface PlanItem {
   /** Numbers rows from 1 in path order; editor mode refers to rows by number. */
   readonly id: number;
+  /** The site-relative path, with `/` between folders. */
   readonly path: string;
+  /** How the file changed since the last sync, or `problem` for a name that cannot be used. */
   readonly state: SyncState | 'problem';
+  /** Why a problem row cannot be synchronized. */
   readonly problem: ProblemKind | undefined;
+  /** What the row does when it runs. */
   readonly action: Action;
   /** `undefined` for a Resolve row until an action is chosen. Problem rows are never checked. */
   readonly checked: boolean | undefined;
+  /** A sentence for the person, empty when the action speaks for itself. */
   readonly status: string;
   /** The sensitive pattern the path matches, when it does. */
   readonly guarded: string | undefined;
-  /** Each side as scanned, for the stale check before the item runs. */
+  /** The local side as scanned, for the stale check before the item runs. */
   readonly local: Observation | undefined;
+  /** The remote side as scanned. */
   readonly remote: Observation | undefined;
+  /** True when the path has no sync record, so a delete is never checked by default. */
   readonly neverSynced: boolean;
 }
 
 type MutableItem = { -readonly [K in keyof PlanItem]: PlanItem[K] };
 
+/** The counts of a preview's summary line. */
 export interface PlanSummary {
   /** Checked Put and Get rows. */
   readonly update: number;
@@ -71,7 +79,12 @@ export interface PlanInput {
   readonly now?: number;
 }
 
-interface Decision {
+/**
+ * The action, default check and status {@link decide} gives a state.
+ *
+ * @experimental
+ */
+export interface Decision {
   readonly action: Action;
   readonly checked: boolean | undefined;
   readonly status: string;
@@ -82,7 +95,12 @@ const transfer = (action: Action, status = ''): Decision => ({ action, checked: 
 const resolve = (status: string): Decision => ({ action: 'resolve', checked: undefined, status });
 const orphan = (action: Action, status: string): Decision => ({ action, checked: false, status, neverSynced: true });
 
-/** The action and default check of a state, for a direction and the delete option (section 7.4). */
+/**
+ * The action and default check of a state, for a direction and the delete
+ * option. `undefined` means the path is left out of the preview.
+ *
+ * @experimental
+ */
 export function decide(state: SyncState, direction: Direction, deleteOrphans: boolean, explicit = false): Decision | undefined {
   switch (state) {
     case 'local-changed':
@@ -150,7 +168,7 @@ function compareText(a: string, b: string): number {
 }
 
 /** A digest of everything a plan was built from, so a saved plan can be checked against a fresh scan. */
-export function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 'scope' | 'local' | 'remote' | 'records'>): string {
+function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 'scope' | 'local' | 'remote' | 'records'>): string {
   const side = (scan: ScanResult): unknown[] =>
     [...scan.files.entries()].sort(([a], [b]) => compareText(a, b)).map(([key, value]) => [key, value.size, value.mtimeMs ?? null, value.sha256 ?? null]);
   const problems = [...input.local.problems, ...input.remote.problems].map((problem) => `${problem.side}:${problem.kind}:${problem.path}`).sort(compareText);
@@ -205,23 +223,39 @@ export interface SavedPlan {
  * Transfers nothing; {@link SyncSession.execute} runs the checked rows.
  */
 export class SyncPlan {
+  /** The site the plan was built for. */
   readonly siteId: string;
+  /** The server the plan was built for. */
   readonly serverId: string;
+  /** Put, get or both. */
   readonly direction: Direction;
+  /** Whether files missing on the other side are offered for deletion. */
   readonly deleteOrphans: boolean;
+  /** The whole site, or some paths of it. */
   readonly scope: Scope;
+  /** When the plan was built, as an ISO 8601 time. */
   readonly createdAt: string;
+  /** A digest of the scans the plan came from; a saved plan runs only while it still matches. */
   readonly fingerprint: string;
   /** Record changes that need no transfer. */
   readonly silent: readonly SilentUpdate[];
   /** Files compared but not listed: in sync, or not part of this direction. */
   readonly unlisted: number;
+  /** How many local files the scan found. */
   readonly localFiles: number;
+  /** How many remote files the scan found. */
   readonly remoteFiles: number;
+  /** The local folders the scan found, for creating them on the other side. */
   readonly localDirs: ReadonlySet<string>;
+  /** The remote folders the scan found. */
   readonly remoteDirs: ReadonlySet<string>;
   readonly #items: MutableItem[];
 
+  /**
+   * Builds a plan from two scans; programs get plans from {@link SyncSession.plan}.
+   *
+   * @internal
+   */
   constructor(input: PlanInput) {
     this.siteId = input.siteId;
     this.serverId = input.serverId;
@@ -321,6 +355,7 @@ export class SyncPlan {
     return this.#items;
   }
 
+  /** The row with this number, or with this site-relative path. */
   item(ref: number | string): PlanItem | undefined {
     return this.#find(ref);
   }
@@ -373,6 +408,11 @@ export class SyncPlan {
     item.checked = action !== 'skip';
   }
 
+  /**
+   * Checks or unchecks a row; only checked rows run.
+   *
+   * @throws {@link SyncError} `E_PLAN_INVALID` for a problem row, or a Resolve row before an action is chosen.
+   */
   setChecked(ref: number | string, checked: boolean): void {
     const item = this.#require(ref);
     if (item.state === 'problem') {
@@ -384,6 +424,7 @@ export class SyncPlan {
     item.checked = checked;
   }
 
+  /** The counts behind {@link summaryLine}, as they stand after the person's choices. */
   get summary(): PlanSummary {
     let update = 0;
     let remove = 0;

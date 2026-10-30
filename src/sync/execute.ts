@@ -15,31 +15,49 @@ import type { Recovery } from './recovery.ts';
 import type { SyncRecords } from './state.ts';
 import type { Action, Observation, ProgressEvent } from './types.ts';
 
+/**
+ * How a row ended: transferred or deleted (`done`), `failed`, skipped because
+ * a side changed since the preview (`stale`), not run (`skipped`), or not
+ * reached before a cancel (`cancelled`).
+ */
 export type ItemOutcome = 'done' | 'failed' | 'stale' | 'skipped' | 'cancelled';
 
+/** What happened to one row of a plan. */
 export interface ItemResult {
+  /** The row number in the plan. */
   readonly id: number;
+  /** The site-relative path. */
   readonly path: string;
+  /** The action the row had. */
   readonly action: Action;
   readonly outcome: ItemOutcome;
+  /** Why it failed or was stale: a {@link SyncErrorCode} and a message without secrets. */
   readonly error?: { readonly code: string; readonly message: string };
   /** Where a local file that was deleted or overwritten was kept. */
   readonly recoveredTo?: string;
 }
 
+/** What a run did, as returned by {@link SyncSession.execute}. */
 export interface SyncResult {
   /** Every row, failures first. */
   readonly items: readonly ItemResult[];
+  /** Rows transferred, deleted or recorded. */
   readonly done: number;
+  /** Rows that failed, including stale ones. */
   readonly failed: number;
+  /** Rows not run: unchecked, skipped, or not reached. */
   readonly skipped: number;
   /** Rows still waiting for a decision. */
   readonly unresolved: number;
+  /** True when the signal stopped the run before every row was reached. */
   readonly cancelled: boolean;
 }
 
+/** Options of {@link SyncSession.execute}. */
 export interface ExecuteOptions {
+  /** Stops the run cleanly: no new transfer starts, partial files are removed, and finished rows are recorded. */
   readonly signal?: AbortSignal | undefined;
+  /** Receives a `transfer` event per row and a `done` event at the end. */
   readonly onProgress?: ((event: ProgressEvent) => void) | undefined;
   /** Runs deletes past the mass-delete threshold without asking. */
   readonly allowMassDelete?: boolean | undefined;
@@ -435,7 +453,7 @@ class Run {
   }
 }
 
-/** Runs the checked rows of a plan (section 7.6). */
+/** Runs the checked rows of a plan. */
 export function executePlan(plan: SyncPlan, context: ExecuteContext, options: ExecuteOptions = {}): Promise<SyncResult> {
   return new Run(plan, context, options).run();
 }

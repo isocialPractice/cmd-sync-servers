@@ -25,7 +25,12 @@ import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEn
 
 const { Client, utils } = ssh2;
 
-/** The algorithms of section 8.4: modern key exchange, host keys, ciphers and encrypt-then-MAC. */
+/**
+ * The algorithms SFTP offers by default: modern key exchange, host keys,
+ * ciphers and encrypt-then-MAC.
+ *
+ * @experimental
+ */
 export const MODERN_ALGORITHMS: Algorithms = {
   kex: ['curve25519-sha256', 'curve25519-sha256@libssh.org', 'ecdh-sha2-nistp256', 'ecdh-sha2-nistp384', 'ecdh-sha2-nistp521'],
   serverHostKey: ['ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'rsa-sha2-512', 'rsa-sha2-256'],
@@ -43,23 +48,41 @@ export const LEGACY_ALGORITHMS: Algorithms = {
   compress: ['none'],
 } as Algorithms;
 
+/**
+ * Options of {@link SftpTransport}.
+ *
+ * @experimental
+ */
 export interface SftpTransportOptions {
+  /** The server's host name or address. */
   readonly host: string;
+  /** The SSH port, usually 22. */
   readonly port: number;
+  /** The account to sign in as. */
   readonly username: string;
+  /** How to sign in; `keyPath` names the private key file of the `key` method. */
   readonly auth: { readonly method: 'password' | 'key' | 'agent'; readonly keyPath?: string | undefined };
+  /** The site root on the server, an absolute path. */
   readonly remoteRoot: string;
+  /** How long a connection or an operation may wait, in milliseconds. */
   readonly timeoutMs: number;
+  /** Connect over IPv4 or IPv6 only. */
   readonly ipFamily?: 4 | 6 | undefined;
+  /** Also offer older algorithms, with a warning on every connection. */
   readonly legacyAlgorithms?: boolean | undefined;
+  /** The pinned host key, and how to confirm and pin a new one. */
   readonly hostKeys: HostKeyPolicy;
   /** Supplies the password or key passphrase, only once the host key has been verified. */
   readonly secret: (kind: SecretKind) => Promise<string>;
   /** The SSH agent: a socket path, a Windows pipe, or `pageant`. Default: `SSH_AUTH_SOCK`, then the Windows OpenSSH agent. */
   readonly agent?: string | undefined;
+  /** Where `SSH_AUTH_SOCK` is read. Default: the process environment. */
   readonly env?: Readonly<Record<string, string | undefined>>;
+  /** Where protocol traces and warnings go. */
   readonly logger?: Logger;
+  /** The most entries one folder listing may hold. */
   readonly listingLimit?: number;
+  /** The platform whose name rules apply to listed names. Default: this one. */
   readonly platform?: NodeJS.Platform;
 }
 
@@ -149,7 +172,11 @@ function tryPosixRename(sftp: SFTPWrapper, from: string, to: string): Promise<vo
   return done;
 }
 
-/** SFTP over SSH, through `ssh2`'s pure JavaScript path. */
+/**
+ * SFTP over SSH, through `ssh2`'s pure JavaScript path.
+ *
+ * @experimental
+ */
 export class SftpTransport implements Transport {
   readonly #options: SftpTransportOptions;
   readonly #logger: Logger;

@@ -23,12 +23,17 @@ import { scanRemote } from './scan-remote.ts';
 import { SyncRecords, type SyncRecord } from './state.ts';
 import type { Direction, ProgressEvent, ScanProblem, Scope } from './types.ts';
 
+/** Options of {@link SyncSession.open}. */
 export interface SyncSessionOptions {
+  /** The master list the site is read from, and where a pinned host key is saved. */
   readonly registry: SiteRegistry;
+  /** The site to synchronize. */
   readonly siteId: string;
   /** The server to use; the site's Remote server when absent. */
   readonly serverId?: string | undefined;
+  /** Credentials, host key confirmation and prompts, from the program in charge. */
   readonly host: HostAdapter;
+  /** Where the session logs. Default: the host's logger. */
   readonly logger?: Logger | undefined;
   /** Where `SYNC_SERVERS_PASSWORD` and `SSH_AUTH_SOCK` are read. Default: the process environment. */
   readonly env?: Readonly<Record<string, string | undefined>> | undefined;
@@ -38,18 +43,25 @@ export interface SyncSessionOptions {
   readonly retryDelaysMs?: readonly number[] | undefined;
 }
 
+/** Options of {@link SyncSession.plan}. */
 export interface PlanOptions {
+  /** Put newer local files, get newer remote files, or both. */
   readonly direction: Direction;
   /** The whole site, or some paths of it. Default: the whole site. */
   readonly scope?: Scope | undefined;
   /** The delete option of the sync dialog. */
   readonly deleteOrphans?: boolean | undefined;
+  /** Stops the scan; the call then rejects with `E_CANCELLED`. */
   readonly signal?: AbortSignal | undefined;
+  /** Receives `scan-local`, `scan-remote` and `compare` events. */
   readonly onProgress?: ((event: ProgressEvent) => void) | undefined;
 }
 
+/** One changed path of a {@link StatusReport}. */
 export interface StatusEntry {
+  /** The site-relative path. */
   readonly path: string;
+  /** How it changed. */
   readonly state: SyncState;
 }
 
@@ -70,17 +82,25 @@ export interface SingleTransfer {
   readonly result: SyncResult | undefined;
 }
 
+/** One copy of a compared file. */
 export interface ComparedSide {
+  /** A file to read: the local file itself, or a private temp copy of the remote one. */
   readonly file: string;
+  /** Its size in bytes. */
   readonly size: number;
+  /** Its modification time in milliseconds, when known. */
   readonly mtimeMs: number | undefined;
 }
 
 /** Both copies of a file for a diff; the remote one is a private temp copy removed by `dispose`. */
 export interface Comparison {
+  /** The site-relative path compared. */
   readonly path: RemotePath;
+  /** The local copy, or `undefined` when there is none. */
   readonly local: ComparedSide | undefined;
+  /** The remote copy, or `undefined` when there is none. */
   readonly remote: ComparedSide | undefined;
+  /** Removes the temp copy. Call it when done reading. */
   dispose(): Promise<void>;
 }
 
@@ -96,7 +116,9 @@ function inside(target: string, scopes: readonly RemotePath[]): boolean {
  * Connections open on first use and close with {@link close}.
  */
 export class SyncSession {
+  /** The site, as it was when the session opened. */
   readonly site: Site;
+  /** The server in use. */
   readonly server: Server;
   readonly #registry: SiteRegistry;
   readonly #host: HostAdapter;
@@ -119,6 +141,13 @@ export class SyncSession {
     this.#options = options;
   }
 
+  /**
+   * Opens a session for a site and a server, the Remote server by default,
+   * and loads its sync records. Nothing connects until the first call that
+   * needs the server.
+   *
+   * @throws {@link SyncError} `E_SITE_NOT_FOUND` or `E_SERVER_NOT_FOUND`.
+   */
   static async open(options: SyncSessionOptions): Promise<SyncSession> {
     const site = options.registry.get(options.siteId);
     if (site === undefined) {
@@ -417,6 +446,7 @@ export class SyncSession {
     await rm(path.join(this.#registry.paths.stateDir, 'sites', this.site.id, 'hashes.json'), { force: true });
   }
 
+  /** Saves the sync records and closes every connection. Safe to call more than once. */
   async close(): Promise<void> {
     await this.#records.save();
     await this.#pool?.close();

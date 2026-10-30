@@ -1,0 +1,22 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "cmd-sync-servers",
+  "entryPoints": ["src/index.ts", "src/credentials/keyring.ts"],
+  "tsconfig": "tsconfig.json",
+  "out": "_site/api",
+  "readme": "none",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "githubPages": false,
+  "sourceLinkTemplate": "https://github.com/isocialPractice/cmd-sync-servers/blob/{gitRevision}/{path}#L{line}",
+  "hideGenerator": true,
+  "requiredToBeDocumented": ["Enum", "Variable", "Function", "Class", "Interface", "TypeAlias", "Method", "Accessor"],
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": true
+  },
+  "treatWarningsAsErrors": true
+}

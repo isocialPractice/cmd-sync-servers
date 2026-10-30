@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="How sync-servers finds what changed on each side and turns it into the rows of a preview.">
+<title>Synchronization | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="synchronization.html" aria-current="page">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Synchronization</h1>
+<p class="lead">How a sync finds what changed on each side, decides what each file needs, and runs only what you confirm.</p>
+
+<h2 id="records">The memory of the last sync</h2>
+<p>For every file it synchronizes, sync-servers records both sides as they were at that moment: the size and modification time of the local copy and of the server copy. These <strong>sync records</strong> are kept per site and server in the state folder of this computer.</p>
+<p>On the next sync each side is compared with its <em>own</em> record, never with the other side's clock. A local file whose size or time moved is changed locally; a server file whose size or time moved is changed on the server. When both moved, the file changed on both sides, and it waits for your decision instead of being overwritten. Times closer than the tolerance, 2 seconds by default, count as equal, because FAT drives and many servers round them.</p>
+<p>A file with no record yet, as on a first sync, is compared across the two sides: the newer copy wins, and copies of the same age that differ ask for a decision. In checksum mode (<code>sync.compare</code> set to <code>checksum</code>) SHA-256 hashes settle what times cannot.</p>
+<p><code>sync-servers status</code> shows what changed on each side without planning anything. <code>mark-synced</code> records files as in sync without moving them, and <code>state reset</code> forgets the records so the next sync starts from scratch.</p>
+
+<h2 id="actions">From a change to an action</h2>
+<p>Each direction turns what changed into an action. A file whose row says "not listed" is counted as skipped and never moves.</p>
+<table>
+  <caption>The action each change gets, by direction</caption>
+  <thead>
+    <tr><th scope="col">What happened since the last sync</th><th scope="col">Put newer files</th><th scope="col">Get newer files</th><th scope="col">Both</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Changed here</td><td>Put</td><td>not listed</td><td>Put</td></tr>
+    <tr><td>Changed on the server</td><td>not listed</td><td>Get</td><td>Get</td></tr>
+    <tr><td>Changed on both sides</td><td>Resolve</td><td>Resolve</td><td>Resolve</td></tr>
+    <tr><td>New here</td><td>Put</td><td>not listed</td><td>Put</td></tr>
+    <tr><td>New on the server</td><td>not listed</td><td>Get</td><td>Get</td></tr>
+    <tr><td>Deleted on the server, unchanged here</td><td>Put again</td><td>not listed</td><td>Put again</td></tr>
+    <tr><td>Deleted here, unchanged on the server</td><td>not listed</td><td>Get again</td><td>Get again</td></tr>
+    <tr><td>Changed here, deleted on the server</td><td>Resolve</td><td>Resolve</td><td>Resolve</td></tr>
+    <tr><td>Deleted here, changed on the server</td><td>Resolve</td><td>Resolve</td><td>Resolve</td></tr>
+    <tr><td>No record, newer here</td><td>Put</td><td>not listed</td><td>Put</td></tr>
+    <tr><td>No record, newer on the server</td><td>not listed</td><td>Get</td><td>Get</td></tr>
+    <tr><td>No record, differs, same age</td><td>Resolve</td><td>Resolve</td><td>Resolve</td></tr>
+  </tbody>
+</table>
+<p>A <strong>Resolve</strong> row is unchecked and cannot run until you choose Put, Get, Skip or Synchronized for it.</p>
+
+<h3 id="delete-option">The delete option</h3>
+<p>With <code>--delete</code>, or the delete checkbox, a file missing on the other side is offered for deletion instead of being copied back. The checkbox is worded for the direction: <em>Delete remote files not on local drive</em> when putting, <em>Delete local files not on remote server</em> when getting.</p>
+<table>
+  <caption>What the delete option changes</caption>
+  <thead>
+    <tr><th scope="col">What happened</th><th scope="col">Put newer files</th><th scope="col">Get newer files</th><th scope="col">Both</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Deleted here since the last sync</td><td>Delete on the server, checked</td><td>Get again</td><td>Delete on the server, checked</td></tr>
+    <tr><td>Deleted on the server since the last sync</td><td>Put again</td><td>Delete here, checked</td><td>Put again</td></tr>
+    <tr><td>On the server only, never synchronized</td><td>Delete on the server, <strong>unchecked</strong></td><td>Get</td><td>Delete on the server, <strong>unchecked</strong></td></tr>
+    <tr><td>Here only, never synchronized</td><td>Put</td><td>Delete here, <strong>unchecked</strong></td><td>Put</td></tr>
+  </tbody>
+</table>
+<p>A file that was never synchronized is only ever offered for deletion unchecked: nothing is deleted just because it has no record.</p>
+
+<h3 id="single-files">Put and Get of single files</h3>
+<p><code>sync-servers put css/site.css</code> and <code>get</code> move the files and folders you name at once, through the same checks. When one of them changed on the other side, or is held back by the guard, the preview opens first so you can decide.</p>
+
+<h2 id="preview">The preview</h2>
+<p>The preview lists only files with a difference; unchanged files are counted, never listed. Its summary line counts what will happen, such as <code>Files: 37 will be updated, 169 will be skipped, 12 need a decision</code>. Each row has a checkbox, an action and a status that says why, in a sentence:</p>
+<table>
+  <caption>Rows that start unchecked</caption>
+  <thead><tr><th scope="col">Row</th><th scope="col">Why</th></tr></thead>
+  <tbody>
+    <tr><td>Resolve</td><td>Changed on both sides, or differs with no record. Choose an action first.</td></tr>
+    <tr><td>Guarded</td><td>Matches a sensitive pattern such as <code>.env</code>; see <a href="configuration.html#guard">the guard</a>.</td></tr>
+    <tr><td>Never-synchronized delete</td><td>Offered by the delete option for a file with no record.</td></tr>
+    <tr><td>Problem</td><td>A name that cannot be used here: not valid on this system, a symbolic link, or two names that differ only by case on a file system that cannot tell them apart. Problem rows never run.</td></tr>
+  </tbody>
+</table>
+<p>You can change any row: check or uncheck it, or choose another action that the file can take. Put needs a local copy, Get a server copy, and Synchronized both.</p>
+
+<h2 id="running">Running a plan</h2>
+<ul>
+  <li><strong>Checked once more.</strong> Just before a file moves, both sides are looked at again. A file that changed since the preview is skipped and reported as stale.</li>
+  <li><strong>Written whole or not at all.</strong> A file is written to a partial copy, its size checked, and only then renamed into place, so an interrupted transfer never leaves half a file.</li>
+  <li><strong>Local files kept.</strong> A local file that a run deletes or overwrites is moved to the recovery folder of the state folder first, and kept 14 days.</li>
+  <li><strong>Folders in order.</strong> Folders are created before their files and removed after them.</li>
+  <li><strong>Retries.</strong> A dropped connection or a timeout is retried on a fresh connection after 1, 2 and 4 seconds.</li>
+  <li><strong>Recorded as it goes.</strong> Records are saved during the run, so a cancelled or interrupted sync keeps what it finished. Cancelling starts no new transfer and removes partial files.</li>
+</ul>
+
+<h2 id="guards">Safety guards</h2>
+<p>Some plans stop before anything moves, with exit code 5:</p>
+<ul>
+  <li><strong>Mass delete.</strong> Deleting more than 50 files, or more than a quarter of a side's files, asks you to type the count. A script needs <code>--allow-mass-delete</code>. Both limits are settings of the site.</li>
+  <li><strong>Empty root.</strong> When one side is empty and the plan would delete everything on the other, the run is refused: an unmounted drive or a wrong root directory looks exactly like that.</li>
+  <li><strong>Top of a server.</strong> Deletes are refused when the server's root directory is <code>/</code> or a drive root, unless the server allows it with <code>allowRootDeletes</code>.</li>
+</ul>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

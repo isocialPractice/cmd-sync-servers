@@ -22,10 +22,12 @@ export const STATUS = {
   stale: 'Changed since the preview. Skipped.',
 } as const;
 
+/** The status of a row held back by the sensitive-file guard. */
 export function guardedStatus(pattern: string): string {
   return `Matches the sensitive pattern "${pattern}". Check to transfer anyway.`;
 }
 
+/** The status of a name that cannot be used on this system. */
 export function unsafeNameStatus(reason: string): string {
   return `Name is not valid on this system: ${reason}.`;
 }

@@ -33,6 +33,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
+      - name: API reference, failing on an undocumented export
+        run: npm run docs:api
       - run: npm audit signatures
       - run: npm audit --omit=dev --audit-level=high
 

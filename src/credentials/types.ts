@@ -19,6 +19,7 @@ export interface SecretRequest {
 
 /** Somewhere a secret can be read from. */
 export interface SecretSource {
+  /** The secret for `ref`, or `undefined` when this source has none. */
   get(ref: SecretRef): Promise<string | undefined>;
 }
 
@@ -26,6 +27,7 @@ export interface SecretSource {
 export interface CredentialStore extends SecretSource {
   /** A name for messages, such as "Windows Credential Manager". */
   readonly name: string;
+  /** Keeps `secret` for `ref`, replacing any secret kept before. */
   set(ref: SecretRef, secret: string): Promise<void>;
   /** Resolves `true` when a secret was deleted, `false` when there was none. */
   delete(ref: SecretRef): Promise<boolean>;

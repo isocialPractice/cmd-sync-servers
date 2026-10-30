@@ -13,6 +13,7 @@ export interface HostKeyInfo {
   readonly fingerprint: string;
 }
 
+/** Trust a new host key and pin it in the server's settings, trust it for this connection only, or refuse it. */
 export type HostKeyDecision = 'accept-and-pin' | 'accept-once' | 'reject';
 
 /**
@@ -21,6 +22,7 @@ export type HostKeyDecision = 'accept-and-pin' | 'accept-once' | 'reject';
  * The CLI and the VS Code extension each supply one.
  */
 export interface HostAdapter {
+  /** Where saved passwords and key passphrases are read, and new ones kept. */
   readonly credentials: CredentialStore;
   /** False when nobody can answer a question, as in an unattended run: new host keys are then refused. */
   readonly interactive?: boolean;
@@ -28,5 +30,6 @@ export interface HostAdapter {
   confirmHostKey(info: HostKeyInfo): Promise<HostKeyDecision>;
   /** Asks for a secret; resolves `undefined` when nobody can be asked or the person cancels. */
   promptSecret(request: SecretRequest): Promise<string | undefined>;
+  /** Where the engine logs, with secrets redacted. */
   readonly logger?: Logger;
 }

@@ -2,6 +2,11 @@ import { silentLogger, type Logger } from '../log/logger.ts';
 import { withRetry, isTransient, type RetryOptions } from './retry.ts';
 import type { Capabilities, Transport } from './types.ts';
 
+/**
+ * Options of {@link TransportPool}.
+ *
+ * @experimental
+ */
 export interface PoolOptions {
   /** The most operations at once. */
   readonly size: number;
@@ -11,6 +16,7 @@ export interface PoolOptions {
    * its own connection, as FTP does.
    */
   readonly shared: boolean;
+  /** Where retries and a shrinking pool are reported. */
   readonly logger?: Logger;
 }
 
@@ -24,6 +30,8 @@ interface Slot {
  * error is dropped, so the next operation gets a fresh one. An FTP server
  * that answers 421 (too many connections) shrinks the pool for the rest of
  * the run.
+ *
+ * @experimental
  */
 export class TransportPool {
   readonly #factory: () => Transport;
@@ -120,6 +128,7 @@ export class TransportPool {
     return withRetry(() => this.run(operation, options.signal), options);
   }
 
+  /** Closes every idle connection; connections in use close when they are handed back. */
   async close(): Promise<void> {
     this.#closed = true;
     const slots = [...this.#idle, ...(this.#sharedSlot === undefined ? [] : [this.#sharedSlot])];

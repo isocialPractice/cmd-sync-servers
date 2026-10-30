@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Create a site and a server, save the password, test the connection and run the first preview.">
+<title>Getting started | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="getting-started.html" aria-current="page">Getting started</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Getting started</h1>
+<p class="lead">From nothing to a first synchronization: a site, a server, a saved password, a connection test and a preview.</p>
+<p>Every step below works two ways. In a terminal, run <code>sync-servers</code> with no command and use the menus; or type the commands shown, which ask for anything you leave out. In a script, pass every value as an option and nothing is ever asked.</p>
+
+<h2 id="site">1. Create a site</h2>
+<p>A site is a name and a local folder: the folder on this computer that holds the files you publish.</p>
+<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site</code></pre>
+<p>On Windows the folder looks like <code>C:\Users\&lt;user&gt;\Sites\my-site</code>. Names are unique, ignoring case. List the sites with <code>sync-servers sites</code>.</p>
+
+<h2 id="server">2. Add a server</h2>
+<p>A server is where the site is published. SFTP is the default and the safest choice:</p>
+<pre><code>sync-servers server add --site "My Site" --name Production \
+  --host sftp.example.com --user demo-user --remote-root /var/www/my-site</code></pre>
+<p>The first server of a site becomes its <strong>Remote</strong> server, the one synchronization uses. A second server, such as a staging copy, can be made the <strong>Testing</strong> server with <code>sync-servers server set-testing</code>.</p>
+<table>
+  <caption>Ways to reach a server</caption>
+  <thead><tr><th scope="col">Protocol</th><th scope="col">Use it for</th></tr></thead>
+  <tbody>
+    <tr><td><code>sftp</code></td><td>Most hosts. Signs in with a password, a private key file, or the SSH agent.</td></tr>
+    <tr><td><code>ftps</code></td><td>FTP with TLS started on the usual port (explicit TLS).</td></tr>
+    <tr><td><code>ftps-implicit</code></td><td>FTP over TLS from the first byte, usually on port 990.</td></tr>
+    <tr><td><code>ftp</code></td><td>Old hosts only. It sends the password in clear text, so it needs <code>--allow-insecure</code>.</td></tr>
+    <tr><td><code>local</code></td><td>A folder on this computer, a mounted drive or a network share.</td></tr>
+  </tbody>
+</table>
+<p>To sign in with a key instead of a password: <code>--auth key --key-path ~/.ssh/id_ed25519</code>. The key file is read when connecting and never copied.</p>
+
+<h2 id="password">3. Save the password</h2>
+<pre><code>sync-servers password set Production --site "My Site"</code></pre>
+<p>The password is typed without being shown and kept in the operating system's credential store: Windows Credential Manager, the macOS Keychain, or the Secret Service keyring on Linux. It is never written to a file. Without a saved password you are asked for it when connecting, and an unattended run reads <code>SYNC_SERVERS_PASSWORD</code>. See <a href="configuration.html#secrets">Secrets</a>.</p>
+
+<h2 id="test">4. Test the connection</h2>
+<pre><code>sync-servers server test Production --site "My Site"</code></pre>
+<p>The test connects, signs in, checks the root directory, and reports what the server offers: its software, how precise its file times are, and for FTPS the TLS version.</p>
+<p>The first time an SFTP server is reached, its <strong>host key fingerprint</strong> is shown, such as <code>ssh-ed25519 SHA256:...</code>. Compare it with the fingerprint your host publishes, then trust it. It is pinned in the server's settings; if it ever changes, the connection stops and both fingerprints are shown. See <a href="security.html#host-keys">Host keys</a>.</p>
+
+<h2 id="cloak">5. Cloak what should never move</h2>
+<pre><code>sync-servers cloak --site "My Site" .psd "archive*" node_modules/ /drafts/</code></pre>
+<p>Cloaked files are never scanned, listed, transferred or deleted, on either side. <a href="configuration.html#cloaking">Cloaking patterns</a> explains the syntax.</p>
+
+<h2 id="preview">6. Preview, then synchronize</h2>
+<p>Inside the site's folder the site is chosen for you:</p>
+<pre><code>cd ~/sites/my-site
+sync-servers sync --put</code></pre>
+<p><code>--put</code> sends newer local files to the server, <code>--get</code> fetches newer files from it, and <code>--both</code> does each. Add <code>--delete</code> to also remove files that are missing on the other side.</p>
+<p>In a terminal the preview opens full screen. Each row is a file with a difference: a checkbox, an action and a status. <kbd>Space</kbd> checks a row, <kbd>p</kbd>, <kbd>g</kbd> and <kbd>s</kbd> choose Put, Get or Skip, <kbd>d</kbd> shows the difference, and <kbd>Enter</kbd> synchronizes the checked rows after one more question. <kbd>Esc</kbd> leaves without changing anything.</p>
+<pre><code> Synchronize: My Site -&gt; Production (SFTP)            Put newer files to remote
+ Files: 37 will be updated, 169 will be skipped, 12 need a decision
+ ------------------------------------------------------------------------------
+  [x] ^ Put      img/hero.svg
+  [ ] ? Resolve  css/site.css        Changed locally and on the server since...
+  [ ] ^ Put      .env                Matches the sensitive pattern ".env". C...</code></pre>
+<p>On a first sync there are no records yet, so a file that differs on both sides and has the same age asks for a decision. Files such as <code>.env</code> and private keys are listed unchecked. Prefer your own editor or numbered prompts? See <a href="cli.html#preview-modes">Preview modes</a>.</p>
+<p>To see the preview without transferring anything, add <code>--dry-run</code>. In a script, <code>sync</code> without <code>--yes</code> only prints the preview.</p>
+
+<h2 id="folder">7. Land in a site's folder</h2>
+<p>A program cannot change its shell's folder, so <code>shell-init</code> prints a small <code>ssv</code> function that does:</p>
+<pre><code>eval "$(sync-servers shell-init bash)"     # in ~/.bashrc; zsh is the same
+ssv                                        # pick a site, land in its folder</code></pre>
+<p>PowerShell, fish and cmd are covered in <a href="cli.html#shell-integration">Shell integration</a>.</p>
+
+<h2 id="sandbox">Try it without a real server</h2>
+<p>From a clone, <code>npm run sandbox</code> starts local SFTP, FTPS and FTP servers on <code>127.0.0.1</code> with throwaway credentials and prints the commands to add them as servers. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop them.</p>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -8,6 +8,30 @@ Until the first stable release, versions use the pre-release form
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0.5.0] - 2026-10-29
+
+### Added
+
+- A documentation site with pages for getting started, configuration, the
+  command line, synchronization, the library API, security and
+  troubleshooting, published to GitHub Pages. It also serves the JSON Schema
+  at the address `sites.json` files point to.
+- An API reference generated from the source, linked from the site.
+- `DIRECTION_TITLES` in the library API: the names of the three directions.
+- The error codes, with what to do about each, on the troubleshooting page.
+
+### Changed
+
+- Every public export is documented. The transports, the connection pool,
+  the retry helpers, the sync records and the classification helpers are
+  marked experimental: they may change before 1.0.0.
+- The README is a short front door that links to the site.
+
+### Removed
+
+- `scanFingerprint` is no longer exported. A plan's `fingerprint` carries
+  the same digest.
+
 ## [1.0.0-alpha.0.4.0] - 2026-10-29
 
 ### Added
@@ -150,7 +174,8 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...HEAD
+[Unreleased]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...HEAD
+[1.0.0-alpha.0.5.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...v1.0.0-alpha.0.5.0
 [1.0.0-alpha.0.4.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...v1.0.0-alpha.0.4.0
 [1.0.0-alpha.0.3.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...v1.0.0-alpha.0.3.0
 [1.0.0-alpha.0.2.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.1.0...v1.0.0-alpha.0.2.0

@@ -1,14 +1,19 @@
 import { SyncError } from '../errors.ts';
 import { CREDENTIAL_SERVICE, secretAccount, type CredentialStore, type SecretRef } from './types.ts';
 
-/** The part of `@napi-rs/keyring` this store uses. */
+/** The part of a `@napi-rs/keyring` entry this store uses. */
 export interface KeyringEntry {
+  /** The stored secret, or `null` when there is none. */
   getPassword(): Promise<string | null>;
+  /** Stores a secret, replacing any stored before. */
   setPassword(password: string): Promise<void>;
+  /** Deletes the stored secret; `true` when there was one. */
   deleteCredential(): Promise<boolean>;
 }
 
+/** The part of the `@napi-rs/keyring` module this store uses, so tests can pass a fake. */
 export interface KeyringModule {
+  /** Creates an entry for a service and an account. */
   AsyncEntry: new (service: string, account: string) => KeyringEntry;
 }
 

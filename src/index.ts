@@ -64,14 +64,14 @@ export {
   type StatusReport,
   type SyncSessionOptions,
 } from './sync/session.ts';
-export { SyncPlan, decide, scanFingerprint, type PlanItem, type PlanSummary, type SavedPlan, type SilentUpdate } from './sync/plan.ts';
+export { SyncPlan, decide, type Decision, type PlanItem, type PlanSummary, type SavedPlan, type SilentUpdate } from './sync/plan.ts';
 export { resultLine, type ExecuteOptions, type ItemOutcome, type ItemResult, type SyncResult } from './sync/execute.ts';
 export { classify, copiesMatch, hasChanged, type CompareOptions, type SyncState } from './sync/classify.ts';
 export { STATUS, guardedStatus, unsafeNameStatus } from './sync/messages.ts';
 export { cloakPatternToGitignore, siteCloak, splitPatterns, type Cloak } from './sync/cloak.ts';
 export { DEFAULT_GUARD_PATTERNS, siteGuard, type Guard } from './sync/guard.ts';
 export { SyncRecords, recordsFile, type SyncRecord } from './sync/state.ts';
-export type { Action, Direction, Observation, ProblemKind, ProgressEvent, ScanProblem, Scope } from './sync/types.ts';
+export { DIRECTION_TITLES, type Action, type Direction, type Observation, type ProblemKind, type ProgressEvent, type ScanProblem, type Scope } from './sync/types.ts';
 
 export {
   ROOT,

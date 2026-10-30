@@ -3,6 +3,7 @@ import type { Redactor } from '../log/logger.ts';
 import type { SecretPrompt } from './prompt.ts';
 import type { CredentialStore, SecretRequest, SecretSource } from './types.ts';
 
+/** Where {@link lookupSecret} may find a secret, in the order it tries them. */
 export interface SecretLookupOptions {
   /** The saved-secret store, read only when the server saves its password. */
   readonly store?: CredentialStore | undefined;

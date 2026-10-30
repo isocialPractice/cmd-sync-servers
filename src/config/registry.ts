@@ -22,9 +22,11 @@ import {
   type SitesFile,
 } from './schema.ts';
 
+/** Options of {@link SiteRegistry.open}. */
 export interface SiteRegistryOptions extends PathsOptions {
   /** Use these folders instead of the defaults for this user and platform. */
   readonly paths?: SyncServersPaths;
+  /** Where additions, changes and removals are recorded. */
   readonly logger?: Logger;
   /** How long a write waits for another process's lock. Default 5 seconds. */
   readonly lockTimeoutMs?: number;
@@ -129,6 +131,7 @@ export class SiteRegistry {
     return structuredClone(this.#file.sites);
   }
 
+  /** The site with this id, as a copy that can be changed freely. */
   get(siteId: string): Site | undefined {
     const site = this.#file.sites.find((candidate) => candidate.id === siteId);
     return site === undefined ? undefined : structuredClone(site);
@@ -164,6 +167,12 @@ export class SiteRegistry {
     return found === undefined ? undefined : structuredClone(found);
   }
 
+  /**
+   * Adds a site and returns it as stored. Its first server becomes the Remote
+   * server unless `remoteServerId` says otherwise.
+   *
+   * @throws {@link SyncError} `E_CONFIG_INVALID` when the site is not valid or its name is taken.
+   */
   async add(input: NewSite): Promise<Site> {
     const id = input.id ?? randomUUID();
     const servers = (input.servers ?? []).map((server) => ({ ...server, id: server.id ?? randomUUID() }));
@@ -206,6 +215,10 @@ export class SiteRegistry {
     return this.#require(siteId);
   }
 
+  /**
+   * Removes a site from the list and returns it. Its local folder, its
+   * servers' files, its saved secrets and its sync records are not touched.
+   */
   async remove(siteId: string): Promise<Site> {
     const removed = await this.#mutate((file) => {
       const site = SiteRegistry.#find(file, siteId);
@@ -219,6 +232,7 @@ export class SiteRegistry {
     return structuredClone(removed);
   }
 
+  /** Records the site last chosen, so either front end can open on it; `undefined` clears it. */
   async setLastSelected(siteId: string | undefined): Promise<void> {
     await this.#mutate((file) => {
       if (siteId === undefined) {

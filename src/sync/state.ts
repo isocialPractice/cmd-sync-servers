@@ -29,7 +29,11 @@ const recordsFileSchema = z.strictObject({
 const CHECKPOINT_ITEMS = 50;
 const CHECKPOINT_MS = 5000;
 
-/** Where the records of one site and server live: `<state>/sites/<siteId>/<serverId>.json`. */
+/**
+ * Where the records of one site and server live: `<state>/sites/<siteId>/<serverId>.json`.
+ *
+ * @experimental
+ */
 export function recordsFile(stateDir: string, siteId: string, serverId: string): string {
   return path.join(stateDir, 'sites', siteId, `${serverId}.json`);
 }
@@ -40,9 +44,13 @@ export function recordsFile(stateDir: string, siteId: string, serverId: string):
  * folder, written atomically, and checkpointed during a run so an
  * interrupted sync keeps what it finished. Disabled records (`maintainInfo`
  * off) hold nothing and are never written.
+ *
+ * @experimental {@link SyncSession} keeps the records; programs rarely need them directly.
  */
 export class SyncRecords {
+  /** The JSON file the records are kept in. */
   readonly file: string;
+  /** False when the site does not maintain synchronization information. */
   readonly enabled: boolean;
   readonly #records = new Map<string, SyncRecord>();
   #changes = 0;
@@ -53,6 +61,11 @@ export class SyncRecords {
     this.enabled = enabled;
   }
 
+  /**
+   * Reads the records of a site and server, or starts empty when there are none yet.
+   *
+   * @throws {@link SyncError} `E_CONFIG_INVALID` when the file is damaged.
+   */
   static async load(stateDir: string, siteId: string, serverId: string, enabled: boolean): Promise<SyncRecords> {
     const records = new SyncRecords(recordsFile(stateDir, siteId, serverId), enabled);
     if (!enabled) {
@@ -86,14 +99,17 @@ export class SyncRecords {
     return records;
   }
 
+  /** How many files have a record. */
   get size(): number {
     return this.#records.size;
   }
 
+  /** The record of a site-relative path, if it has one. */
   get(target: string): SyncRecord | undefined {
     return this.#records.get(target);
   }
 
+  /** Every path with a record. */
   paths(): string[] {
     return [...this.#records.keys()];
   }
@@ -107,6 +123,7 @@ export class SyncRecords {
     return latest;
   }
 
+  /** Records both sides of a path as just synchronized. Ignored when the records are disabled. */
   set(target: string, record: SyncRecord): void {
     if (!this.enabled) {
       return;
@@ -115,6 +132,7 @@ export class SyncRecords {
     this.#changes += 1;
   }
 
+  /** Forgets the record of a path, as when it is gone on both sides. */
   delete(target: string): void {
     if (this.#records.delete(target)) {
       this.#changes += 1;
@@ -128,6 +146,7 @@ export class SyncRecords {
     }
   }
 
+  /** Writes the records atomically under a lock, when anything changed since the last save. */
   async save(): Promise<void> {
     if (!this.enabled || this.#changes === 0) {
       return;

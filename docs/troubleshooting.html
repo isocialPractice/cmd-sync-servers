@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Fixes for connection, sign-in, time and case problems, and what every sync-servers error code means.">
+<title>Troubleshooting | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Troubleshooting</h1>
+<p class="lead">Start with <code>sync-servers doctor</code> and <code>sync-servers server test</code>. Most problems show up there with a sentence saying what to do.</p>
+
+<h2 id="first-steps">First steps</h2>
+<ul>
+  <li><code>sync-servers doctor</code> checks Node.js, the settings and state folders, the credential store, the terminal, and every site's folder and servers.</li>
+  <li><code>sync-servers server test</code> connects, signs in and checks the root directory, step by step.</li>
+  <li><code>--debug</code> adds protocol details to the output, with every secret removed. The same details are in the run logs; <code>sync-servers config path</code> shows where.</li>
+</ul>
+
+<h2 id="connection">Connection problems</h2>
+<dl>
+  <dt>The connection is refused or times out</dt>
+  <dd>Check the host and port: <code>sync-servers site show</code> lists them, and <code>server edit Production --port 2222</code> changes one. A firewall between you and the server, or a VPN you are not connected to, looks the same. A slow server may need a longer <code>--timeout</code>.</dd>
+  <dt>It works over IPv4 but not IPv6, or the other way round</dt>
+  <dd>Set the server's IP version: <code>server edit Production --ip-family 4</code>.</dd>
+  <dt>FTP transfers hang after the listing</dt>
+  <dd>Only passive mode is supported. The server must allow passive data connections, and its firewall must let them through.</dd>
+  <dt>The certificate cannot be verified (<code>E_TLS_CERT</code>)</dt>
+  <dd>The FTPS certificate is not signed by an authority this computer trusts, or does not name the host you connect to. For a private authority, pass its PEM file with <code>--ca-file</code>. When the certificate names another host than the one you connect to, set <code>--tls-servername</code>. Never switch to plain FTP to get past this.</dd>
+  <dt>The host key does not match (<code>E_HOST_KEY_MISMATCH</code>)</dt>
+  <dd>The server offered a different SSH host key from the one you trusted. Stop and ask the server's administrator whether the key changed; if it did, check the new fingerprint, then <code>server edit Production --forget-host-key</code>. See <a href="security.html#host-keys">Host keys</a>.</dd>
+  <dt>An old server offers no algorithm in common</dt>
+  <dd>Only modern SSH algorithms are offered. Ask for the server to be updated; if that is not possible, <code>--legacy-algorithms</code> allows older ones, with a warning on every connection.</dd>
+</dl>
+
+<h2 id="sign-in">Sign-in problems</h2>
+<dl>
+  <dt>No password is found (<code>E_AUTH</code>)</dt>
+  <dd>In a script nothing is asked. Save the password with <code>sync-servers password set</code>, or set <code>SYNC_SERVERS_PASSWORD</code> for the run. In a terminal you are asked when no other source has it.</dd>
+  <dt>The password is refused</dt>
+  <dd>Save it again with <code>password set</code>. A saved password is read only when the server has <code>savePassword</code> on, which <code>password set</code> turns on.</dd>
+  <dt>The credential store cannot be used (<code>E_CREDENTIAL_STORE</code>)</dt>
+  <dd>On Linux the Secret Service needs a running keyring, such as GNOME Keyring or KWallet, which headless machines often lack; use <code>SYNC_SERVERS_PASSWORD</code> there. <code>sync-servers doctor</code> says whether a store is available.</dd>
+  <dt>Key sign-in fails</dt>
+  <dd>Check <code>--key-path</code>; a key with a passphrase reads it from the credential store, <code>SYNC_SERVERS_KEY_PASSPHRASE</code>, or a question. For the SSH agent, <code>SSH_AUTH_SOCK</code> must point at it; on Windows the OpenSSH agent service must be running.</dd>
+</dl>
+
+<h2 id="times">Time problems</h2>
+<dl>
+  <dt>Every file shows as changed after the first sync</dt>
+  <dd>Some servers cannot set file times, or keep them to the minute. Records compare each side with its own earlier state, so this usually settles after one sync. If not, raise the time tolerance in the Synchronization category, or switch <code>sync.compare</code> to <code>checksum</code>.</dd>
+  <dt>A plain FTP server without MLSD shows no times</dt>
+  <dd>Then size alone decides on that side. A file edited without changing its size is not seen as changed there; use <code>sync-servers put</code> for it, or a server that supports MLSD.</dd>
+  <dt>A file changed since the preview (<code>E_STALE_ITEM</code>)</dt>
+  <dd>Someone changed it between the preview and the transfer, so it was skipped. Run the sync again to see its new state.</dd>
+</dl>
+
+<h2 id="case">Case problems</h2>
+<dl>
+  <dt>"Another file differs from this name only by case"</dt>
+  <dd>The server has <code>Logo.png</code> and <code>logo.png</code>, and this computer's file system cannot hold both. Neither is transferred. Rename one on the server, then synchronize again.</dd>
+  <dt>"Name is not valid on this system"</dt>
+  <dd>The server has a name Windows does not allow, such as one ending in a dot or containing <code>:</code>. Rename it on the server.</dd>
+</dl>
+
+<h2 id="other">Other problems</h2>
+<dl>
+  <dt>The settings file is locked (<code>E_LOCKED</code>)</dt>
+  <dd>Another sync-servers process, or the VS Code extension, is writing <code>sites.json</code>. Try again. A lock left by a crashed process is cleared automatically after 30 seconds.</dd>
+  <dt><code>sites.json</code> is not valid (<code>E_CONFIG_INVALID</code>)</dt>
+  <dd>The message names the field. Fix it with <code>sync-servers site edit --editor</code>, or restore <code>sites.json.bak</code> from the settings folder.</dd>
+  <dt>The terminal interface does not start</dt>
+  <dd>It needs an interactive terminal. In a pipe or a CI log use commands; in a screen reader or a limited terminal use <code>--plain</code>.</dd>
+  <dt>Symbols show as boxes</dt>
+  <dd>The terminal's font lacks them. Use <code>--ascii</code>; the classic Windows console uses ASCII symbols automatically.</dd>
+</dl>
+
+<h2 id="error-codes">Error codes</h2>
+<p>Every error has a stable code, shown with <code>--json</code> and available to programs as <code>SyncError.code</code>.</p>
+<table>
+  <caption>Error codes and what to do</caption>
+  <thead><tr><th scope="col">Code</th><th scope="col">Means</th><th scope="col">Do</th></tr></thead>
+  <tbody>
+    <tr><td><code>E_HOST_KEY_MISMATCH</code></td><td>The SSH host key differs from the pinned one, or an unknown key was refused with nobody to ask.</td><td>Check the fingerprint with the server's administrator; pass <code>--host-key</code> in scripts.</td></tr>
+    <tr><td><code>E_TLS_CERT</code></td><td>The FTPS certificate could not be verified.</td><td>Use <code>--ca-file</code> or <code>--tls-servername</code>.</td></tr>
+    <tr><td><code>E_INSECURE_PROTOCOL</code></td><td>Plain FTP without <code>allowInsecure</code>.</td><td>Use SFTP or FTPS.</td></tr>
+    <tr><td><code>E_AUTH</code></td><td>Signing in failed, or no password or passphrase was found.</td><td>Save the password, or set <code>SYNC_SERVERS_PASSWORD</code>.</td></tr>
+    <tr><td><code>E_CONNECTION</code></td><td>The connection was refused, reset or dropped.</td><td>Check host, port and network; transient failures are retried.</td></tr>
+    <tr><td><code>E_TIMEOUT</code></td><td>The server stopped answering.</td><td>Try again, or raise the timeout.</td></tr>
+    <tr><td><code>E_REMOTE</code></td><td>The server refused an operation, such as a write without permission.</td><td>Check the account's permissions on the server.</td></tr>
+    <tr><td><code>E_REMOTE_ROOT</code></td><td>The root directory does not exist on the server, or is not a folder.</td><td>Fix the server's root directory.</td></tr>
+    <tr><td><code>E_LISTING_LIMIT</code></td><td>A folder holds more than 100,000 entries.</td><td>Cloak it, or narrow the sync to some paths.</td></tr>
+    <tr><td><code>E_PATH_UNSAFE</code></td><td>A path would leave the site or is not valid here.</td><td>Rename the file.</td></tr>
+    <tr><td><code>E_MASS_DELETE</code></td><td>More deletes than the limit, not confirmed.</td><td>Review the preview; confirm, or pass <code>--allow-mass-delete</code>.</td></tr>
+    <tr><td><code>E_EMPTY_ROOT</code></td><td>One side is empty and the plan would delete everything on the other.</td><td>Check that the drive is mounted and the root directory is right.</td></tr>
+    <tr><td><code>E_ROOT_DELETE</code></td><td>Deletes at the top of a server were refused.</td><td>Point the server at the site's folder, or set <code>allowRootDeletes</code>.</td></tr>
+    <tr><td><code>E_STALE_ITEM</code></td><td>A file changed between the preview and its transfer.</td><td>Synchronize again.</td></tr>
+    <tr><td><code>E_PLAN_INVALID</code></td><td>A row cannot take that action, or a saved plan no longer matches a fresh scan.</td><td>Choose an allowed action, or plan again.</td></tr>
+    <tr><td><code>E_CONFIG_INVALID</code></td><td>The settings, the sync records or a given value are not valid.</td><td>Fix the named field.</td></tr>
+    <tr><td><code>E_SITE_NOT_FOUND</code></td><td>No site has that name or id.</td><td>List the sites with <code>sync-servers sites</code>.</td></tr>
+    <tr><td><code>E_SERVER_NOT_FOUND</code></td><td>The site has no server with that name or id.</td><td>List them with <code>sync-servers server list</code>.</td></tr>
+    <tr><td><code>E_CREDENTIAL_STORE</code></td><td>The credential store failed, or there is none to save to.</td><td>Use <code>SYNC_SERVERS_PASSWORD</code> instead.</td></tr>
+    <tr><td><code>E_LOCKED</code></td><td>Another process held the settings lock too long.</td><td>Try again.</td></tr>
+    <tr><td><code>E_CANCELLED</code></td><td>You cancelled.</td><td>Nothing; finished files are recorded.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="report">Still stuck</h2>
+<p>Open an issue on <a href="https://github.com/isocialPractice/cmd-sync-servers/issues">GitHub</a> with the version, the operating system, the protocol and the output of <code>sync-servers doctor</code>. Replace real host names, user names and paths with placeholders such as <code>sftp.example.com</code> and <code>demo-user</code>. For a security problem, follow <a href="security.html#reporting">Reporting a vulnerability</a> instead.</p>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,33 +1,46 @@
 import { closeSync, mkdirSync, openSync, readdirSync, rmSync, writeSync } from 'node:fs';
 import path from 'node:path';
 
+/** How much a logger records, from `error` only to everything with `debug`. */
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 const RANK: Readonly<Record<LogLevel, number>> = { error: 0, warn: 1, info: 2, debug: 3 };
 
 /** One log entry, already redacted. File contents are never logged. */
 export interface LogRecord {
+  /** When it was recorded, as an ISO 8601 time in UTC. */
   readonly time: string;
   readonly level: LogLevel;
   readonly message: string;
+  /** Structured details, such as `siteId` or `code`. */
   readonly fields?: Readonly<Record<string, unknown>>;
 }
 
+/** Where log records go: memory, a stream, or a run log file. */
 export interface LogSink {
+  /** Takes one redacted record. */
   write(record: LogRecord): void;
+  /** Releases the sink's file or stream. */
   close?(): void;
 }
 
+/** Records messages at four levels, redacting every secret first. */
 export interface Logger {
+  /** A failure the run reports. */
   error(message: string, fields?: Record<string, unknown>): void;
+  /** Something the person should know, such as an insecure protocol in use. */
   warn(message: string, fields?: Record<string, unknown>): void;
+  /** What the run did. */
   info(message: string, fields?: Record<string, unknown>): void;
+  /** Protocol traces and details for troubleshooting. */
   debug(message: string, fields?: Record<string, unknown>): void;
   /** Scrubs every record; register secrets with it as soon as they are known. */
   readonly redactor: Redactor;
+  /** Closes every sink. */
   close(): void;
 }
 
+/** What a secret is replaced with in logs and messages. */
 export const REDACTED = '[redacted]';
 
 /** Field names whose string values are always replaced. */
@@ -41,16 +54,19 @@ const SENSITIVE_KEY = /pass(?:word|phrase)?$|secret|token|credential|private_?ke
 export class Redactor {
   readonly #secrets = new Set<string>();
 
+  /** Registers a secret, such as a password just read, so no later text shows it. */
   addSecret(value: string): void {
     if (value !== '') {
       this.#secrets.add(value);
     }
   }
 
+  /** Forgets a secret that is no longer in use. */
   removeSecret(value: string): void {
     this.#secrets.delete(value);
   }
 
+  /** `text` with every registered secret and every recognized password form replaced. */
   redact(text: string): string {
     let result = text;
     // Longest first, so a secret that contains another is replaced whole.
@@ -63,6 +79,7 @@ export class Redactor {
       .replace(/([?&](?:password|passwd|pass|pwd|token|secret)=)[^&\s#]+/gi, `$1${REDACTED}`);
   }
 
+  /** A copy of `value` with strings redacted and fields named like secrets replaced, up to eight levels deep. */
   redactValue(value: unknown, depth = 0): unknown {
     if (typeof value === 'string') {
       return this.redact(value);
@@ -86,13 +103,17 @@ export class Redactor {
   }
 }
 
+/** Options of {@link createLogger}. */
 export interface LoggerOptions {
   /** The most detailed level recorded. Default `info`. */
   readonly level?: LogLevel;
+  /** Where records go. With none, nothing is recorded. */
   readonly sinks?: readonly LogSink[];
+  /** A redactor to share with other loggers, so a secret registered once is removed everywhere. */
   readonly redactor?: Redactor;
 }
 
+/** A logger that redacts each record and passes it to its sinks. */
 export function createLogger(options: LoggerOptions = {}): Logger {
   const threshold = RANK[options.level ?? 'info'];
   const sinks = options.sinks ?? [];

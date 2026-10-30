@@ -13,6 +13,7 @@ export class PromptSecretSource implements SecretSource {
     this.#describe = describe;
   }
 
+  /** Asks for the secret of `ref`; `undefined` when the person cancels. */
   get(ref: SecretRef): Promise<string | undefined> {
     return this.#prompt(this.#describe(ref));
   }

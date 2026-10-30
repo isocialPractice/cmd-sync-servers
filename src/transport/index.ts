@@ -11,9 +11,19 @@ import { LocalTransport } from './local.ts';
 import { SftpTransport } from './sftp.ts';
 import type { Transport } from './types.ts';
 
+/**
+ * What a transport for one server needs: the site and server, the host that
+ * answers for secrets and host keys, and the environment.
+ *
+ * @experimental The transport layer may change before 1.0.0; most programs
+ * use {@link SyncSession} instead.
+ */
 export interface TransportContext {
+  /** The site the server belongs to, for secret lookups and messages. */
   readonly site: Site;
+  /** The server to connect to. */
   readonly server: Server;
+  /** Credentials, host key confirmation and prompts. */
   readonly host: HostAdapter;
   /** Stores a host key the person chose to pin, usually in the server's settings. */
   readonly pinHostKey?: ((info: HostKeyInfo) => Promise<void>) | undefined;
@@ -21,7 +31,9 @@ export interface TransportContext {
   readonly expectedHostKey?: string | undefined;
   /** Where `SYNC_SERVERS_PASSWORD` and `SSH_AUTH_SOCK` are read. Default: the process environment. */
   readonly env?: Readonly<Record<string, string | undefined>>;
+  /** Where protocol traces and warnings go. Default: the host's logger. */
   readonly logger?: Logger;
+  /** The most entries one folder listing may hold. Default: {@link DEFAULT_LISTING_LIMIT}. */
   readonly listingLimit?: number;
 }
 
@@ -29,6 +41,8 @@ export interface TransportContext {
  * Supplies a server's password or key passphrase: from the credential store
  * when the server saves it, then the environment, then a prompt. Each secret
  * is looked up once and shared by every connection of the run.
+ *
+ * @experimental
  */
 export function secretSupplier(context: TransportContext): (kind: SecretKind) => Promise<string> {
   const { site, server, host } = context;
@@ -61,7 +75,11 @@ export function secretSupplier(context: TransportContext): (kind: SecretKind) =>
   };
 }
 
-/** Returns a function that creates unconnected transports for a server, sharing one secret lookup. */
+/**
+ * Returns a function that creates unconnected transports for a server, sharing one secret lookup.
+ *
+ * @experimental
+ */
 export function transportFactory(context: TransportContext): () => Transport {
   const { server, host } = context;
   const logger = context.logger ?? host.logger ?? silentLogger;
@@ -114,7 +132,11 @@ export function transportFactory(context: TransportContext): () => Transport {
   };
 }
 
-/** An unconnected transport for a server. */
+/**
+ * An unconnected transport for a server.
+ *
+ * @experimental
+ */
 export function createTransport(context: TransportContext): Transport {
   return transportFactory(context)();
 }

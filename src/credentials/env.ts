@@ -13,6 +13,7 @@ export class EnvSecretSource implements SecretSource {
     this.#env = env;
   }
 
+  /** {@link PASSWORD_ENV} for a password, {@link PASSPHRASE_ENV} for a key passphrase; an empty value counts as none. */
   get(ref: SecretRef): Promise<string | undefined> {
     const value = this.#env[ref.kind === 'password' ? PASSWORD_ENV : PASSPHRASE_ENV];
     return Promise.resolve(value === '' ? undefined : value);

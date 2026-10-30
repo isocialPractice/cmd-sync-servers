@@ -1,6 +1,7 @@
 import type { SyncRecord } from './state.ts';
 import type { Observation } from './types.ts';
 
+/** How two observations of a file are compared. */
 export interface CompareOptions {
   /** Times this close count as equal; FAT, FTP MDTM and SFTP v3 keep times to 1 or 2 seconds. */
   readonly toleranceMs: number;
@@ -8,7 +9,7 @@ export interface CompareOptions {
   readonly checksum: boolean;
 }
 
-/** The state of one path (section 7.3). `refresh-record` and `drop-record` are applied silently. */
+/** The state of one path since the last sync. `refresh-record` and `drop-record` are applied silently. */
 export type SyncState =
   | 'in-sync'
   | 'local-changed'
@@ -36,9 +37,11 @@ function bothHashed(a: Observation, b: Observation, options: CompareOptions): bo
 }
 
 /**
- * True when a side differs from its own earlier observation (section 7.2).
+ * True when a side differs from its own earlier observation.
  * Without a time on either observation, as with an FTP server that reports
  * none, the size and any hashes decide.
+ *
+ * @experimental
  */
 export function hasChanged(now: Observation, recorded: Observation, options: CompareOptions): boolean {
   if (now.size !== recorded.size || (bothHashed(now, recorded, options) && now.sha256 !== recorded.sha256)) {
@@ -52,6 +55,8 @@ export function hasChanged(now: Observation, recorded: Observation, options: Com
  * True when the local and the remote copy are the same file: equal size and
  * equal hashes where both are known, otherwise times within the tolerance.
  * Unknown times never count as a match.
+ *
+ * @experimental
  */
 export function copiesMatch(local: Observation, remote: Observation, options: CompareOptions): boolean {
   if (local.size !== remote.size) {
@@ -98,10 +103,12 @@ function withRecord(local: Observation | undefined, remote: Observation | undefi
 }
 
 /**
- * The state of one path from what each side reports now and its record
- * (section 7.3). Each side is compared only with its own record, so the two
- * clocks never have to agree; only a first sync compares across them.
- * Returns `undefined` when neither side nor a record has the path.
+ * The state of one path from what each side reports now and its record.
+ * Each side is compared only with its own record, so the two clocks never
+ * have to agree; only a first sync compares across them. Returns
+ * `undefined` when neither side nor a record has the path.
+ *
+ * @experimental
  */
 export function classify(
   local: Observation | undefined,

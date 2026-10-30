@@ -36,13 +36,15 @@ explicitly with the commands below, never from npm lifecycle hooks.
 | `npm run test:unit` | Unit tests in `test/unit/` |
 | `npm run test:integration` | Integration tests in `test/integration/` |
 | `npm run test:e2e` | Builds, then runs the CLI as a child process from `test/e2e/` |
-| `npm run test:docs` | Documentation checks in `test/docs/` |
+| `npm run test:docs` | The documentation checks and the leak scan in `test/docs/` (below) |
 | `npm run test:docker` | The interop tests against real OpenSSH and vsftpd containers (see below) |
 | `npm run coverage` | Unit and integration tests with coverage, then the coverage bar (below) |
 | `npm run sandbox` | Starts local SFTP, FTPS and FTP test servers with throwaway credentials, until Ctrl+C |
 | `npm run pack:check` | Builds, then fails if `npm pack` would ship anything outside the `files` allowlist |
 | `npm run vendor:kilo` | Fetches the pinned kilo sources into `vendor/kilo/` and prints their checksums |
-| `npm run docs:api` | Generates the API reference into `_site/api/` |
+| `npm run docs:api` | Generates the API reference into `_site/api/`; any undocumented export fails it |
+| `npm run docs:cli` | Rewrites the command reference in `docs/cli.html` from the command definitions |
+| `npm run docs:site` | Assembles the Pages site in `_site/`: `docs/`, the JSON Schema and the API reference |
 
 Run `npm run lint`, `npm run typecheck` and `npm test` before every pull
 request. CI runs the same commands on Linux, macOS and Windows with Node.js
@@ -104,12 +106,33 @@ name:
 | Site names | `My Site`, `Sample App` |
 | Organizations | `Acme Corp`, `Contoso` |
 | Hosts | `sftp.example.com`, `ftp.example.org` |
-| Users and email | `demo-user`, `jane.doe@example.com` |
+| Users and email | `demo-user`, `jane.doe@example.com`; `<user>` in profile paths |
 | Windows paths | `C:\Users\<user>\Sites\my-site\` |
 | POSIX paths | `~/sites/my-site/` |
 
 Match the placeholder to its context: Windows paths in Windows examples,
 POSIX paths in shell examples.
+
+`npm run test:docs` enforces this with a leak scan over the documents, the
+docs site, every source and test file, the help output and the workflows. It
+fails on an email address outside `example.com`, `example.org` and
+`example.net`; a home folder path on Windows, macOS or Linux naming anyone
+but `<user>`; and an IPv4 address outside
+loopback and the documentation ranges. It also fails on every line of
+`.claude/leak-denylist.txt`, a git-ignored file you fill with your own
+names, hosts and paths; the test never prints an entry.
+
+## Documentation Site
+
+The site at <https://isocialpractice.github.io/cmd-sync-servers/> is the
+static HTML in `docs/` with one stylesheet, published by
+`.github/workflows/pages.yml`. There is no build step beyond copying: edit
+the pages directly. The command reference in `docs/cli.html` is generated
+from the command definitions with `npm run docs:cli`, and `test/docs` fails
+when it is out of date. Pages carry a Content-Security-Policy that allows
+only their own origin, so they use no scripts, inline styles or third-party
+fonts. Every public export needs TSDoc: `npm run docs:api` fails on an
+undocumented one.
 
 ## Writing Style
 

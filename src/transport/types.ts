@@ -3,6 +3,7 @@ import type { Protocol } from '../config/schema.ts';
 import type { HostKeyInfo } from '../host.ts';
 import type { RemotePath } from '../sync/paths.ts';
 
+/** What a listed entry is: a file, a folder, a symbolic link, or anything else such as a device. */
 export type EntryType = 'file' | 'dir' | 'symlink' | 'other';
 
 /** One entry of a folder listing or a stat. */
@@ -44,12 +45,15 @@ export interface Capabilities {
  * reads a whole file into memory.
  */
 export interface Transport {
+  /** Connects, signs in and checks the remote root, then reports what the server offers. */
   connect(signal?: AbortSignal): Promise<Capabilities>;
   /** The entries of one folder. */
   list(dir: RemotePath, signal?: AbortSignal): Promise<RemoteEntry[]>;
   /** The entry at `path`, without following a symbolic link; `undefined` when nothing is there. */
   stat(path: RemotePath, signal?: AbortSignal): Promise<RemoteEntry | undefined>;
+  /** Streams the file at `path` into `to`. */
   get(path: RemotePath, to: Writable, signal?: AbortSignal): Promise<void>;
+  /** Streams `from` into a file at `path`, replacing any file there. */
   put(from: Readable, path: RemotePath, signal?: AbortSignal): Promise<void>;
   /** Renames `from` to `to`; with `overwrite`, replaces an existing `to`. */
   rename(from: RemotePath, to: RemotePath, overwrite: boolean): Promise<void>;
@@ -57,8 +61,11 @@ export interface Transport {
   remove(path: RemotePath): Promise<void>;
   /** Creates a folder; succeeds when it already exists. */
   mkdir(path: RemotePath): Promise<void>;
+  /** Sets a file's modification time, when the protocol can. */
   setMtime?(path: RemotePath, mtimeMs: number): Promise<void>;
+  /** Sets a file's permission bits, when the protocol can. */
   chmod?(path: RemotePath, mode: number): Promise<void>;
+  /** Closes the connection. Safe to call more than once. */
   close(): Promise<void>;
 }
 

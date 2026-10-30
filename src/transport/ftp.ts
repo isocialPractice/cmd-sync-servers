@@ -11,21 +11,37 @@ import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEn
 
 const { Client, FileType, FTPError } = basicFtp;
 
+/**
+ * Options of {@link FtpTransport}.
+ *
+ * @experimental
+ */
 export interface FtpTransportOptions {
+  /** FTPS with explicit TLS, FTPS with implicit TLS, or plain FTP. */
   readonly protocol: 'ftps' | 'ftps-implicit' | 'ftp';
+  /** The server's host name or address. */
   readonly host: string;
+  /** The control port: usually 21, or 990 for implicit TLS. */
   readonly port: number;
+  /** The account to sign in as. Default: `anonymous`. */
   readonly username?: string | undefined;
+  /** The site root on the server, an absolute path. */
   readonly remoteRoot: string;
+  /** How long a connection or an operation may wait, in milliseconds. */
   readonly timeoutMs: number;
+  /** Connect over IPv4 or IPv6 only. */
   readonly ipFamily?: 4 | 6 | undefined;
   /** Required for plain FTP, which sends the password in clear text. */
   readonly allowInsecure?: boolean | undefined;
+  /** Extra certificate authorities, the name to verify, and the lowest TLS version. */
   readonly tls?: { readonly caFile?: string | undefined; readonly servername?: string | undefined; readonly minVersion?: 'TLSv1.2' | 'TLSv1.3' } | undefined;
   /** Supplies the password once the TLS certificate has been verified. */
   readonly secret: (kind: SecretKind) => Promise<string>;
+  /** Where protocol traces and warnings go. */
   readonly logger?: Logger;
+  /** The most entries one folder listing may hold. */
   readonly listingLimit?: number;
+  /** The platform whose name rules apply to listed names. Default: this one. */
   readonly platform?: NodeJS.Platform;
 }
 
@@ -76,7 +92,12 @@ export function mfmtTime(mtimeMs: number): string {
   return new Date(Math.floor(mtimeMs / 1000) * 1000).toISOString().replace(/[-:T]/g, '').slice(0, 14);
 }
 
-/** FTP, FTPS with explicit TLS (AUTH TLS) and FTPS with implicit TLS, through basic-ftp. Passive mode only; binary transfers only. */
+/**
+ * FTP, FTPS with explicit TLS (AUTH TLS) and FTPS with implicit TLS, through
+ * basic-ftp. Passive mode only; binary transfers only.
+ *
+ * @experimental
+ */
 export class FtpTransport implements Transport {
   readonly #options: FtpTransportOptions;
   readonly #logger: Logger;

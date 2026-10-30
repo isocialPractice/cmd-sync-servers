@@ -7,7 +7,9 @@ export const SCHEMA_VERSION = 1;
 /** Where the generated JSON Schema of `sites.json` is published. */
 export const SITES_SCHEMA_URL = 'https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json';
 
+/** Every way to reach a server, SFTP first. */
 export const PROTOCOLS = ['sftp', 'ftps', 'ftps-implicit', 'ftp', 'local'] as const;
+/** SFTP, FTPS with explicit or implicit TLS, plain FTP, or a local or network folder. */
 export type Protocol = (typeof PROTOCOLS)[number];
 
 /** The port each protocol uses when a server sets none. */
@@ -69,6 +71,7 @@ const serverOptionsSchema = z.strictObject({
   remoteDirMode: fileMode.optional(),
 });
 
+/** Validates one server of a site, with the rules each protocol adds. */
 export const serverSchema = z
   .strictObject({
     id,
@@ -161,6 +164,7 @@ function sameName(a: string, b: string): boolean {
   return a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0;
 }
 
+/** Validates one site: its local root, servers, roles, cloaking and synchronization settings. */
 export const siteSchema = z
   .strictObject({
     id,
@@ -195,6 +199,7 @@ export const siteSchema = z
     }
   });
 
+/** Validates the whole of `sites.json`. */
 export const sitesFileSchema = z
   .strictObject({
     $schema: z.string().optional(),
@@ -214,10 +219,15 @@ export const sitesFileSchema = z
     });
   });
 
+/** A server as stored, with every default filled in. The fields are described in `schema/site.schema.json`. */
 export type Server = z.infer<typeof serverSchema>;
+/** A server as written, where fields with defaults may be left out. */
 export type ServerInput = z.input<typeof serverSchema>;
+/** A site as stored, with every default filled in. The fields are described in `schema/site.schema.json`. */
 export type Site = z.infer<typeof siteSchema>;
+/** A site as written, where fields with defaults may be left out. */
 export type SiteInput = z.input<typeof siteSchema>;
+/** The whole of `sites.json` as stored. */
 export type SitesFile = z.infer<typeof sitesFileSchema>;
 
 /** The JSON Schema of `sites.json`, as written to `schema/site.schema.json`. */

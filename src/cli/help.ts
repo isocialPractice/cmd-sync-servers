@@ -2,7 +2,8 @@ import { VERSION } from '../version.ts';
 import type { CommandSpec, OptionSpec, OptionSpecs } from './command.ts';
 import { exampleRoot } from './commands/shared.ts';
 
-function optionLabel(name: string, spec: OptionSpec): string {
+/** `-y, --yes` or `--site <name>`, as help shows an option. */
+export function optionLabel(name: string, spec: OptionSpec): string {
   const long = spec.display ?? `--${name}`;
   const withValue = spec.value === undefined ? long : `${long} ${spec.value}`;
   return spec.short === undefined ? withValue : `-${spec.short}, ${withValue}`;

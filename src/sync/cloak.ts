@@ -21,7 +21,9 @@ export function splitPatterns(text: string): string[] {
 
 /** Decides whether a site-relative path is cloaked. Folders are passed with `isDir` so `name/` patterns apply. */
 export interface Cloak {
+  /** False when the site turned cloaking off; nothing is then cloaked. */
   readonly enabled: boolean;
+  /** True when every operation should skip `path`. */
   isCloaked(path: string, isDir: boolean): boolean;
 }
 

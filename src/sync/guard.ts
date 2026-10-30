@@ -28,6 +28,7 @@ export const DEFAULT_GUARD_PATTERNS: readonly string[] = [
   '*.sqlite-journal',
 ];
 
+/** Tells which files are sensitive, so a preview lists them unchecked. */
 export interface Guard {
   /** The first pattern a site-relative file path matches, or `undefined`. */
   match(path: string): string | undefined;

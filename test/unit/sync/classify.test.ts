@@ -13,7 +13,7 @@ const obs = (size: number, mtimeMs: number = T, sha256?: string): Observation =>
 const untimed = (size: number): Observation => ({ size });
 const record = (local: Observation, remote: Observation): SyncRecord => ({ local, remote, syncedAt: T });
 
-describe('hasChanged (section 7.2)', () => {
+describe('hasChanged', () => {
   test('equal size and time within the tolerance is unchanged', () => {
     assert.equal(hasChanged(obs(10), obs(10), options), false);
     assert.equal(hasChanged(obs(10, T + 2000), obs(10), options), false);
@@ -53,7 +53,7 @@ describe('copiesMatch', () => {
   });
 });
 
-describe('classify (section 7.3)', () => {
+describe('classify', () => {
   const base = obs(10);
   const changed = obs(20, T + 60_000);
   const recorded = record(base, base);
@@ -92,7 +92,7 @@ describe('classify (section 7.3)', () => {
   });
 });
 
-describe('decide (section 7.4)', () => {
+describe('decide', () => {
   type Row = [SyncState, Direction, boolean, Action | undefined, boolean | undefined, string?];
   const rows: Row[] = [
     ['local-changed', 'put', false, 'put', true],

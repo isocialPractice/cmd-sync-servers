@@ -22,6 +22,7 @@ export interface PathsEnvironment {
   readonly cwd: string;
 }
 
+/** Folders chosen by the caller instead of the platform defaults. */
 export interface PathsOptions {
   /** Overrides the settings folder (`--config-dir`). */
   readonly configDir?: string | undefined;

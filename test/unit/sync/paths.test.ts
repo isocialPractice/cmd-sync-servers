@@ -168,7 +168,7 @@ describe('isInside and joinLocal', () => {
   test('ignores case on Windows and macOS', () => {
     assert.equal(isInside('C:\\Sites\\My-Site', 'c:\\sites\\my-site\\css', 'win32'), true);
     assert.equal(isInside('C:\\Sites\\My-Site', 'D:\\Sites\\My-Site', 'win32'), false);
-    assert.equal(isInside('/Users/demo-user/Sites', '/users/demo-user/sites/a', 'darwin'), true);
+    assert.equal(isInside('/Users/<user>/Sites', '/users/<user>/sites/a', 'darwin'), true);
   });
 
   test('joinLocal stays inside the local root', () => {

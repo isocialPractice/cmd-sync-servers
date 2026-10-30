@@ -8,7 +8,11 @@ export interface PinnedHostKey {
   readonly sha256: string;
 }
 
-/** How a connection decides whether to trust the host key it is offered. */
+/**
+ * How a connection decides whether to trust the host key it is offered.
+ *
+ * @experimental
+ */
 export interface HostKeyPolicy {
   /** The key pinned for this server, if any. */
   readonly pinned: PinnedHostKey | undefined;
@@ -34,7 +38,7 @@ export function normalizeFingerprint(text: string): string {
 }
 
 /**
- * Decides whether to trust `info`, following section 8.4: a pinned key must
+ * Decides whether to trust `info`: a pinned key must
  * match exactly; a new key is accepted when it matches `expected`, or when a
  * person accepts it, and is pinned when they choose to. Anything else is
  * `E_HOST_KEY_MISMATCH`, never accepted silently.

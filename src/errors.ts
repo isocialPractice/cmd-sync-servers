@@ -22,6 +22,7 @@ export type SyncErrorCode =
   | 'E_PLAN_INVALID'
   | 'E_CANCELLED';
 
+/** Options of a {@link SyncError}: the cause, and whether a retry may help. */
 export interface SyncErrorOptions extends ErrorOptions {
   /** True when trying again, on a fresh connection, may succeed. */
   readonly transient?: boolean;
@@ -34,8 +35,11 @@ export interface SyncErrorOptions extends ErrorOptions {
  * is written for people and never contains a secret.
  */
 export class SyncError extends Error {
+  /** What went wrong, stable across versions, for programs to act on. */
   readonly code: SyncErrorCode;
+  /** True when trying again, on a fresh connection, may succeed. */
   readonly transient: boolean;
+  /** The server's reply code, when the server gave one. */
   readonly serverCode: number | undefined;
 
   constructor(code: SyncErrorCode, message: string, options: SyncErrorOptions = {}) {

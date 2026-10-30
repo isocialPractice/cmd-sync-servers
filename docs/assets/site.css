@@ -1,0 +1,374 @@
+/*
+ * The cmd-sync-servers documentation. One stylesheet, no web fonts, no
+ * scripts. Light, cool backgrounds with dark neutral text; one cool primary
+ * for links and focus; the warm accent only marks warnings. Every text and
+ * background pair below meets WCAG 2.2 AA, which test/docs checks.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Colour */
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --text: #1f2328;
+  --muted: #4d5561;
+  --primary: #0b5cad;
+  --primary-strong: #084a8c;
+  --secondary: #e7f0f9;
+  --secondary-strong: #c9dbee;
+  --rule: #d0d7de;
+  --code-bg: #eef2f6;
+  --code-text: #1f2328;
+  --warn-bg: #fff5e8;
+  --warn-text: #8a3a0f;
+  --warn-border: #c2410c;
+  --focus: #0b5cad;
+
+  /* Type: a 1.25 scale from a 16 px body */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5625rem;
+  --step-3: 1.9531rem;
+  --step-4: 2.4414rem;
+
+  /* Space: an 8 px scale */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+
+  --radius: 6px;
+  --measure: 72ch;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 var(--step-0) / 1.6 var(--font);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip {
+  position: absolute;
+  left: -100vw;
+  top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.skip:focus {
+  left: var(--space-2);
+}
+
+/* Header and navigation */
+
+.site-header {
+  background: linear-gradient(180deg, var(--secondary), var(--bg));
+  border-bottom: 1px solid var(--secondary-strong);
+}
+
+.site-header .inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-3);
+}
+
+.brand {
+  color: var(--text);
+  font-size: var(--step-1);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-header ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-header nav a {
+  display: inline-block;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+}
+
+.site-header nav a:hover {
+  border-bottom-color: var(--primary);
+}
+
+.site-header nav a[aria-current="page"] {
+  color: var(--text);
+  font-weight: 600;
+  border-bottom-color: var(--primary);
+}
+
+/* Content */
+
+main {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-8);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.25;
+  font-weight: 650;
+}
+
+h1 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step-4);
+}
+
+h2 {
+  margin: var(--space-6) 0 var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--rule);
+  font-size: var(--step-3);
+}
+
+h3 {
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--step-2);
+}
+
+h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--step-1);
+}
+
+p,
+ul,
+ol,
+dl,
+pre,
+table {
+  margin: 0 0 var(--space-2);
+}
+
+li + li {
+  margin-top: 0.25rem;
+}
+
+dt {
+  font-weight: 600;
+}
+
+dd {
+  margin: 0 0 var(--space-1) var(--space-3);
+}
+
+a {
+  color: var(--primary);
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: var(--primary-strong);
+}
+
+.lead {
+  color: var(--muted);
+  font-size: var(--step-1);
+}
+
+code,
+kbd {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+kbd {
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+}
+
+pre {
+  overflow-x: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  line-height: 1.45;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.875rem;
+  overflow-wrap: normal;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-size: 0.9375rem;
+}
+
+caption {
+  padding: var(--space-1) 0;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+}
+
+th,
+td {
+  padding: var(--space-1);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  background: var(--secondary);
+}
+
+/* Callouts */
+
+.note,
+.warning {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--secondary);
+}
+
+.warning {
+  border-left-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+
+.note > :last-child,
+.warning > :last-child {
+  margin-bottom: 0;
+}
+
+.warning strong {
+  color: var(--warn-text);
+}
+
+/* Lists of pages and commands */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.cards li {
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.cards a {
+  font-weight: 600;
+}
+
+.cards p {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+}
+
+.command-index {
+  padding-left: var(--space-3);
+}
+
+.command {
+  margin-top: var(--space-4);
+}
+
+/* Footer */
+
+.site-footer {
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.site-footer .inner {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--space-3);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  main {
+    padding: var(--space-3) var(--space-2) var(--space-6);
+  }
+
+  h1 {
+    font-size: var(--step-3);
+  }
+
+  h2 {
+    font-size: var(--step-2);
+  }
+
+  .site-header .inner {
+    padding: var(--space-2);
+  }
+}

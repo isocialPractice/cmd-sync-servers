@@ -4,45 +4,45 @@ import { defaultPaths, type PathsEnvironment } from '../../../src/config/paths.t
 
 const windows: PathsEnvironment = {
   platform: 'win32',
-  env: { APPDATA: 'C:\\Users\\demo-user\\AppData\\Roaming', LOCALAPPDATA: 'C:\\Users\\demo-user\\AppData\\Local' },
-  homedir: 'C:\\Users\\demo-user',
-  cwd: 'C:\\Users\\demo-user',
+  env: { APPDATA: 'C:\\Users\\<user>\\AppData\\Roaming', LOCALAPPDATA: 'C:\\Users\\<user>\\AppData\\Local' },
+  homedir: 'C:\\Users\\<user>',
+  cwd: 'C:\\Users\\<user>',
 };
 
-const mac: PathsEnvironment = { platform: 'darwin', env: {}, homedir: '/Users/demo-user', cwd: '/Users/demo-user' };
+const mac: PathsEnvironment = { platform: 'darwin', env: {}, homedir: '/Users/<user>', cwd: '/Users/<user>' };
 
-const linux: PathsEnvironment = { platform: 'linux', env: {}, homedir: '/home/demo-user', cwd: '/home/demo-user' };
+const linux: PathsEnvironment = { platform: 'linux', env: {}, homedir: '/home/<user>', cwd: '/home/<user>' };
 
 test('Windows keeps settings in APPDATA and state in LOCALAPPDATA', () => {
   assert.deepEqual(defaultPaths({}, windows), {
-    configDir: 'C:\\Users\\demo-user\\AppData\\Roaming\\sync-servers',
-    stateDir: 'C:\\Users\\demo-user\\AppData\\Local\\sync-servers',
-    logDir: 'C:\\Users\\demo-user\\AppData\\Local\\sync-servers\\logs',
-    sitesFile: 'C:\\Users\\demo-user\\AppData\\Roaming\\sync-servers\\sites.json',
+    configDir: 'C:\\Users\\<user>\\AppData\\Roaming\\sync-servers',
+    stateDir: 'C:\\Users\\<user>\\AppData\\Local\\sync-servers',
+    logDir: 'C:\\Users\\<user>\\AppData\\Local\\sync-servers\\logs',
+    sitesFile: 'C:\\Users\\<user>\\AppData\\Roaming\\sync-servers\\sites.json',
   });
 });
 
 test('Windows falls back to the profile folders when APPDATA is unset', () => {
   const paths = defaultPaths({}, { ...windows, env: {} });
-  assert.equal(paths.configDir, 'C:\\Users\\demo-user\\AppData\\Roaming\\sync-servers');
-  assert.equal(paths.stateDir, 'C:\\Users\\demo-user\\AppData\\Local\\sync-servers');
+  assert.equal(paths.configDir, 'C:\\Users\\<user>\\AppData\\Roaming\\sync-servers');
+  assert.equal(paths.stateDir, 'C:\\Users\\<user>\\AppData\\Local\\sync-servers');
 });
 
 test('macOS uses Application Support, with logs in Library/Logs', () => {
   assert.deepEqual(defaultPaths({}, mac), {
-    configDir: '/Users/demo-user/Library/Application Support/sync-servers',
-    stateDir: '/Users/demo-user/Library/Application Support/sync-servers/state',
-    logDir: '/Users/demo-user/Library/Logs/sync-servers',
-    sitesFile: '/Users/demo-user/Library/Application Support/sync-servers/sites.json',
+    configDir: '/Users/<user>/Library/Application Support/sync-servers',
+    stateDir: '/Users/<user>/Library/Application Support/sync-servers/state',
+    logDir: '/Users/<user>/Library/Logs/sync-servers',
+    sitesFile: '/Users/<user>/Library/Application Support/sync-servers/sites.json',
   });
 });
 
 test('Linux defaults to ~/.config and ~/.local/state', () => {
   assert.deepEqual(defaultPaths({}, linux), {
-    configDir: '/home/demo-user/.config/sync-servers',
-    stateDir: '/home/demo-user/.local/state/sync-servers',
-    logDir: '/home/demo-user/.local/state/sync-servers/logs',
-    sitesFile: '/home/demo-user/.config/sync-servers/sites.json',
+    configDir: '/home/<user>/.config/sync-servers',
+    stateDir: '/home/<user>/.local/state/sync-servers',
+    logDir: '/home/<user>/.local/state/sync-servers/logs',
+    sitesFile: '/home/<user>/.config/sync-servers/sites.json',
   });
 });
 
@@ -51,8 +51,8 @@ test('Linux honours absolute XDG folders and ignores relative ones', () => {
   assert.equal(absolute.configDir, '/srv/config/sync-servers');
   assert.equal(absolute.stateDir, '/srv/state/sync-servers');
   const relative = defaultPaths({}, { ...linux, env: { XDG_CONFIG_HOME: 'config', XDG_STATE_HOME: '' } });
-  assert.equal(relative.configDir, '/home/demo-user/.config/sync-servers');
-  assert.equal(relative.stateDir, '/home/demo-user/.local/state/sync-servers');
+  assert.equal(relative.configDir, '/home/<user>/.config/sync-servers');
+  assert.equal(relative.stateDir, '/home/<user>/.local/state/sync-servers');
 });
 
 test('SYNC_SERVERS_HOME moves settings and state on every platform', () => {
@@ -69,8 +69,8 @@ test('SYNC_SERVERS_HOME moves settings and state on every platform', () => {
 });
 
 test('a relative SYNC_SERVERS_HOME resolves against the current folder', () => {
-  const paths = defaultPaths({}, { ...linux, env: { SYNC_SERVERS_HOME: 'acme' }, cwd: '/home/demo-user/work' });
-  assert.equal(paths.configDir, '/home/demo-user/work/acme');
+  const paths = defaultPaths({}, { ...linux, env: { SYNC_SERVERS_HOME: 'acme' }, cwd: '/home/<user>/work' });
+  assert.equal(paths.configDir, '/home/<user>/work/acme');
 });
 
 test('--config-dir and --state-dir win over the environment, and logs follow state', () => {

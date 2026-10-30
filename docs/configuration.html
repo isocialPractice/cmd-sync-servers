@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Where settings live, every site and server field, cloaking, the sensitive-file guard and secrets.">
+<title>Configuration | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="configuration.html" aria-current="page">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Configuration</h1>
+<p class="lead">One list of sites, shared by the command line and the VS Code extension, plus per-machine state that never leaves the computer.</p>
+
+<h2 id="folders">Where things are kept</h2>
+<p>Settings roam with your user profile; state stays on the machine. <code>sync-servers config path</code> prints the folders in use.</p>
+<table>
+  <caption>Folders per platform</caption>
+  <thead><tr><th scope="col">Platform</th><th scope="col">Settings (<code>sites.json</code>)</th><th scope="col">State and logs</th></tr></thead>
+  <tbody>
+    <tr><td>Windows</td><td><code>%APPDATA%\sync-servers</code></td><td><code>%LOCALAPPDATA%\sync-servers</code>, logs in its <code>logs</code> folder</td></tr>
+    <tr><td>macOS</td><td><code>~/Library/Application Support/sync-servers</code></td><td>its <code>state</code> folder; logs in <code>~/Library/Logs/sync-servers</code></td></tr>
+    <tr><td>Linux and other systems</td><td><code>$XDG_CONFIG_HOME/sync-servers</code>, else <code>~/.config/sync-servers</code></td><td><code>$XDG_STATE_HOME/sync-servers</code>, else <code>~/.local/state/sync-servers</code></td></tr>
+  </tbody>
+</table>
+<p><code>SYNC_SERVERS_HOME</code> moves both: settings to that folder and state to its <code>state</code> subfolder. <code>--config-dir</code> and <code>--state-dir</code> move one for a single command. Folders are created private to you (<code>0700</code> on Linux and macOS).</p>
+<table>
+  <caption>What the state folder holds</caption>
+  <thead><tr><th scope="col">Path</th><th scope="col">Holds</th></tr></thead>
+  <tbody>
+    <tr><td><code>sites/&lt;site id&gt;/&lt;server id&gt;.json</code></td><td>The sync records: both sides of every file as they were at its last synchronization.</td></tr>
+    <tr><td><code>sites/&lt;site id&gt;/hashes.json</code></td><td>The scan cache of file hashes, used in checksum mode.</td></tr>
+    <tr><td><code>recovery/&lt;site id&gt;/&lt;run&gt;/</code></td><td>Local files a run deleted or overwrote, kept 14 days by default.</td></tr>
+    <tr><td><code>logs/run-*.jsonl</code></td><td>One log per run, the newest 30 kept, with every secret removed.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sites-json">The list of sites</h2>
+<p><code>sites.json</code> is plain JSON, described by a <a href="schema/site.schema.json">JSON Schema</a> that editors use for completion. Every write is atomic, keeps the previous version as <code>sites.json.bak</code>, and takes a lock file so two programs never lose each other's changes. A file that does not validate is never rewritten. Edit it with the commands, the terminal interface, or <code>sync-servers site edit --editor</code>, which reopens your editor with the problems listed until the JSON is valid.</p>
+<pre><code>{
+  "$schema": "https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json",
+  "schemaVersion": 1,
+  "sites": [
+    {
+      "id": "3f2b7c1e-8a4d-4f6b-9c2e-1d5a7b9e0c31",
+      "name": "My Site",
+      "localRoot": "/home/&lt;user&gt;/sites/my-site",
+      "servers": [
+        {
+          "id": "9a1c3e5f-7b2d-4e6a-8c0f-2b4d6e8a0c13",
+          "name": "Production",
+          "protocol": "sftp",
+          "host": "sftp.example.com",
+          "username": "demo-user",
+          "auth": { "method": "password", "savePassword": true },
+          "remoteRoot": "/var/www/my-site",
+          "webUrl": "https://www.example.com/"
+        }
+      ],
+      "remoteServerId": "9a1c3e5f-7b2d-4e6a-8c0f-2b4d6e8a0c13",
+      "cloaking": { "patterns": [".psd", "node_modules/"] }
+    }
+  ]
+}</code></pre>
+<p>Fields left out take their defaults. Passwords never appear in this file.</p>
+
+<h3 id="site-fields">Site fields</h3>
+<table>
+  <caption>Fields of a site</caption>
+  <thead><tr><th scope="col">Field</th><th scope="col">Default</th><th scope="col">Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>generated</td><td>A random UUID that stays the same when the site is renamed.</td></tr>
+    <tr><td><code>name</code></td><td></td><td>The name you know the site by; unique, ignoring case.</td></tr>
+    <tr><td><code>localRoot</code></td><td></td><td>The local site folder, an absolute path.</td></tr>
+    <tr><td><code>servers</code></td><td><code>[]</code></td><td>The site's servers, described below.</td></tr>
+    <tr><td><code>remoteServerId</code></td><td>the first server</td><td>The server synchronization uses.</td></tr>
+    <tr><td><code>testingServerId</code></td><td>none</td><td>The server automatic pushes go to, such as the extension's upload on save.</td></tr>
+    <tr><td><code>local.webUrl</code></td><td>none</td><td>The local web address, such as <code>http://localhost:8080/</code>.</td></tr>
+    <tr><td><code>local.caseSensitive</code></td><td>probed</td><td>Whether local names differ by case. Unset: the file system is asked.</td></tr>
+    <tr><td><code>local.cache</code></td><td><code>true</code></td><td>Keep file hashes between runs in checksum mode.</td></tr>
+    <tr><td><code>cloaking.enabled</code></td><td><code>true</code></td><td>Turns cloaking on or off, keeping the patterns.</td></tr>
+    <tr><td><code>cloaking.patterns</code></td><td><code>[]</code></td><td>Cloaking patterns; see <a href="#cloaking">Cloaking</a>.</td></tr>
+    <tr><td><code>cloaking.paths</code></td><td><code>[]</code></td><td>Site-relative files and folders cloaked one by one.</td></tr>
+    <tr><td><code>sync.maintainInfo</code></td><td><code>true</code></td><td>Keep sync records, so a change on both sides is detected.</td></tr>
+    <tr><td><code>sync.compare</code></td><td><code>metadata</code></td><td><code>metadata</code> compares size and time; <code>checksum</code> also compares SHA-256 hashes where both are known.</td></tr>
+    <tr><td><code>sync.mtimeToleranceSeconds</code></td><td><code>2</code></td><td>Times this close count as equal, for servers that round them.</td></tr>
+    <tr><td><code>sync.symlinks</code></td><td><code>skip</code></td><td><code>skip</code> reports symbolic links; <code>follow-inside-root</code> follows those that stay inside the site.</td></tr>
+    <tr><td><code>sync.concurrency</code></td><td><code>4</code></td><td>Transfers at once, from 1 to 16.</td></tr>
+    <tr><td><code>sync.guard.enabled</code></td><td><code>true</code></td><td>Hold back sensitive files; see <a href="#guard">The sensitive-file guard</a>.</td></tr>
+    <tr><td><code>sync.guard.patterns</code></td><td><code>[]</code></td><td>More patterns to hold back, added to the built-in list.</td></tr>
+    <tr><td><code>sync.massDelete.maxCount</code></td><td><code>50</code></td><td>Deleting more files than this asks you to type the count.</td></tr>
+    <tr><td><code>sync.massDelete.maxPercent</code></td><td><code>25</code></td><td>Deleting more than this share of a side's files asks too.</td></tr>
+    <tr><td><code>sync.recovery.enabled</code></td><td><code>true</code></td><td>Keep local files that a run deletes or overwrites.</td></tr>
+    <tr><td><code>sync.recovery.keepDays</code></td><td><code>14</code></td><td>How long they are kept.</td></tr>
+    <tr><td><code>sync.recovery.maxMegabytes</code></td><td><code>1024</code></td><td>The most the recovery folder of a site may hold; the oldest runs go first.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="server-fields">Server fields</h3>
+<table>
+  <caption>Fields of a server</caption>
+  <thead><tr><th scope="col">Field</th><th scope="col">Default</th><th scope="col">Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>generated</td><td>A random UUID that stays the same when the server is renamed.</td></tr>
+    <tr><td><code>name</code></td><td></td><td>Unique within the site, ignoring case.</td></tr>
+    <tr><td><code>protocol</code></td><td></td><td><code>sftp</code>, <code>ftps</code>, <code>ftps-implicit</code>, <code>ftp</code> or <code>local</code>.</td></tr>
+    <tr><td><code>host</code></td><td></td><td>The host name or address. Not used by <code>local</code>.</td></tr>
+    <tr><td><code>port</code></td><td>22, 21 or 990</td><td>22 for SFTP, 21 for FTP and explicit FTPS, 990 for implicit FTPS.</td></tr>
+    <tr><td><code>username</code></td><td></td><td>The account to sign in as.</td></tr>
+    <tr><td><code>auth.method</code></td><td><code>password</code></td><td><code>password</code>, or for SFTP <code>key</code> or <code>agent</code>.</td></tr>
+    <tr><td><code>auth.keyPath</code></td><td></td><td>The private key file of the <code>key</code> method; read when connecting, never copied.</td></tr>
+    <tr><td><code>auth.savePassword</code></td><td><code>false</code></td><td>Keep the password or key passphrase in the credential store.</td></tr>
+    <tr><td><code>remoteRoot</code></td><td></td><td>The site folder on the server, starting with <code>/</code>; for <code>local</code>, an absolute or network path.</td></tr>
+    <tr><td><code>webUrl</code></td><td>none</td><td>The address of the site on this server.</td></tr>
+    <tr><td><code>options.timeoutSeconds</code></td><td><code>30</code></td><td>How long a connection or an operation may wait.</td></tr>
+    <tr><td><code>options.ipFamily</code></td><td>either</td><td><code>4</code> or <code>6</code> to use one IP version only.</td></tr>
+    <tr><td><code>options.passive</code></td><td><code>true</code></td><td>FTP passive mode; active mode is not supported.</td></tr>
+    <tr><td><code>options.allowInsecure</code></td><td></td><td>Required for plain <code>ftp</code>, which sends the password in clear text.</td></tr>
+    <tr><td><code>options.allowRootDeletes</code></td><td></td><td>Allow deletes when the root directory is <code>/</code> or a drive root.</td></tr>
+    <tr><td><code>options.legacyAlgorithms</code></td><td></td><td>SFTP: also offer older algorithms for an old server, with a warning on every connection.</td></tr>
+    <tr><td><code>options.tls.caFile</code></td><td></td><td>FTPS: a PEM file of extra certificate authorities, for a private CA.</td></tr>
+    <tr><td><code>options.tls.servername</code></td><td></td><td>FTPS: the name to verify the certificate against, when it differs from <code>host</code>.</td></tr>
+    <tr><td><code>options.tls.minVersion</code></td><td><code>TLSv1.2</code></td><td>FTPS: the lowest TLS version accepted.</td></tr>
+    <tr><td><code>options.hostKey</code></td><td></td><td>SFTP: the pinned host key, set when you trust it on first connection.</td></tr>
+    <tr><td><code>options.uploadOnSave</code></td><td><code>false</code></td><td>Used by the VS Code extension: put a file when it is saved.</td></tr>
+    <tr><td><code>options.remoteFileMode</code></td><td>server default</td><td>An octal mode such as <code>644</code> for uploaded files.</td></tr>
+    <tr><td><code>options.remoteDirMode</code></td><td>server default</td><td>An octal mode such as <code>755</code> for new folders.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="cloaking">Cloaking</h2>
+<p>Cloaked files and folders are never scanned, listed, transferred or deleted, on either side. Patterns use the rules of <code>.gitignore</code> files, with one addition for suffixes:</p>
+<table>
+  <caption>Cloaking patterns</caption>
+  <thead><tr><th scope="col">Pattern</th><th scope="col">Cloaks</th></tr></thead>
+  <tbody>
+    <tr><td><code>.psd</code></td><td>Every name ending in <code>.psd</code>: a token that starts with a dot and has no <code>*</code> or <code>/</code> is a suffix.</td></tr>
+    <tr><td><code>archive*</code></td><td>Every file or folder whose name starts with <code>archive</code>, at any depth.</td></tr>
+    <tr><td><code>node_modules/</code></td><td>Every folder named <code>node_modules</code>, and everything in it.</td></tr>
+    <tr><td><code>/drafts/</code></td><td>Only the <code>drafts</code> folder at the top of the site.</td></tr>
+    <tr><td><code>!keep.psd</code></td><td>Uncloaks what an earlier pattern cloaked.</td></tr>
+  </tbody>
+</table>
+<p>Names are matched ignoring case on Windows and macOS. Single paths can be cloaked too, and cloak everything beneath them:</p>
+<pre><code>sync-servers cloak .psd "archive*" node_modules/    # patterns
+sync-servers cloak img/raw                          # an existing path in the site
+sync-servers cloak --list
+sync-servers uncloak .psd</code></pre>
+
+<h2 id="guard">The sensitive-file guard</h2>
+<p>Some files are almost never meant to be published. A file matching one of these patterns is listed in the preview <strong>unchecked</strong> with the pattern it matched, and moves only when you check it. It is never hidden.</p>
+<pre><code>.env  .env.*  *.pem  *.key  *.p12  *.pfx  *.kdbx  id_rsa*  id_ecdsa*  id_ed25519*
+.git/  .hg/  .svn/  .ssh/  .aws/  .npmrc  .pypirc  .netrc  *.sqlite-journal</code></pre>
+<p>Add patterns of your own in <code>sync.guard.patterns</code> or the Security category of Site Setup. Unattended runs with <code>--yes</code> never transfer a guarded file.</p>
+
+<h2 id="secrets">Secrets</h2>
+<p>Passwords and key passphrases are never written to a file. When a connection needs one, it is looked for in this order:</p>
+<ol>
+  <li>The operating system's credential store, when the server has <code>savePassword</code> on: Windows Credential Manager, the macOS Keychain, or the Secret Service keyring on Linux. Entries use the service <code>sync-servers</code>.</li>
+  <li>The environment: <code>SYNC_SERVERS_PASSWORD</code>, or <code>SYNC_SERVERS_KEY_PASSPHRASE</code> for a key.</li>
+  <li>A question in the terminal, typed without being shown. With nobody to ask, the run fails with <code>E_AUTH</code>.</li>
+</ol>
+<pre><code>sync-servers password set Production --site "My Site"     # save it
+printf %s "$SECRET" | sync-servers password set Production --stdin
+sync-servers password forget Production                    # remove it</code></pre>
+<p>A secret is asked for only after the server's host key or TLS certificate has been verified, and it is removed from every log and error message. <code>SYNC_SERVERS_KEYRING=off</code> turns the credential store off.</p>
+
+<h2 id="environment">Environment variables</h2>
+<table>
+  <caption>Variables sync-servers reads</caption>
+  <thead><tr><th scope="col">Variable</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>SYNC_SERVERS_HOME</code></td><td>Moves the settings and state folders.</td></tr>
+    <tr><td><code>SYNC_SERVERS_SITE</code></td><td>The site to use when a command names none.</td></tr>
+    <tr><td><code>SYNC_SERVERS_PASSWORD</code></td><td>The password of the server in use, for unattended runs.</td></tr>
+    <tr><td><code>SYNC_SERVERS_KEY_PASSPHRASE</code></td><td>The private key passphrase of the server in use.</td></tr>
+    <tr><td><code>SYNC_SERVERS_KEYRING</code></td><td><code>off</code> turns the operating system's credential store off.</td></tr>
+    <tr><td><code>SYNC_SERVERS_UI</code></td><td>How previews are shown: <code>tui</code>, <code>editor</code>, <code>plain</code> or <code>none</code>.</td></tr>
+    <tr><td><code>SYNC_SERVERS_EDITOR</code>, <code>VISUAL</code>, <code>EDITOR</code></td><td>The editor for editor mode and <code>--editor</code>, the first one set. Otherwise Notepad on Windows, then <code>nano</code> or <code>vi</code>.</td></tr>
+    <tr><td><code>SSH_AUTH_SOCK</code></td><td>The SSH agent for the <code>agent</code> sign-in method. On Windows the OpenSSH agent is used when it is unset.</td></tr>
+    <tr><td><code>NO_COLOR</code></td><td>Turns colour off; nothing depends on colour.</td></tr>
+    <tr><td><code>TERM=dumb</code></td><td>Uses ASCII symbols and plain prompts.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="which-site">Which site a command means</h2>
+<p>A command acts on the site named by its argument or <code>--site</code>, then <code>SYNC_SERVERS_SITE</code>, then the site whose local folder holds the current folder (the deepest one when sites are nested). In a terminal, you are otherwise asked to choose; in a script, the command stops with a usage error that lists the sites.</p>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>
