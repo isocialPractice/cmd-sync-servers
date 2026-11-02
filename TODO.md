@@ -312,12 +312,11 @@ Remove `- paused` from this heading to resume.
 Steps only the owner takes, because each changes state outside this machine
 or needs a person at a real terminal.
 
-- [ ] Open a Claude Code session in this folder and paste the whole of
+- [x] Open a Claude Code session in this folder and paste the whole of
       `.support/complete-init.md` as the prompt. It brings
       `init-sync-servers.prompt.md` and `simplify-setup.prompt.md` up to date
       with the simplify-setup plan, which automated runs cannot write
-
-- [ ] Add `.npmrc` with `ignore-scripts=true`, `engine-strict=true`,
+- [x] Add `.npmrc` with `ignore-scripts=true`, `engine-strict=true`,
       `save-exact=true` and `fund=false`, one per line, then commit it. The
       loop's permission rules treat `.npmrc` as a sensitive file, so a run
       cannot write it
@@ -325,7 +324,7 @@ or needs a person at a real terminal.
       `main` once Phase E0 is committed
 - [ ] After the first push, check that the CI job "Interop with OpenSSH and
       vsftpd (Docker)" passes; it cannot run on the development machine
-- [ ] Try the full-screen interface by hand at 80 x 24 in Windows Terminal,
+- [x] Try the full-screen interface by hand at 80 x 24 in Windows Terminal,
       the classic Windows console, macOS Terminal and a Linux terminal; the
       tests drive it through a simulated terminal only
 - [ ] Apply the repository and account settings of plan section 11.7
@@ -337,7 +336,7 @@ or needs a person at a real terminal.
       required reviewer, then set the repository variable `NPM_PUBLISH` to
       `true` when ready. If npm needs the package to exist first, publish the
       first alpha from your machine with 2FA
-- [ ] Delete `test/unit/zz-probe.test.ts`, an empty file a loop run could not
+- [x] Delete `test/unit/zz-probe.test.ts`, an empty file a loop run could not
       remove
 - [ ] Approve and create the first public pre-release: tag
       `v1.0.0-alpha.1.0.0` and publish a GitHub pre-release for it;
