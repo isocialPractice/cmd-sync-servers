@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Until the first stable release, versions use the pre-release form
 `1.0.0-alpha.x.y.z`, where `x.y.z` counts alpha iterations toward `1.0.0`.
 
-## [1.0.0-alpha.1.0.0] - 2026-10-30
+## [1.0.0-alpha.1.0.0] - 2026-11-02
 
 ### Changed
 
@@ -109,6 +109,13 @@ Until the first stable release, versions use the pre-release form
 - SFTP connects in runtimes whose crypto lacks ChaCha20, such as the VS Code
   extension host: ChaCha20-Poly1305 is offered only where it is available,
   after AES-GCM as before.
+- Picking the site's folder during setup lists and numbers every folder,
+  not only the first 30, so any of them opens by number. In a terminal the
+  list is laid out in columns; with `--plain` or without a terminal it keeps
+  one folder per line.
+- Folders whose names start with a dot are listed after the others when
+  picking a folder on a server, in the command line, the terminal
+  interface's folder picker, and the folders a missing remote root names.
 
 ## [1.0.0-alpha.0.6.1] - 2026-10-30
 

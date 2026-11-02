@@ -47,8 +47,9 @@ for (const kind of KINDS) {
   test(`${kind}: a probe connects with unsaved settings, starts where the account opens, and lists folders by absolute path`, async () => {
     const rig = await startRig(kind);
     try {
-      mkdirSync(path.join(rig.siteDir, 'css'));
-      mkdirSync(path.join(rig.siteDir, 'images'));
+      for (const name of ['images', '.cache', 'css', 'Backups']) {
+        mkdirSync(path.join(rig.siteDir, name));
+      }
       writeFileSync(path.join(rig.siteDir, 'index.html'), 'home');
       const local = kind === 'local';
       const top = local ? path.parse(rig.siteDir).root : '/';
@@ -70,7 +71,7 @@ for (const kind of KINDS) {
           assert.ok((await probe.folders(top)).folders.includes('site'));
         }
         const listing = await probe.folders(siteFolder);
-        assert.deepEqual(listing.folders, ['css', 'images']);
+        assert.deepEqual(listing.folders, ['Backups', 'css', 'images', '.cache'], 'names that start with a dot come last');
         assert.equal(listing.files, 1);
         assert.equal(listing.path, siteFolder);
         assert.equal(await probe.exists(siteFolder), true);
@@ -90,8 +91,9 @@ for (const kind of ['sftp', 'ftps'] as const) {
   test(`${kind}: an account that opens in its own folder reports it, and a missing root names it`, async () => {
     const rig = await startRig(kind, { home: '/site' });
     try {
-      mkdirSync(path.join(rig.siteDir, 'css'));
-      mkdirSync(path.join(rig.siteDir, 'js'));
+      for (const name of ['.ssh', 'js', 'css']) {
+        mkdirSync(path.join(rig.siteDir, name));
+      }
       const transport = rig.transport({ remoteRoot: '/site', serverName: 'Production' });
       try {
         assert.equal((await transport.connect()).startingFolder, '/site');
@@ -104,7 +106,7 @@ for (const kind of ['sftp', 'ftps'] as const) {
         (error) =>
           isSyncError(error, 'E_REMOTE_ROOT') &&
           error.details?.startingFolder === '/site' &&
-          error.message.includes('This account opens in "/site", which holds css/ and js/.') &&
+          error.message.includes('This account opens in "/site", which holds css/, js/ and .ssh/.') &&
           error.message.includes('sync-servers server edit Production'),
       );
     } finally {

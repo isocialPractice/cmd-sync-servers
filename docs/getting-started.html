@@ -73,13 +73,15 @@ Connecting to 203.0.113.10:21...</code></pre>
 <ul>
   <li><strong>An SSH host key</strong> seen for the first time is shown, such as <code>ssh-ed25519 SHA256:...</code>. Compare it with the fingerprint your host publishes, then trust it. It is pinned in the server's settings; if it ever changes, the connection stops and both fingerprints are shown. See <a href="security.html#host-keys">Host keys</a>.</li>
   <li><strong>A TLS certificate</strong> that does not verify is shown with the names it covers. On shared hosting it often names the hosting company's machine, such as <code>server1.hosting.example.net</code>, and setup offers to connect to that name instead. See <a href="security.html#certificates">Certificates</a>.</li>
-  <li><strong>The folder that holds the site</strong> is picked from what the server shows, starting where the account opens:
+  <li><strong>The folder that holds the site</strong> is picked from what the server shows, starting where the account opens. Every folder is numbered, in columns when the terminal is wide enough, and folders whose names start with a dot come last:
 <pre><code>Signed in as demo-user@example.com. The account opens in "/", which holds:
-  1. css/
-  2. images/
-  3. js/
+   1. access-logs/   5. mail/          9. .cache/       13. .trash/
+   2. bin/           6. public_ftp/   10. .config/
+   3. etc/           7. public_html/  11. .local/
+   4. logs/          8. tmp/          12. .ssh/
+  and 23 files
 Site root on the server: Enter for "/", a number to open a folder, or a path [/]:</code></pre>
-  Many hosting accounts open in their own folder and see it as <code>/</code>; a path from the control panel does not exist for them.</li>
+  A number opens that folder and lists it, <code>..</code> goes up, and a name or path is taken as typed once it exists; Enter takes the folder shown. Many hosting accounts open in their own folder and see it as <code>/</code>; a path from the control panel does not exist for them.</li>
   <li><strong>Deletes at the top.</strong> When the site's folder is the top of what the account sees, setup asks once whether synchronizing may delete files there. Every delete is still listed in the preview first.</li>
 </ul>
 <p>When the connection fails, setup says why and offers a fix: another host, the user name and password again, or saving without testing. Cancel saves nothing.</p>

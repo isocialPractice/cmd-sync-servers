@@ -19,7 +19,7 @@ import { SyncError } from '../errors.ts';
 import type { HostKeyInfo } from '../host.ts';
 import { silentLogger, type Logger } from '../log/logger.ts';
 import { baseName, joinRemote, parentPath, ROOT, type RemotePath } from '../sync/paths.ts';
-import { checkListingLimit, errorMessage, makeEntry, networkError, remoteRootError, throwIfAborted, withTimeout } from './common.ts';
+import { checkListingLimit, errorMessage, makeEntry, networkError, remoteRootError, sortFolderNames, throwIfAborted, withTimeout } from './common.ts';
 import { describeHostKey, verifyHostKey, type HostKeyPolicy } from './hostkeys.ts';
 import { StallGuard, watchUpload } from './stall.ts';
 import { DEFAULT_LISTING_LIMIT, type Capabilities, type EntryType, type RemoteEntry, type Transport } from './types.ts';
@@ -421,11 +421,11 @@ export class SftpTransport implements Transport {
           this.#options.timeoutMs,
           `Listing ${folder}`,
         );
-        return batch
-          .filter((item) => typeOf(item.attrs.mode) === 'dir' && item.filename !== '.' && item.filename !== '..' && !/[/\\]/.test(item.filename) && !item.filename.includes('\0'))
-          .map((item) => item.filename)
-          .sort()
-          .slice(0, 50);
+        return sortFolderNames(
+          batch
+            .filter((item) => typeOf(item.attrs.mode) === 'dir' && item.filename !== '.' && item.filename !== '..' && !/[/\\]/.test(item.filename) && !item.filename.includes('\0'))
+            .map((item) => item.filename),
+        ).slice(0, 50);
       } finally {
         await callVoid((callback) => { sftp.close(handle, callback); }).catch(() => undefined);
       }

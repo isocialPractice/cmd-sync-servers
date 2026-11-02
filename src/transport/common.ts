@@ -68,6 +68,15 @@ export function networkError(error: unknown, what: string, target?: ConnectionTa
   });
 }
 
+/**
+ * Folder names in the order a person picks from: names that do not start
+ * with a dot first, then those that do, each group in `localeCompare` order.
+ */
+export function sortFolderNames(names: readonly string[]): string[] {
+  const dotted = (name: string): number => (name.startsWith('.') ? 1 : 0);
+  return [...names].sort((a, b) => dotted(a) - dotted(b) || a.localeCompare(b));
+}
+
 /** `css/, images/ and js/`: the first five folder names, then `and N more`. */
 export function folderList(folders: readonly string[]): string {
   const shown = folders.slice(0, 5).map((name) => `${safeText(name)}/`);

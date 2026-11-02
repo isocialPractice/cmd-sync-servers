@@ -143,6 +143,29 @@ test('site add sets up a site and its server in one command: connects, decides o
   }
 });
 
+test('site add lists every folder of a crowded account, dot-folders last, and opens the last one by number', async () => {
+  const f = await fixture();
+  try {
+    const account = path.dirname(f.rig.siteDir);
+    for (let index = 1; index <= 26; index += 1) {
+      makeFolder(account, `folder-${String(index).padStart(2, '0')}`);
+    }
+    for (const name of ['.trash', '.cache', '.ssh', '.config', '.local']) {
+      makeFolder(account, name);
+    }
+    const [name, root, host, user, password, certificate] = siteAddAnswers(f, f.rig.password);
+    const result = await siteAdd(f, [name ?? '', root ?? '', host ?? '', user ?? '', password ?? '', certificate ?? '', '35', '', '']);
+    assert.equal(result.code, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /more; type a name/);
+    assert.match(result.stderr, /holds:\n {2}1\. css\/\n {2}2\. folder-01\/\n/);
+    assert.match(result.stderr, /\n {2}30\. site\/\n {2}31\. \.cache\/\n {2}32\. \.config\/\n {2}33\. \.local\/\n {2}34\. \.ssh\/\n {2}35\. \.trash\/\n/);
+    assert.match(result.stderr, /"\/\.trash" is empty\./);
+    assert.equal(servers(f.home)[0]?.remoteRoot, '/.trash');
+  } finally {
+    await f.close();
+  }
+});
+
 test('cancelling at any question of site add saves nothing', async () => {
   const f = await fixture();
   try {

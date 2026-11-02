@@ -206,6 +206,19 @@ the step of the plan that specifies it.
 - [x] Documentation for S3, changelog, checks and commit
   - **Goal**: Resolve to [Phase S3, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s3-quick-setup-in-the-terminal-ui)
   - From: Simplify Site Setup
+- [x] One order for a server's folders, names that start with a dot last,
+      in the probe and in the FTP and SFTP transports
+  - **Goal**: Resolve to [Phase P1, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p1-every-folder-in-the-setup-list)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] The setup folder list without a cap, in columns on a terminal
+  - **Goal**: Resolve to [Phase P1, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p1-every-folder-in-the-setup-list)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Tests of the order, the layout and a crowded account in setup
+  - **Goal**: Resolve to [Phase P1, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p1-every-folder-in-the-setup-list)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Documentation for P1, changelog, checks and commit
+  - **Goal**: Resolve to [Phase P1, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p1-every-folder-in-the-setup-list)
+  - From: Patches 1.0.0-alpha.1.0.0
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -282,6 +295,63 @@ items of Phase S5 move no version.
   - **Goal**: Resolve to [Phase S5, step 4](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
 - [x] Report what was checked and the owner step that remains
   - **Goal**: Resolve to [Phase S5, step 5](.claude/prompts/simplify-setup.prompt.md#phase-s5-close-the-plan)
+
+## Patches 1.0.0-alpha.1.0.0
+
+Next version: none. Every item adds to `1.0.0-alpha.1.0.0`. Phase P5 is
+tracked in the extension's `TODO.md`.
+
+- [ ] The rule and edge symbols, the scroll edge rows, and each scrolling
+      view reporting what it hides
+  - **Goal**: Resolve to [Phase P2, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+- [ ] The wrapping `key = label` menu, eight hints, the message bar as the
+      last row, the height rules and the dialog bound
+  - **Goal**: Resolve to [Phase P2, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+- [ ] `q` in the preview, and the preview's hints
+  - **Goal**: Resolve to [Phase P2, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+- [ ] Snapshots and tests of the frame, the menu and `q`
+  - **Goal**: Resolve to [Phase P2, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+- [ ] `DESIGN_LANGUAGE.md`, `docs/cli.html`, changelog, checks and commit
+  - **Goal**: Resolve to [Phase P2, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+- [ ] Global cloaking in the schema, written only when set, and the
+      registry's `globalCloaking` and `updateGlobalCloaking`
+  - **Goal**: Resolve to [Phase P3, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+- [ ] Global patterns in `siteCloak` and the session
+  - **Goal**: Resolve to [Phase P3, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+- [ ] `cloak` and `uncloak` with `--global`, `--use-global` and
+      `--ignore-global`, the summaries and the JSON
+  - **Goal**: Resolve to [Phase P3, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+- [ ] The Global Cloaking screen, `c` on the Sites screen, and Site Setup's
+      Cloaking category
+  - **Goal**: Resolve to [Phase P3, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+- [ ] Tests of global cloaking in the engine, the command line and the
+      terminal interface
+  - **Goal**: Resolve to [Phase P3, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+- [ ] Documentation for P3, `npm run docs:cli`, changelog, checks and commit
+  - **Goal**: Resolve to [Phase P3, step 6](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+- [ ] The generated option index, `docs:cli` for both pages, and the
+      environment variable test
+  - **Goal**: Resolve to [Phase P4, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+- [ ] The Quickstart, Examples, Cheatsheets and Options pages
+  - **Goal**: Resolve to [Phase P4, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+- [ ] The navigation on every page, the page list in the docs test, and the
+      links from the home page and the README
+  - **Goal**: Resolve to [Phase P4, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+- [ ] Changelog, checks and commit for P4
+  - **Goal**: Resolve to [Phase P4, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+- [ ] Run the engine's and the extension's checks once more from clean
+      builds
+  - **Goal**: Resolve to [Phase P6, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+- [ ] Bring the plan files up to date; a headless run cannot write under
+      `.claude/`
+  - **Goal**: Resolve to [Phase P6, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+- [ ] Write `.support/complete-patches.md`, the paste-ready prompt that
+      makes the same updates
+  - **Goal**: Resolve to [Phase P6, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+- [ ] Check these items and commit
+  - **Goal**: Resolve to [Phase P6, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+- [ ] Report what was checked and any owner step that remains
+  - **Goal**: Resolve to [Phase P6, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
 
 ## Later Roadmap - paused
 

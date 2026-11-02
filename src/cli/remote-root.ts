@@ -1,10 +1,14 @@
 import path from 'node:path';
 import type { FolderListing, ServerProbe } from '../transport/probe.ts';
 import { safeLine } from '../terminal-text.ts';
+import { textWidth } from '../tui/text.ts';
 import type { CommandContext } from './context.ts';
 
-/** The most folders listed at once; more are opened by typing their name. */
-const SHOWN = 30;
+/** The indent of each folder line. */
+const INDENT = '  ';
+
+/** The space between two columns of folders. */
+const GAP = 2;
 
 function plural(count: number, one: string, many: string): string {
   return `${String(count)} ${count === 1 ? one : many}`;
@@ -17,33 +21,64 @@ export function resolveRemoteFolder(typed: string, current: string): string {
   return normalized === '' ? '/' : normalized;
 }
 
-function describe(listing: FolderListing, intro: string | undefined): string[] {
+/**
+ * The numbered folder lines, `  1. css/`, one per line. Given the width of
+ * a terminal, they are laid out in as many columns as fit, numbered down
+ * each column and then across.
+ */
+export function folderLines(names: readonly string[], width?: number): string[] {
+  const shown = names.map((name) => `${safeLine(name)}/`);
+  const single = shown.map((name, index) => `${INDENT}${String(index + 1)}. ${name}`);
+  if (width === undefined || shown.length < 2) {
+    return single;
+  }
+  const digits = String(shown.length).length;
+  const cells = shown.map((name, index) => `${String(index + 1).padStart(digits)}. ${name}`);
+  const cellWidth = Math.max(...cells.map(textWidth)) + GAP;
+  const fit = Math.floor((width - 1 - INDENT.length + GAP) / cellWidth);
+  if (fit < 2) {
+    return single;
+  }
+  const rows = Math.ceil(cells.length / fit);
+  const columns = Math.ceil(cells.length / rows);
+  const lines: string[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    let line = INDENT;
+    for (let column = 0; column < columns; column += 1) {
+      const cell = cells[column * rows + row];
+      if (cell !== undefined) {
+        line += cell + ' '.repeat(Math.max(0, cellWidth - textWidth(cell)));
+      }
+    }
+    lines.push(line.trimEnd());
+  }
+  return lines;
+}
+
+function describe(listing: FolderListing, intro: string | undefined, width: number | undefined): string[] {
   const where = intro === undefined ? `"${safeLine(listing.path)}"` : `${intro} The account opens in "${safeLine(listing.path)}", which`;
   const files = listing.files === 0 ? '' : plural(listing.files, 'file', 'files');
   if (listing.folders.length === 0) {
     return [files === '' ? `${where} is empty.` : `${where} holds no folders and ${files}.`];
   }
-  const lines = [`${where} holds:`];
-  listing.folders.slice(0, SHOWN).forEach((name, index) => {
-    lines.push(`  ${String(index + 1)}. ${safeLine(name)}/`);
-  });
-  if (listing.folders.length > SHOWN) {
-    lines.push(`  and ${String(listing.folders.length - SHOWN)} more; type a name`);
-  }
+  const lines = [`${where} holds:`, ...folderLines(listing.folders, width)];
   if (files !== '') {
-    lines.push(`  and ${files}`);
+    lines.push(`${INDENT}and ${files}`);
   }
   return lines;
 }
 
 /**
  * Lets a person pick the site root from what the server shows, starting at
- * `start`, usually the folder the account opens in. Enter accepts the folder
- * shown, a number opens one of its folders, `..` goes up, and a typed path,
- * absolute or relative to the folder shown, is accepted once it exists.
- * `intro` opens the first listing, such as `Signed in as demo-user.`.
+ * `start`, usually the folder the account opens in. Every folder is listed
+ * and numbered, in columns on a terminal and one per line otherwise. Enter
+ * accepts the folder shown, a number opens one of its folders, `..` goes
+ * up, and a typed path, absolute or relative to the folder shown, is
+ * accepted once it exists. `intro` opens the first listing, such as
+ * `Signed in as demo-user.`.
  */
-export async function chooseRemoteRoot(ctx: CommandContext, probe: ServerProbe, start: string, intro?: string): Promise<string> {
+export async function chooseRemoteRoot(ctx: CommandContext, probe: Pick<ServerProbe, 'folders' | 'exists'>, start: string, intro?: string): Promise<string> {
+  const width = ctx.io.stderr.isTTY === true && !ctx.flags.plain ? ctx.io.stderr.columns : undefined;
   let current = start;
   let first: string | undefined = intro;
   for (;;) {
@@ -58,18 +93,17 @@ export async function chooseRemoteRoot(ctx: CommandContext, probe: ServerProbe, 
       current = '/';
       continue;
     }
-    ctx.err(`${describe(listing, first).join('\n')}\n`);
+    ctx.err(`${describe(listing, first, width).join('\n')}\n`);
     first = undefined;
-    const shown = listing.folders.slice(0, SHOWN);
     for (;;) {
       const answer = await ctx.prompter.ask(`Site root on the server: Enter for "${safeLine(current)}", a number to open a folder, or a path`, current);
       if (answer === current) {
         return current;
       }
       if (/^\d+$/.test(answer)) {
-        const name = shown[Number(answer) - 1];
+        const name = listing.folders[Number(answer) - 1];
         if (name === undefined) {
-          ctx.err(shown.length === 0 ? 'There is no folder to open here. Press Enter, or type a path.\n' : `Enter a number from 1 to ${String(shown.length)}.\n`);
+          ctx.err(listing.folders.length === 0 ? 'There is no folder to open here. Press Enter, or type a path.\n' : `Enter a number from 1 to ${String(listing.folders.length)}.\n`);
           continue;
         }
         current = resolveRemoteFolder(name, current);

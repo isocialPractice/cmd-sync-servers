@@ -26,6 +26,7 @@ import {
   makeEntry,
   networkError,
   remoteRootError,
+  sortFolderNames,
   throwIfAborted,
   type ConnectionTarget,
 } from './common.ts';
@@ -462,11 +463,11 @@ export class FtpTransport implements Transport {
       return [];
     }
     try {
-      return (await client.list(folder))
-        .filter((info) => info.type === FileType.Directory && info.name !== '.' && info.name !== '..' && !/[/\\]/.test(info.name) && !info.name.includes('\0'))
-        .map((info) => info.name)
-        .sort()
-        .slice(0, 50);
+      return sortFolderNames(
+        (await client.list(folder))
+          .filter((info) => info.type === FileType.Directory && info.name !== '.' && info.name !== '..' && !/[/\\]/.test(info.name) && !info.name.includes('\0'))
+          .map((info) => info.name),
+      ).slice(0, 50);
     } catch {
       return [];
     }

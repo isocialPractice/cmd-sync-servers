@@ -58,6 +58,8 @@
   <dd>Only modern SSH algorithms are offered. Ask for the server to be updated; if that is not possible, <code>--legacy-algorithms</code> allows older ones, with a warning on every connection.</dd>
   <dt>The remote root was not found (<code>E_REMOTE_ROOT</code>)</dt>
   <dd>Many hosting accounts open in their own folder and see it as <code>/</code>, so a path from the control panel, such as <code>/home/&lt;user&gt;/example.com/my-site</code>, does not exist for them. The message names the folder the account opens in and the folders it holds. Run <code>sync-servers server test</code> in a terminal to pick the root from what the server shows; it is saved. In a script, set the root as the account sees it: <code>server edit Production --remote-root /</code>, or the folder below it that holds the site.</dd>
+  <dt>The site's folder is hard to find in the list during setup</dt>
+  <dd>Setup lists every folder of the folder shown, numbered, with folders whose names start with a dot, such as <code>.cache/</code>, after the others. Hosts often keep a site in a folder such as <code>public_html/</code>, <code>www/</code> or <code>htdocs/</code>. Type its number to open it, or type its name or path to take it at once; <code>..</code> goes up a level. With <code>--plain</code>, or when the output is not a terminal, the list has one folder per line.</dd>
 </dl>
 
 <h2 id="sign-in">Sign-in problems</h2>

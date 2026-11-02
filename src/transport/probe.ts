@@ -5,6 +5,7 @@ import type { HostAdapter } from '../host.ts';
 import type { Logger } from '../log/logger.ts';
 import { isInside, ROOT, toRemotePath, type RemotePath } from '../sync/paths.ts';
 import type { NameResolver } from './certificates.ts';
+import { sortFolderNames } from './common.ts';
 import { createTransport } from './index.ts';
 import type { Capabilities, Transport } from './types.ts';
 
@@ -48,7 +49,7 @@ export interface ServerProbeOptions {
 export interface FolderListing {
   /** The absolute folder listed. */
   readonly path: string;
-  /** The names of the folders in it, and of links that may be folders, sorted. */
+  /** The names of the folders in it, and of links that may be folders, sorted, names that start with a dot last. */
   readonly folders: readonly string[];
   /** How many files it holds. */
   readonly files: number;
@@ -147,10 +148,7 @@ export class ServerProbe {
     const entries = await this.#transport.list(target);
     return {
       path: this.#absolute(target),
-      folders: entries
-        .filter((entry) => (entry.type === 'dir' || entry.type === 'symlink') && entry.path !== undefined)
-        .map((entry) => entry.name)
-        .sort((a, b) => a.localeCompare(b)),
+      folders: sortFolderNames(entries.filter((entry) => (entry.type === 'dir' || entry.type === 'symlink') && entry.path !== undefined).map((entry) => entry.name)),
       files: entries.filter((entry) => entry.type === 'file').length,
     };
   }
