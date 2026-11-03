@@ -414,3 +414,47 @@ test('help works as a command and as an option', async () => {
   assert.equal(viaCommand.stdout, viaOption.stdout);
   assert.match(viaOption.stdout, /^Usage:\n {2}sync-servers server add \[options\]/);
 });
+
+test('cloak --global sets the patterns every site uses, without a site, and one site can stop using them', async () => {
+  const none = await cli({ home }, 'cloak', '--global');
+  assert.equal(none.code, 0, none.stderr);
+  assert.equal(none.stdout, 'Global patterns  (none)\n');
+  const added = await cli({ home }, 'cloak', '--global', '.git/ node_modules/', '*.lnk');
+  assert.equal(added.code, 0, added.stderr);
+  assert.equal(added.stdout, 'Cloaked in every site: .git/\nCloaked in every site: node_modules/\nCloaked in every site: *.lnk\n');
+  const global = json<{ schema: string; patterns: string[] }>((await cli({ home }, 'cloak', '--global', '--list', '--json')).stdout);
+  assert.equal(global.schema, 'sync-servers/cloaking-global@1');
+  assert.deepEqual(global.patterns, ['.git/', 'node_modules/', '*.lnk']);
+
+  await addSite();
+  const site = json<{ useGlobalPatterns: boolean; globalPatterns: string[] }>((await cli({ home, cwd: root }, 'cloak', '--list', '--json')).stdout);
+  assert.equal(site.useGlobalPatterns, true);
+  assert.deepEqual(site.globalPatterns, ['.git/', 'node_modules/', '*.lnk']);
+  assert.match((await cli({ home, cwd: root }, 'cloak', '--list')).stdout, /^Global patterns {2}\.git\/ {2}node_modules\/ {2}\*\.lnk$/m);
+  assert.match((await cli({ home, cwd: root }, 'site', 'show')).stdout, /^Cloaking +on, 0 pattern\(s\), 0 path\(s\), 3 global pattern\(s\)$/m);
+
+  const ignored = await cli({ home, cwd: root }, 'cloak', '--ignore-global');
+  assert.equal(ignored.stdout, '"My Site" does not use the global cloaking patterns.\n');
+  assert.match((await cli({ home, cwd: root }, 'cloak', '--list')).stdout, /^Global patterns {2}not used by this site$/m);
+  assert.match((await cli({ home, cwd: root }, 'site', 'show')).stdout, /^Cloaking +on, 0 pattern\(s\), 0 path\(s\), global patterns not used$/m);
+  const off = json<{ useGlobalPatterns: boolean; globalPatterns: string[] }>((await cli({ home, cwd: root }, 'cloak', '--list', '--json')).stdout);
+  assert.deepEqual([off.useGlobalPatterns, off.globalPatterns], [false, []]);
+  assert.match(readFileSync(path.join(home, 'sites.json'), 'utf8'), /"useGlobalPatterns": false/);
+  const used = await cli({ home, cwd: root }, 'cloak', '--use-global', '.psd');
+  assert.equal(used.stdout, 'Cloaked pattern: .psd\n"My Site" uses the global cloaking patterns.\n');
+  assert.doesNotMatch(readFileSync(path.join(home, 'sites.json'), 'utf8'), /useGlobalPatterns/);
+
+  const removed = await cli({ home }, 'uncloak', '--global', 'node_modules/', 'nothing*');
+  assert.equal(removed.stdout, 'Uncloaked in every site: node_modules/\n');
+  assert.equal(removed.stderr, 'Not a global pattern: nothing*\n');
+  await cli({ home }, 'uncloak', '--global', '.git/', '*.lnk');
+  assert.equal(json<{ cloaking?: unknown }>(readFileSync(path.join(home, 'sites.json'), 'utf8')).cloaking, undefined, 'no global cloaking once the last pattern is gone');
+
+  for (const option of [['--site', 'My Site'], ['--path'], ['--enable'], ['--disable'], ['--use-global'], ['--ignore-global']]) {
+    const refused = await cli({ home, cwd: root }, 'cloak', '--global', ...option, 'drafts/');
+    assert.equal(refused.code, 2, option.join(' '));
+    assert.ok(refused.stderr.includes(option[0] ?? '-') && refused.stderr.includes('cannot go with --'), refused.stderr);
+  }
+  assert.equal((await cli({ home, cwd: root }, 'uncloak', '--global', '--path', 'drafts/')).code, 2);
+  assert.equal((await cli({ home, cwd: root }, 'cloak', '--use-global', '--ignore-global')).code, 2);
+});

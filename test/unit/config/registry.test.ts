@@ -174,3 +174,46 @@ test('a missing site is E_SITE_NOT_FOUND', async () => {
   const registry = await SiteRegistry.open({ paths });
   await assert.rejects(registry.remove('00000000-0000-4000-8000-000000000000'), (error) => isSyncError(error, 'E_SITE_NOT_FOUND'));
 });
+
+test('global cloaking is written only while it holds a pattern, and useGlobalPatterns only when it is false', async () => {
+  const registry = await SiteRegistry.open({ paths });
+  const site = await registry.add({ name: 'My Site', localRoot: siteRoot });
+  const before = readFileSync(paths.sitesFile, 'utf8');
+  assert.doesNotMatch(before, /useGlobalPatterns/);
+  assert.equal(readJson(paths.sitesFile).cloaking, undefined);
+  assert.deepEqual(registry.globalCloaking, { patterns: [] });
+
+  const updated = await registry.updateGlobalCloaking((cloaking) => {
+    cloaking.patterns.push('.git/', 'node_modules/');
+  });
+  assert.deepEqual(updated, { patterns: ['.git/', 'node_modules/'] });
+  assert.deepEqual(Object.keys(readJson(paths.sitesFile)), ['$schema', 'schemaVersion', 'cloaking', 'sites']);
+  assert.deepEqual(readJson(paths.sitesFile).cloaking, { patterns: ['.git/', 'node_modules/'] });
+  assert.deepEqual((await SiteRegistry.open({ paths })).globalCloaking.patterns, ['.git/', 'node_modules/'], 'another process reads them');
+
+  await registry.update(site.id, (draft) => {
+    draft.cloaking.useGlobalPatterns = true;
+  });
+  assert.doesNotMatch(readFileSync(paths.sitesFile, 'utf8'), /useGlobalPatterns/, 'true is the default and is not written');
+  await registry.update(site.id, (draft) => {
+    draft.cloaking.useGlobalPatterns = false;
+  });
+  assert.match(readFileSync(paths.sitesFile, 'utf8'), /"enabled": true,\n {8}"useGlobalPatterns": false,/);
+
+  await assert.rejects(
+    registry.updateGlobalCloaking((cloaking) => {
+      cloaking.patterns.push('  ');
+    }),
+    (error) => isSyncError(error, 'E_CONFIG_INVALID'),
+  );
+  await registry.update(site.id, (draft) => {
+    delete draft.cloaking.useGlobalPatterns;
+  });
+  await registry.updateGlobalCloaking((cloaking) => {
+    cloaking.patterns = [];
+  });
+  assert.equal(readFileSync(paths.sitesFile, 'utf8'), before, 'without global cloaking the file reads as before');
+
+  writeFileSync(paths.sitesFile, before.replace('"schemaVersion": 1,', '"schemaVersion": 1,\n  "cloaking": { "patterns": [], "extra": true },'));
+  await assert.rejects(SiteRegistry.open({ paths }), (error) => isSyncError(error, 'E_CONFIG_INVALID') && error.message.includes('extra'));
+});

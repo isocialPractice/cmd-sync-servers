@@ -16,6 +16,7 @@ import {
   serverSchema,
   SITES_SCHEMA_URL,
   sitesFileSchema,
+  type GlobalCloaking,
   type Server,
   type ServerInput,
   type Site,
@@ -128,10 +129,29 @@ export async function replaceSitesFile(paths: SyncServersPaths, file: SitesFile,
   );
 }
 
-/** The text written to `sites.json`: the schema reference first, then the data. */
+/** A site as written: `useGlobalPatterns` only when it is false, since absent means true. */
+function writtenSite(site: Site): Site {
+  if (site.cloaking.useGlobalPatterns !== true) {
+    return site;
+  }
+  const cloaking = { ...site.cloaking };
+  delete cloaking.useGlobalPatterns;
+  return { ...site, cloaking };
+}
+
+/**
+ * The text written to `sites.json`: the schema reference first, then the
+ * data. The global cloaking is written only while it holds a pattern, so a
+ * file that never uses it reads the same as before it existed.
+ */
 export function serializeSitesFile(file: SitesFile): string {
   const output: Record<string, unknown> = { $schema: SITES_SCHEMA_URL };
-  Object.assign(output, file, { $schema: SITES_SCHEMA_URL });
+  for (const [key, value] of Object.entries(file)) {
+    if (key === '$schema' || (key === 'cloaking' && (file.cloaking?.patterns.length ?? 0) === 0)) {
+      continue;
+    }
+    output[key] = key === 'sites' ? file.sites.map(writtenSite) : value;
+  }
   return `${JSON.stringify(output, null, 2)}\n`;
 }
 
@@ -182,6 +202,32 @@ export class SiteRegistry {
   get(siteId: string): Site | undefined {
     const site = this.#file.sites.find((candidate) => candidate.id === siteId);
     return site === undefined ? undefined : structuredClone(site);
+  }
+
+  /** The cloaking patterns every site uses before its own, unless the site turns them off. */
+  get globalCloaking(): GlobalCloaking {
+    return { patterns: [...(this.#file.cloaking?.patterns ?? [])] };
+  }
+
+  /**
+   * Changes the global cloaking patterns. Removing the last one removes the
+   * global cloaking from the file.
+   *
+   * @throws {@link SyncError} `E_CONFIG_INVALID` when a pattern is not valid.
+   */
+  async updateGlobalCloaking(change: (cloaking: GlobalCloaking) => void): Promise<GlobalCloaking> {
+    await this.#mutate((file) => {
+      const cloaking = { patterns: [...(file.cloaking?.patterns ?? [])] };
+      change(cloaking);
+      if (cloaking.patterns.length === 0) {
+        delete file.cloaking;
+      } else {
+        file.cloaking = cloaking;
+      }
+    });
+    const updated = this.globalCloaking;
+    this.#logger.info('Global cloaking updated', { patterns: updated.patterns.length });
+    return updated;
   }
 
   /** The site last chosen in either front end, when it still exists. */

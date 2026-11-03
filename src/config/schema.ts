@@ -151,6 +151,7 @@ const localSchema = z.strictObject({
 
 const cloakingSchema = z.strictObject({
   enabled: z.boolean().default(true),
+  useGlobalPatterns: z.boolean().optional().describe('False: this site does not use the global cloaking patterns. Absent means it does.'),
   patterns: z
     .array(pattern)
     .default([])
@@ -224,11 +225,20 @@ export const siteSchema = z
     }
   });
 
+/** The cloaking patterns every site uses before its own, at the top of `sites.json`. */
+const globalCloakingSchema = z.strictObject({
+  patterns: z
+    .array(pattern)
+    .default([])
+    .describe('Cloaking patterns every site uses before its own, unless the site turns them off. The same syntax as the patterns of a site.'),
+});
+
 /** Validates the whole of `sites.json`. */
 export const sitesFileSchema = z
   .strictObject({
     $schema: z.string().optional(),
     schemaVersion: z.literal(SCHEMA_VERSION),
+    cloaking: globalCloakingSchema.optional().describe('Cloaking for every site. Written only while it holds a pattern.'),
     sites: z.array(siteSchema).default([]),
     lastSelectedSiteId: id.optional(),
   })
@@ -254,6 +264,11 @@ export type Site = z.infer<typeof siteSchema>;
 export type SiteInput = z.input<typeof siteSchema>;
 /** The whole of `sites.json` as stored. */
 export type SitesFile = z.infer<typeof sitesFileSchema>;
+/** The cloaking patterns every site uses before its own, unless the site turns them off. */
+export interface GlobalCloaking {
+  /** Patterns in the same syntax as the patterns of a site, matched before them. */
+  patterns: string[];
+}
 
 /** The JSON Schema of `sites.json`, as written to `schema/site.schema.json`. */
 export function sitesJsonSchema(): Record<string, unknown> {

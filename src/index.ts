@@ -30,6 +30,7 @@ export {
   siteSchema,
   sitesFileSchema,
   sitesJsonSchema,
+  type GlobalCloaking,
   type Protocol,
   type Server,
   type ServerInput,

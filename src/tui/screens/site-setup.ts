@@ -15,6 +15,7 @@ import { choiceDialog, confirmDialog } from '../widgets/dialog.ts';
 import { field, Form } from '../widgets/form.ts';
 import { ListState } from '../widgets/list.ts';
 import { headerRow, protocolName, serverAddress, tableRow } from './common.ts';
+import { GlobalCloakingView, PATTERN_HELP } from './global-cloaking.ts';
 import { ServerEditorView } from './server-editor.ts';
 
 type Category = 'site' | 'servers' | 'local' | 'cloaking' | 'sync' | 'security';
@@ -49,6 +50,7 @@ export class SiteSetupView implements View {
   #pane: 'sidebar' | 'content' = 'sidebar';
   #forms = new Map<Category, Form>();
   #paths: string[] = [];
+  #globalPatterns: readonly string[] = [];
   readonly #servers = new ListState<Site['servers'][number]>([], (server) => server.name);
   #dirty = false;
   #loaded = false;
@@ -124,6 +126,7 @@ export class SiteSetupView implements View {
     await registry.reload();
     this.#site = this.#siteId === undefined ? undefined : registry.get(this.#siteId);
     this.#servers.items = this.#site?.servers ?? [];
+    this.#globalPatterns = registry.globalCloaking.patterns;
     if (!this.#loaded) {
       this.#loaded = true;
       this.#build(this.#site);
@@ -162,7 +165,10 @@ export class SiteSetupView implements View {
         'cloaking',
         new Form([
           field.toggle('enabled', 'Enable cloaking', site?.cloaking.enabled ?? true),
-          field.lines('patterns', 'Cloak files matching', (site?.cloaking.patterns ?? []).join('\n'), 6, '.psd cloaks a suffix, archive* a name, node_modules/ a folder, /drafts/ a root folder, !x re-includes.'),
+          field.toggle('useGlobal', 'Use global patterns', site?.cloaking.useGlobalPatterns !== false, 'The global patterns come before the patterns below; !x below re-includes.'),
+          field.note('global', 'Global patterns', ''),
+          field.action('editGlobal', 'Edit global patterns...'),
+          field.lines('patterns', 'Cloak files matching', (site?.cloaking.patterns ?? []).join('\n'), 6, PATTERN_HELP),
           field.note('paths', 'Cloaked paths', ''),
           field.action('uncloak', 'Uncloak a path...'),
         ]),
@@ -257,6 +263,10 @@ export class SiteSetupView implements View {
       if (note?.kind === 'note') {
         note.text = this.#paths.length === 0 ? '(none)' : this.#paths.join('  ');
       }
+      const global = form.get('global');
+      if (global?.kind === 'note') {
+        global.text = this.#globalPatterns.length === 0 ? '(none)' : this.#globalPatterns.join('  ');
+      }
     }
     return form?.render(width, height, theme, active) ?? { lines: [] };
   }
@@ -309,6 +319,10 @@ export class SiteSetupView implements View {
     const result = form?.key(press);
     if (result?.changed === true) {
       this.#dirty = true;
+    }
+    if (result?.action === 'editGlobal') {
+      app.push(new GlobalCloakingView(this.#services));
+      return;
     }
     if (result?.action === 'uncloak') {
       if (this.#paths.length === 0) {
@@ -446,7 +460,12 @@ export class SiteSetupView implements View {
         ...(caseChoice === 'auto' ? {} : { caseSensitive: caseChoice === 'yes' }),
         cache: localForm.toggle('cache'),
       },
-      cloaking: { enabled: cloakForm.toggle('enabled'), patterns: splitPatterns(cloakForm.text('patterns')), paths: this.#paths },
+      cloaking: {
+        enabled: cloakForm.toggle('enabled'),
+        ...(cloakForm.toggle('useGlobal') ? {} : { useGlobalPatterns: false }),
+        patterns: splitPatterns(cloakForm.text('patterns')),
+        paths: this.#paths,
+      },
       sync: {
         maintainInfo: syncForm.toggle('maintainInfo'),
         compare: syncForm.choice('compare') as 'metadata' | 'checksum',

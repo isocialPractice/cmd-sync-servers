@@ -110,6 +110,14 @@ await registry.update(site.id, (draft) =&gt; {
 });
 console.log(registry.list().map((item) =&gt; item.name));</code></pre>
 <p>A site's first server becomes its Remote server. <code>resolve()</code> finds a site by id, by name ignoring case, or by a path inside its local folder.</p>
+<p>The global cloaking patterns, which every site uses before its own unless its <code>cloaking.useGlobalPatterns</code> is <code>false</code>, are a <code>GlobalCloaking</code>: <code>registry.globalCloaking</code> reads them and <code>updateGlobalCloaking()</code> changes them through the same safe write. <code>siteCloak()</code> takes them as its third argument and answers whether a site-relative path is cloaked; a session passes them for you.</p>
+<pre><code>import { siteCloak } from '@isocialpractice/cmd-sync-servers';
+
+await registry.updateGlobalCloaking((cloaking) =&gt; {
+  cloaking.patterns.push('.git/', 'node_modules/');
+});
+const cloak = siteCloak(site, process.platform, registry.globalCloaking.patterns);
+console.log(cloak.isCloaked('node_modules', true));     // true, unless the site re-includes it</code></pre>
 
 <h2 id="host">The host adapter</h2>
 <p>A <code>HostAdapter</code> is what the engine asks of the program it runs in:</p>

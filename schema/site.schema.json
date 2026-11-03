@@ -12,6 +12,22 @@
       "type": "number",
       "const": 1
     },
+    "cloaking": {
+      "description": "Cloaking for every site. Written only while it holds a pattern.",
+      "type": "object",
+      "properties": {
+        "patterns": {
+          "default": [],
+          "description": "Cloaking patterns every site uses before its own, unless the site turns them off. The same syntax as the patterns of a site.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "sites": {
       "default": [],
       "type": "array",
@@ -298,6 +314,10 @@
             "properties": {
               "enabled": {
                 "default": true,
+                "type": "boolean"
+              },
+              "useGlobalPatterns": {
+                "description": "False: this site does not use the global cloaking patterns. Absent means it does.",
                 "type": "boolean"
               },
               "patterns": {

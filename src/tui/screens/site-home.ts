@@ -1,4 +1,5 @@
 import type { Site } from '../../config/schema.ts';
+import { cloakingSummary } from '../../sync/cloak.ts';
 import type { StatusReport } from '../../sync/session.ts';
 import type { App, Hint, View, ViewBody } from '../app.ts';
 import { isKey, type Key } from '../keys.ts';
@@ -27,6 +28,7 @@ export class SiteHomeView implements View {
   readonly #siteId: string;
   readonly #actions = new ListState(ACTIONS, (action) => action.label);
   #site: Site | undefined;
+  #globalPatterns: readonly string[] = [];
   #status: StatusReport | undefined;
   #problem: string | undefined;
 
@@ -58,6 +60,7 @@ export class SiteHomeView implements View {
     const registry = await this.#services.registry();
     await registry.reload();
     this.#site = registry.get(this.#siteId);
+    this.#globalPatterns = registry.globalCloaking.patterns;
     if (this.#site === undefined) {
       app.pop();
       return;
@@ -96,13 +99,12 @@ export class SiteHomeView implements View {
       status === undefined
         ? (this.#problem ?? 'not checked yet')
         : `${String(status.local.length)} local, ${String(status.remote.length)} on the server, ${String(status.conflicts.length)} on both sides`;
-    const cloaking = site.cloaking;
     const pairs: [string, string][] = [
       ['Local root', truncatePath(site.localRoot, width - 18, symbols(theme).ellipsis)],
       ['Server', server === undefined ? 'none: press e to add one' : `${server.name} (${protocolName(server.protocol)} ${serverAddress(server)})`],
       ['Last sync', when(status?.lastSyncedAt)],
       ['Changes', counts],
-      ['Cloaking', `${cloaking.enabled ? 'on' : 'off'}, ${String(cloaking.patterns.length)} pattern(s), ${String(cloaking.paths.length)} path(s)`],
+      ['Cloaking', cloakingSummary(site.cloaking, this.#globalPatterns)],
     ];
     const lines: Line[] = pairs.map(([label, value]) => [span(`  ${padEnd(label, 12)}`, 'dim'), span(value)]);
     lines.push([]);

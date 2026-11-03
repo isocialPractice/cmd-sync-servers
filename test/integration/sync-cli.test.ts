@@ -226,3 +226,30 @@ test('sync over SFTP from the CLI, with the password from the environment, never
     }
   });
 });
+
+test('a global pattern keeps matching files out of the plan on both sides, unless the site ignores it or re-includes them', async () => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'index.html', 'home');
+    rig.write('local', 'node_modules/lib.js', 'local');
+    rig.write('remote', 'node_modules/other.js', 'remote');
+    assert.equal((await run('cloak', '--global', 'node_modules/')).code, 0);
+    const cloaked = await run('sync', '--both', '--dry-run');
+    assert.equal(cloaked.code, 0, cloaked.stderr);
+    assert.match(cloaked.stdout, /index\.html/);
+    assert.doesNotMatch(cloaked.stdout, /node_modules/);
+
+    await run('cloak', '--ignore-global');
+    const ignored = await run('sync', '--both', '--dry-run');
+    assert.match(ignored.stdout, /^ {2}\[x\] \^ Put +node_modules\/lib\.js$/m);
+    assert.match(ignored.stdout, /^ {2}\[x\] v Get +node_modules\/other\.js$/m);
+
+    await run('cloak', '--use-global', '!node_modules/');
+    assert.match((await run('sync', '--both', '--dry-run')).stdout, /node_modules\/lib\.js/, 'the site re-includes what the global pattern cloaks');
+
+    await run('uncloak', '!node_modules/');
+    assert.equal((await run('sync', '--both', '--yes')).code, 0);
+    assert.equal(rig.read('remote', 'index.html'), 'home');
+    assert.equal(rig.read('remote', 'node_modules/lib.js'), undefined, 'a cloaked file is never transferred');
+    assert.equal(rig.read('remote', 'node_modules/other.js'), 'remote', 'nor deleted');
+  });
+});

@@ -291,7 +291,7 @@ export class SyncSession {
     const { site } = this;
     const localRoot = await this.#localRoot();
     const scopes = this.#scopes(scope);
-    const cloak = siteCloak(site);
+    const cloak = siteCloak(site, process.platform, this.#registry.globalCloaking.patterns);
     const checksum = site.sync.compare === 'checksum';
     const cache = checksum ? await HashCache.open(site.local.cache ? path.join(this.#registry.paths.stateDir, 'sites', site.id, 'hashes.json') : undefined) : undefined;
     const local = await scanLocal({

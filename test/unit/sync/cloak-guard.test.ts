@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { siteSchema } from '../../../src/config/schema.ts';
-import { cloakPatternToGitignore, siteCloak, splitPatterns } from '../../../src/sync/cloak.ts';
+import { cloakingSummary, cloakPatternToGitignore, siteCloak, splitPatterns } from '../../../src/sync/cloak.ts';
 import { siteGuard } from '../../../src/sync/guard.ts';
 
-function site(cloaking: { enabled?: boolean; patterns?: string[]; paths?: string[] }, guard: { enabled?: boolean; patterns?: string[] } = {}) {
+function site(cloaking: { enabled?: boolean; useGlobalPatterns?: boolean; patterns?: string[]; paths?: string[] }, guard: { enabled?: boolean; patterns?: string[] } = {}) {
   return siteSchema.parse({ id: crypto.randomUUID(), name: 'My Site', localRoot: process.cwd(), cloaking, sync: { guard } });
 }
 
@@ -73,4 +73,21 @@ test('the guard matches the built-in sensitive patterns', () => {
 test('a site can add guard patterns or switch the guard off', () => {
   assert.equal(siteGuard(site({}, { patterns: ['*.sql'] }), 'linux').match('backup/db.sql'), '*.sql');
   assert.equal(siteGuard(site({}, { enabled: false }), 'linux').match('.env'), undefined);
+});
+
+test('global patterns come before the site patterns, so a site re-includes with !, and a site can turn them off', () => {
+  const global = ['node_modules/', '.git/', '*.lnk', '/drafts/'];
+  const both = siteCloak(site({ patterns: ['!node_modules/'] }), 'linux', global);
+  assert.equal(both.isCloaked('node_modules', true), false, 're-included by the site');
+  assert.equal(both.isCloaked('.git', true), true);
+  assert.equal(both.isCloaked('docs/Shortcut.lnk', false), true);
+  assert.equal(both.isCloaked('drafts', true), true);
+  assert.equal(both.isCloaked('blog/drafts', true), false, 'a leading / anchors at the site root');
+  assert.equal(siteCloak(site({ useGlobalPatterns: false }), 'linux', global).isCloaked('.git', true), false);
+  assert.equal(siteCloak(site({ enabled: false }), 'linux', global).isCloaked('.git', true), false, 'cloaking off turns the global patterns off too');
+  assert.equal(siteCloak(site({}), 'linux').isCloaked('.git', true), false, 'no global patterns unless given');
+  assert.equal(siteCloak(site({}), 'win32', ['Thumbs.db']).isCloaked('img/thumbs.DB', false), true);
+  assert.equal(siteCloak(site({}), 'linux', ['Thumbs.db']).isCloaked('img/thumbs.DB', false), false);
+  assert.equal(cloakingSummary(site({ patterns: ['.psd'], paths: ['img/raw'] }).cloaking, global), 'on, 1 pattern(s), 1 path(s), 4 global pattern(s)');
+  assert.equal(cloakingSummary(site({ useGlobalPatterns: false }).cloaking, global), 'on, 0 pattern(s), 0 path(s), global patterns not used');
 });

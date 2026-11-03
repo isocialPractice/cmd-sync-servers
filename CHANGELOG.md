@@ -110,6 +110,17 @@ Until the first stable release, versions use the pre-release form
   `TransportContext.expectedCertificate`.
 - `q` in the preview quits without transferring anything, as `Ctrl+C`
   does; `sync`, `put` and `get` then exit with code 4.
+- Global cloaking patterns, which every site uses before its own:
+  `sync-servers cloak --global` and `uncloak --global` change them, and
+  `sites.json` holds them at the top while any is set. A site's `!pattern`
+  re-includes what a global pattern cloaks, and `cloak --ignore-global` and
+  `--use-global` choose for one site (`cloaking.useGlobalPatterns`, written
+  only when false). In the terminal interface, `c` on the Sites screen and
+  Site Setup's Cloaking category edit them. `cloak --list`, its JSON and
+  `site show` show them.
+- `SiteRegistry.globalCloaking`, `SiteRegistry.updateGlobalCloaking()`, the
+  `GlobalCloaking` type, and the global patterns as the third argument of
+  `siteCloak()`.
 
 ### Fixed
 

@@ -172,13 +172,13 @@ through the `ssv` shell function, changes the shell to its folder on exit.
 > Acme Corp  ~/sites/acme                                     Production
   My Site    ~/sites/my-site                                  Production
  ______________________________________________________________________________
-  n = New  |  e = Edit  |  Enter = Open  |  d = Remove  |  / = Filter
-  q = Quit
+  n = New  |  e = Edit  |  Enter = Open  |  d = Remove  |  c = Cloaking
+  / = Filter  |  q = Quit
  ~/sites/acme
 ```
 
 `n` opens the new-site form; `Shift+N` opens Site Setup for a new site, with
-every setting.
+every setting. `c` opens the global cloaking patterns.
 
 ### New site
 
@@ -276,24 +276,49 @@ their own editor, so the Servers table acts at once.
  Production: SFTP sftp.example.com /var/www/my-site
 ```
 
-The Cloaking category edits the patterns one per line, in the multi-line
-editor ported from kilo:
+The Cloaking category edits the site's patterns one per line, in the
+multi-line editor ported from kilo. Above them it lists the global
+patterns, which the site uses first unless Use global patterns is off, and
+opens them for editing:
 
 ```text
  Site Setup: My Site                                                Ctrl+S Save
  ______________________________________________________________________________
   Site                  Enable cloaking       [x]
-  Servers               Cloak files matching
-  Advanced Settings                           .psd
-    Local Info                                node_modules/
->   Cloaking                                  /drafts/
-    Synchronization
-    Security
+  Servers               Use global patterns   [x]
+  Advanced Settings     Global patterns       .git/  node_modules/
+    Local Info          [ Edit global patterns... ]
+>   Cloaking            Cloak files matching
+    Synchronization                           .psd
+    Security                                  /drafts/
+
                         Cloaked paths         (none)
                         [ Uncloak a path... ]
  ______________________________________________________________________________
   Tab = Pane  |  Up/Down = Move  |  Space = Change  |  Ctrl+S = Save
   Esc = Back
+ .psd cloaks a suffix, archive* a name, node_modules/ a folder, /drafts/ a root
+```
+
+### Global cloaking
+
+The cloaking patterns every site uses before its own, one per line, opened
+with `c` from Sites or from Site Setup's Cloaking category. `Ctrl+S` saves
+them; `Esc` asks before dropping unsaved changes.
+
+```text
+ Global Cloaking                                                    Ctrl+S Save
+ ______________________________________________________________________________
+  Cloak in every site
+                       .git/
+                       node_modules/
+                       Thumbs.db
+                       *.lnk
+
+                       Sites use these before their own patterns.
+                       Site Setup, Cloaking turns them off for one site.
+ ______________________________________________________________________________
+  Up/Down = Move  |  Ctrl+S = Save  |  Esc = Back
  .psd cloaks a suffix, archive* a name, node_modules/ a folder, /drafts/ a root
 ```
 

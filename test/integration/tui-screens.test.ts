@@ -248,7 +248,7 @@ test('site setup adds a site, a server and cloaking, and checks each field befor
 
     await press(app, 'tab', 'down', 'down');
     assert.match(screen(app), /^> {3}Cloaking/m);
-    await press(app, 'tab', 'down');
+    await press(app, 'tab', 'down', 'down', 'down');
     await type(app, '.psd');
     await press(app, 'enter');
     await type(app, 'node_modules/');
@@ -529,5 +529,42 @@ test('removing a site leaves its folder and asks first; a site setup for a missi
     await press(app, 'ctrl+s');
     assert.match(screen(app), /! Folder not found:/);
     assert.equal(rig.registry.list().length, 0);
+  });
+});
+
+test('global cloaking is edited from the Sites screen and from Site Setup, where one site can stop using it', async () => {
+  await withRig(async (rig) => {
+    const app = testApp();
+    await open(app, new SitesView(services(rig)));
+    await press(app, 'c');
+    assert.match(screen(app), /^ Global Cloaking +Ctrl\+S Save$/m);
+    assert.match(screen(app), /Sites use these before their own patterns\./);
+    await type(app, '.git/');
+    await press(app, 'enter');
+    await type(app, 'node_modules/');
+    await press(app, 'escape');
+    assert.match(screen(app), /Leave without saving the global cloaking patterns\?/);
+    await press(app, 'escape', 'ctrl+s');
+    assert.match(screen(app), /^ Saved the global cloaking patterns\.$/m);
+    assert.deepEqual(rig.registry.globalCloaking.patterns, ['.git/', 'node_modules/']);
+    await press(app, 'escape');
+    assert.match(screen(app), /^ Sites +Enter Open$/m);
+
+    await press(app, 'e', 'down', 'down', 'down');
+    assert.match(screen(app), /^> {3}Cloaking/m);
+    assert.match(screen(app), /Use global patterns +\[x\]/);
+    assert.match(screen(app), /Global patterns +\.git\/ {2}node_modules\//);
+    await press(app, 'tab', 'down', 'space', 'ctrl+s');
+    assert.equal(rig.registry.get(rig.site.id)?.cloaking.useGlobalPatterns, false);
+    assert.match(screen(app), /Use global patterns +\[ \]/);
+
+    await press(app, 'down', 'enter');
+    assert.match(screen(app), /^ Global Cloaking/m);
+    await type(app, '*.lnk ');
+    await press(app, 'ctrl+s', 'escape');
+    assert.deepEqual(rig.registry.globalCloaking.patterns, ['*.lnk', '.git/', 'node_modules/']);
+    assert.match(screen(app), /Global patterns +\*\.lnk {2}\.git\/ {2}node_modules\//, 'Site Setup shows the saved list');
+    await press(app, 'escape', 'escape');
+    assert.match(screen(app), /^ Sites/m);
   });
 });

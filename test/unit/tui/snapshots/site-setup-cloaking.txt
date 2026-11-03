@@ -2,18 +2,18 @@
  ______________________________________________________________________________
 
   Site                  Enable cloaking       [x]
-  Servers               Cloak files matching
-  Advanced Settings                           .psd
-    Local Info                                node_modules/▏
->   Cloaking
-    Synchronization
-    Security
+  Servers               Use global patterns   [x]
+  Advanced Settings     Global patterns       (none)
+    Local Info          [ Edit global patterns... ]
+>   Cloaking            Cloak files matching
+    Synchronization                           .psd
+    Security                                  node_modules/▏
+
+
+
 
                         Cloaked paths         (none)
                         [ Uncloak a path... ]
-
-
-
 
 
 

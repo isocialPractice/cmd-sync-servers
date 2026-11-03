@@ -236,6 +236,28 @@ the step of the plan that specifies it.
 - [x] `DESIGN_LANGUAGE.md`, `docs/cli.html`, changelog, checks and commit
   - **Goal**: Resolve to [Phase P2, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
   - From: Patches 1.0.0-alpha.1.0.0
+- [x] Global cloaking in the schema, written only when set, and the
+      registry's `globalCloaking` and `updateGlobalCloaking`
+  - **Goal**: Resolve to [Phase P3, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Global patterns in `siteCloak` and the session
+  - **Goal**: Resolve to [Phase P3, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] `cloak` and `uncloak` with `--global`, `--use-global` and
+      `--ignore-global`, the summaries and the JSON
+  - **Goal**: Resolve to [Phase P3, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] The Global Cloaking screen, `c` on the Sites screen, and Site Setup's
+      Cloaking category
+  - **Goal**: Resolve to [Phase P3, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Tests of global cloaking in the engine, the command line and the
+      terminal interface
+  - **Goal**: Resolve to [Phase P3, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Documentation for P3, `npm run docs:cli`, changelog, checks and commit
+  - **Goal**: Resolve to [Phase P3, step 6](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
+  - From: Patches 1.0.0-alpha.1.0.0
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -318,22 +340,6 @@ items of Phase S5 move no version.
 Next version: none. Every item adds to `1.0.0-alpha.1.0.0`. Phase P5 is
 tracked in the extension's `TODO.md`.
 
-- [ ] Global cloaking in the schema, written only when set, and the
-      registry's `globalCloaking` and `updateGlobalCloaking`
-  - **Goal**: Resolve to [Phase P3, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
-- [ ] Global patterns in `siteCloak` and the session
-  - **Goal**: Resolve to [Phase P3, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
-- [ ] `cloak` and `uncloak` with `--global`, `--use-global` and
-      `--ignore-global`, the summaries and the JSON
-  - **Goal**: Resolve to [Phase P3, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
-- [ ] The Global Cloaking screen, `c` on the Sites screen, and Site Setup's
-      Cloaking category
-  - **Goal**: Resolve to [Phase P3, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
-- [ ] Tests of global cloaking in the engine, the command line and the
-      terminal interface
-  - **Goal**: Resolve to [Phase P3, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
-- [ ] Documentation for P3, `npm run docs:cli`, changelog, checks and commit
-  - **Goal**: Resolve to [Phase P3, step 6](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
 - [ ] The generated option index, `docs:cli` for both pages, and the
       environment variable test
   - **Goal**: Resolve to [Phase P4, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)

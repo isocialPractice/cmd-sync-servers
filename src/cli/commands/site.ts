@@ -3,6 +3,7 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { NewServer } from '../../config/registry.ts';
 import { formatIssues, siteSchema, type Site } from '../../config/schema.ts';
+import { cloakingSummary } from '../../sync/cloak.ts';
 import { flag, booleanOption, stringOption, type CommandSpec, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
 import { editJsonUntilValid } from '../editor.ts';
@@ -245,7 +246,7 @@ export const siteShowCommand: CommandSpec = {
     }
     const remote = site.servers.find((server) => server.id === site.remoteServerId);
     const testing = site.servers.find((server) => server.id === site.testingServerId);
-    const cloaking = site.cloaking;
+    const globalPatterns = (await ctx.registry()).globalCloaking.patterns;
     ctx.out(
       formatPairs([
         ['Name', site.name],
@@ -254,10 +255,7 @@ export const siteShowCommand: CommandSpec = {
         ...(site.local.webUrl === undefined ? [] : [['Web URL', site.local.webUrl] as const]),
         ['Remote', remote === undefined ? 'none' : describeServer(remote)],
         ['Testing', testing === undefined ? 'none' : describeServer(testing)],
-        [
-          'Cloaking',
-          `${cloaking.enabled ? 'on' : 'off'}, ${String(cloaking.patterns.length)} pattern(s), ${String(cloaking.paths.length)} path(s)`,
-        ],
+        ['Cloaking', cloakingSummary(site.cloaking, globalPatterns)],
         ['Guard', site.sync.guard.enabled ? 'on' : 'off'],
       ]),
     );

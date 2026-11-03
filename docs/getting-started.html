@@ -97,8 +97,9 @@ Site root on the server: Enter for "/", a number to open a folder, or a path [/]
 <p>To change a server later, <code>sync-servers server edit</code> asks the same questions with the current values as defaults. If <code>sites.json</code> itself stops loading, <code>sync-servers config edit</code> opens it with its problems listed.</p>
 
 <h2 id="cloak">5. Cloak what should never move</h2>
-<pre><code>sync-servers cloak --site "My Site" .psd "archive*" node_modules/ /drafts/</code></pre>
-<p>Cloaked files are never scanned, listed, transferred or deleted, on either side. <a href="configuration.html#cloaking">Cloaking patterns</a> explains the syntax.</p>
+<pre><code>sync-servers cloak --site "My Site" .psd "archive*" /drafts/
+sync-servers cloak --global .git/ node_modules/ Thumbs.db</code></pre>
+<p>Cloaked files are never scanned, listed, transferred or deleted, on either side. The first command cloaks for one site; the second, with <code>--global</code>, for every site, so files that belong to no site are cloaked once. <a href="configuration.html#cloaking">Cloaking patterns</a> explains the syntax, and <a href="configuration.html#global-cloaking">Global patterns</a> how a site can re-include or ignore them.</p>
 
 <h2 id="preview">6. Preview, then synchronize</h2>
 <p>Inside the site's folder, or with only one site, the site is chosen for you:</p>

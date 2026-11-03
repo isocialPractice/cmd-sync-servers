@@ -59,6 +59,7 @@
 <pre><code>{
   "$schema": "https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json",
   "schemaVersion": 1,
+  "cloaking": { "patterns": [".git/", "node_modules/"] },
   "sites": [
     {
       "id": "3f2b7c1e-8a4d-4f6b-9c2e-1d5a7b9e0c31",
@@ -77,11 +78,11 @@
         }
       ],
       "remoteServerId": "9a1c3e5f-7b2d-4e6a-8c0f-2b4d6e8a0c13",
-      "cloaking": { "patterns": [".psd", "node_modules/"] }
+      "cloaking": { "patterns": [".psd"] }
     }
   ]
 }</code></pre>
-<p>Fields left out take their defaults. Passwords never appear in this file.</p>
+<p>Fields left out take their defaults. Passwords never appear in this file. At the top, <code>cloaking.patterns</code> holds the <a href="#global-cloaking">global cloaking patterns</a>, which every site uses before its own; it is written only while it holds a pattern.</p>
 
 <h3 id="site-fields">Site fields</h3>
 <table>
@@ -97,7 +98,8 @@
     <tr><td><code>local.webUrl</code></td><td>none</td><td>The local web address, such as <code>http://localhost:8080/</code>.</td></tr>
     <tr><td><code>local.caseSensitive</code></td><td>probed</td><td>Whether local names differ by case. Unset: the file system is asked.</td></tr>
     <tr><td><code>local.cache</code></td><td><code>true</code></td><td>Keep file hashes between runs in checksum mode.</td></tr>
-    <tr><td><code>cloaking.enabled</code></td><td><code>true</code></td><td>Turns cloaking on or off, keeping the patterns.</td></tr>
+    <tr><td><code>cloaking.enabled</code></td><td><code>true</code></td><td>Turns cloaking on or off, keeping the patterns. Off also turns off the global patterns for the site.</td></tr>
+    <tr><td><code>cloaking.useGlobalPatterns</code></td><td><code>true</code></td><td>Use the <a href="#global-cloaking">global patterns</a> before the site's own. Written only when <code>false</code>.</td></tr>
     <tr><td><code>cloaking.patterns</code></td><td><code>[]</code></td><td>Cloaking patterns; see <a href="#cloaking">Cloaking</a>.</td></tr>
     <tr><td><code>cloaking.paths</code></td><td><code>[]</code></td><td>Site-relative files and folders cloaked one by one.</td></tr>
     <tr><td><code>sync.maintainInfo</code></td><td><code>true</code></td><td>Keep sync records, so a change on both sides is detected.</td></tr>
@@ -166,6 +168,15 @@
 sync-servers cloak img/raw                          # an existing path in the site
 sync-servers cloak --list
 sync-servers uncloak .psd</code></pre>
+
+<h3 id="global-cloaking">Global patterns</h3>
+<p>Files that belong to no site, such as version control folders, installed packages and the files an operating system leaves behind, can be cloaked once for every site. Every site uses the global patterns before its own, so a site's <code>!pattern</code> re-includes what a global pattern cloaks, and a pattern that starts with <code>/</code> is anchored at each site's local root. Turning cloaking off for a site turns the global patterns off there too.</p>
+<pre><code>sync-servers cloak --global .git/ .github/ node_modules/ .DS_Store Thumbs.db desktop.ini "*.lnk"
+sync-servers cloak --global                              # list them
+sync-servers uncloak --global .github/
+sync-servers cloak --site "My Site" --ignore-global      # one site stops using them
+sync-servers cloak --site "My Site" --use-global         # and uses them again</code></pre>
+<p>No global pattern is built in. The list above is a starting point for a typical web site; keep only what your sites never publish. In the terminal interface, <kbd>c</kbd> on the Sites screen edits the global patterns, and Site Setup's Cloaking category shows them beside a Use global patterns switch.</p>
 
 <h2 id="guard">The sensitive-file guard</h2>
 <p>Some files are almost never meant to be published. A file matching one of these patterns is listed in the preview <strong>unchecked</strong> with the pattern it matched, and moves only when you check it. It is never hidden.</p>

@@ -61,8 +61,8 @@
   <li><a href="#command-server-set-testing"><code>server set-testing</code></a>: Make a server the Testing server, or clear the role</li>
   <li><a href="#command-password-set"><code>password set</code></a>: Save a password or key passphrase in the OS credential store</li>
   <li><a href="#command-password-forget"><code>password forget</code></a>: Remove a saved password or key passphrase</li>
-  <li><a href="#command-cloak"><code>cloak</code></a>: Cloak files and folders so no operation touches them, or list what is cloaked</li>
-  <li><a href="#command-uncloak"><code>uncloak</code></a>: Remove cloaked paths or patterns</li>
+  <li><a href="#command-cloak"><code>cloak</code></a>: Cloak files and folders so no operation touches them, in one site or every site, or list what is cloaked</li>
+  <li><a href="#command-uncloak"><code>uncloak</code></a>: Remove cloaked paths or patterns, from one site or from the global patterns</li>
   <li><a href="#command-sync"><code>sync</code></a>: Synchronize a site with its Remote server: preview, then transfer</li>
   <li><a href="#command-put"><code>put</code></a>: Put files or folders now, with a preview only when a decision is needed</li>
   <li><a href="#command-get"><code>get</code></a>: Get files or folders now, with a preview only when a decision is needed</li>
@@ -338,35 +338,41 @@ printf %s &quot;$SECRET&quot; | sync-servers password set Production --stdin</co
 </section>
 <section class="command" id="command-cloak">
   <h3><code>sync-servers cloak [&lt;path or pattern&gt;...]</code></h3>
-  <p>Cloak files and folders so no operation touches them, or list what is cloaked.</p>
+  <p>Cloak files and folders so no operation touches them, in one site or every site, or list what is cloaked.</p>
   <table>
     <caption>Options of cloak</caption>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>--path</code></td><td>Treat every argument as a path inside the local root</td></tr>
       <tr><td><code>--pattern</code></td><td>Treat every argument as a pattern</td></tr>
+      <tr><td><code>--global</code></td><td>Work on the global patterns, which every site uses before its own</td></tr>
       <tr><td><code>--list</code></td><td>Show the cloaking settings</td></tr>
       <tr><td><code>--enable</code></td><td>Turn cloaking on for the site</td></tr>
       <tr><td><code>--disable</code></td><td>Turn cloaking off for the site, keeping its patterns</td></tr>
+      <tr><td><code>--use-global</code></td><td>Use the global patterns in the site, as sites do unless told otherwise</td></tr>
+      <tr><td><code>--ignore-global</code></td><td>Stop using the global patterns in the site</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers cloak .psd &quot;archive*&quot; node_modules/
 sync-servers cloak img/raw
+sync-servers cloak --global .git/ node_modules/
 sync-servers cloak --list</code></pre>
 </section>
 <section class="command" id="command-uncloak">
   <h3><code>sync-servers uncloak &lt;path or pattern&gt;...</code></h3>
-  <p>Remove cloaked paths or patterns.</p>
+  <p>Remove cloaked paths or patterns, from one site or from the global patterns.</p>
   <table>
     <caption>Options of uncloak</caption>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>--path</code></td><td>Treat every argument as a path inside the local root</td></tr>
       <tr><td><code>--pattern</code></td><td>Treat every argument as a pattern</td></tr>
+      <tr><td><code>--global</code></td><td>Work on the global patterns, which every site uses before its own</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers uncloak .psd
-sync-servers uncloak img/raw</code></pre>
+sync-servers uncloak img/raw
+sync-servers uncloak --global node_modules/</code></pre>
 </section>
 <section class="command" id="command-sync">
   <h3><code>sync-servers sync [&lt;path&gt;...]</code></h3>
@@ -556,11 +562,12 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
   <caption>Screens and their own keys</caption>
   <thead><tr><th scope="col">Screen</th><th scope="col">Keys</th></tr></thead>
   <tbody>
-    <tr><td>Sites</td><td><kbd>n</kbd> new site in one form, <kbd>Shift</kbd>+<kbd>N</kbd> new site in Site Setup, <kbd>e</kbd> edit, <kbd>Enter</kbd> open, <kbd>d</kbd> remove (the folder and server files are not touched)</td></tr>
+    <tr><td>Sites</td><td><kbd>n</kbd> new site in one form, <kbd>Shift</kbd>+<kbd>N</kbd> new site in Site Setup, <kbd>e</kbd> edit, <kbd>Enter</kbd> open, <kbd>d</kbd> remove (the folder and server files are not touched), <kbd>c</kbd> the global cloaking patterns</td></tr>
+    <tr><td>Global Cloaking</td><td>The cloaking patterns every site uses before its own, one per line; <kbd>Ctrl</kbd>+<kbd>S</kbd> saves them, <kbd>Esc</kbd> asks before dropping unsaved changes</td></tr>
     <tr><td>New site</td><td>Site name, Local folder, Protocol, Host, User, Password and Save password, then <kbd>Ctrl</kbd>+<kbd>S</kbd> or the Connect button: signs in, asks about a new host key or certificate, opens the folder picker, and saves the site and its server together. A refused sign-in shows under User. <kbd>Esc</kbd> asks before dropping what you typed</td></tr>
     <tr><td>Folder picker</td><td>The folders of the server, starting where the account opens, with the folder shown in the title: <kbd>Enter</kbd> opens a folder, <kbd>Backspace</kbd> goes up, <kbd>s</kbd> or Use this folder accepts, <kbd>Esc</kbd> cancels</td></tr>
     <tr><td>Site home</td><td><kbd>s</kbd> Synchronize, <kbd>r</kbd> check for changes, <kbd>e</kbd> site settings; Put and Get newer files from the list</td></tr>
-    <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing</td></tr>
+    <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing. In Cloaking: Use global patterns turns the global patterns on or off for the site, which lists them, and Edit global patterns... opens them</td></tr>
     <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the host key and the trusted certificate, with Forget buttons</td></tr>
     <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview</td></tr>
     <tr><td>Preview</td><td><kbd>Space</kbd> check, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize, <kbd>q</kbd> quit without transferring anything, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
@@ -649,7 +656,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
   "local": [{ "path": "css/site.css", "state": "local-changed" }],
   ...
 }</code></pre>
-<p>The kinds are <code>sites</code>, <code>site</code>, <code>site-removed</code>, <code>site-path</code>, <code>servers</code>, <code>server</code>, <code>server-removed</code>, <code>server-test</code>, <code>cloaking</code>, <code>sync</code>, <code>status</code>, <code>diff</code>, <code>mark-synced</code>, <code>config-paths</code>, <code>doctor</code> and <code>error</code>. Paths are site-relative, and secrets never appear.</p>
+<p>The kinds are <code>sites</code>, <code>site</code>, <code>site-removed</code>, <code>site-path</code>, <code>servers</code>, <code>server</code>, <code>server-removed</code>, <code>server-test</code>, <code>cloaking</code>, <code>cloaking-global</code>, <code>sync</code>, <code>status</code>, <code>diff</code>, <code>mark-synced</code>, <code>config-paths</code>, <code>doctor</code> and <code>error</code>. Paths are site-relative, and secrets never appear.</p>
 </main>
 <footer class="site-footer">
   <div class="inner">

@@ -19,6 +19,12 @@ export function splitPatterns(text: string): string[] {
   return text.split(/\s+/).filter((pattern) => pattern !== '');
 }
 
+/** A site's cloaking in one line: `on, 1 pattern(s), 1 path(s), 4 global pattern(s)`. */
+export function cloakingSummary(cloaking: Site['cloaking'], globalPatterns: readonly string[]): string {
+  const global = cloaking.useGlobalPatterns === false ? 'global patterns not used' : `${String(globalPatterns.length)} global pattern(s)`;
+  return `${cloaking.enabled ? 'on' : 'off'}, ${String(cloaking.patterns.length)} pattern(s), ${String(cloaking.paths.length)} path(s), ${global}`;
+}
+
 /** Decides whether a site-relative path is cloaked. Folders are passed with `isDir` so `name/` patterns apply. */
 export interface Cloak {
   /** False when the site turned cloaking off; nothing is then cloaked. */
@@ -28,14 +34,18 @@ export interface Cloak {
 }
 
 /**
- * The cloak of a site: its patterns, matched with gitignore semantics, and
- * its single cloaked paths, which cloak everything beneath them. Cloaked
- * paths are never scanned, listed, transferred or deleted, on either side.
+ * The cloak of a site: the global patterns, unless the site turns them off,
+ * then its own patterns, matched together with gitignore semantics so a
+ * site's `!pattern` re-includes what a global pattern cloaks; and its single
+ * cloaked paths, which cloak everything beneath them. A pattern that starts
+ * with `/` is anchored at the site's local root. Cloaked paths are never
+ * scanned, listed, transferred or deleted, on either side.
  */
-export function siteCloak(site: Pick<Site, 'cloaking'>, platform: NodeJS.Platform = process.platform): Cloak {
+export function siteCloak(site: Pick<Site, 'cloaking'>, platform: NodeJS.Platform = process.platform, globalPatterns: readonly string[] = []): Cloak {
   const { enabled, patterns, paths } = site.cloaking;
   const ignoreCase = platform === 'win32' || platform === 'darwin';
-  const matcher: Ignore = ignore({ ignorecase: ignoreCase }).add(patterns.flatMap(splitPatterns).map(cloakPatternToGitignore));
+  const all = [...(site.cloaking.useGlobalPatterns === false ? [] : globalPatterns), ...patterns];
+  const matcher: Ignore = ignore({ ignorecase: ignoreCase }).add(all.flatMap(splitPatterns).map(cloakPatternToGitignore));
   const fold = (value: string): string => (ignoreCase ? value.toLowerCase() : value);
   const cloakedPaths = paths.map((item) => fold(item.replace(/^\/+|\/+$/g, ''))).filter((item) => item !== '');
   return {
