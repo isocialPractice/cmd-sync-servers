@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { test } from 'node:test';
 import { formatPreview } from '../../../src/cli/commands/sync.ts';
 import { CommandContext } from '../../../src/cli/context.ts';
@@ -10,22 +11,30 @@ import { fakeIo, tempDir } from '../../helpers/cli.ts';
 import { guardedStatus, STATUS } from '../../../src/sync/messages.ts';
 import { toRemotePath, type RemotePath } from '../../../src/sync/paths.ts';
 import { SyncPlan, type PlanInput } from '../../../src/sync/plan.ts';
-import type { ScanResult } from '../../../src/sync/scan-local.ts';
+import { siteGuard } from '../../../src/sync/guard.ts';
+import type { LinkedFile, ScanResult } from '../../../src/sync/scan-local.ts';
 import type { SyncRecord } from '../../../src/sync/state.ts';
 import type { Observation, ScanProblem } from '../../../src/sync/types.ts';
 
 const T = 1_761_753_600_000;
 const obs = (size: number, mtimeMs = T): Observation => ({ size, mtimeMs });
 
-function scan(files: Record<string, Observation>, problems: ScanProblem[] = []): ScanResult {
+function scan(files: Record<string, Observation>, problems: ScanProblem[] = [], linked: Record<string, LinkedFile> = {}): ScanResult {
   return {
     files: new Map(Object.entries(files).map(([key, value]) => [toRemotePath(key), value])),
     dirs: new Set<RemotePath>(),
     problems,
     cloaked: 0,
-    linked: new Map(),
+    linked: new Map(Object.entries(linked).map(([key, value]) => [toRemotePath(key), value])),
   };
 }
+
+/** A file reached through a link that leads to `parts` under the top of this drive. */
+const linkTo = (sitePath: string | undefined, ...parts: string[]): LinkedFile => ({
+  real: path.resolve(path.sep, ...parts),
+  outside: sitePath === undefined,
+  sitePath: sitePath === undefined ? undefined : toRemotePath(sitePath),
+});
 
 function plan(overrides: Partial<PlanInput> = {}): SyncPlan {
   return new SyncPlan({
@@ -181,6 +190,62 @@ test('nothing is transferred inside a linked folder on either side', () => {
   const held = result.items.filter((item) => item.status === STATUS.underLink).map((item) => item.path);
   assert.deepEqual(held.sort(), ['assets/app.js', 'docs/readme.html']);
   assert.deepEqual(result.items.filter((item) => item.state !== 'problem').map((item) => item.path), ['index.html']);
+});
+
+test('the guard sees through links, inside the site and out of it', () => {
+  const guard = siteGuard({ sync: { guard: { enabled: true, patterns: [] } } } as unknown as Pick<Site, 'sync'>, 'linux');
+  const result = plan({
+    guard,
+    local: scan(
+      { 'css/app.css': obs(1), 'keys/site.txt': obs(1), 'img/hero.svg': obs(1) },
+      [],
+      {
+        'css/app.css': linkTo('.env', 'site', '.env'),
+        'keys/site.txt': linkTo(undefined, 'shared', '.ssh', 'config'),
+        'img/hero.svg': linkTo('shared/img/hero.svg', 'site', 'shared', 'img', 'hero.svg'),
+      },
+    ),
+  });
+  assert.deepEqual(
+    result.items.map((item) => [item.path, item.guarded, item.checked, item.status]),
+    [
+      ['css/app.css', '.env', false, guardedStatus('.env')],
+      ['img/hero.svg', undefined, true, ''],
+      ['keys/site.txt', '.ssh/', false, `${guardedStatus('.ssh/')} ${STATUS.throughLinkOutside}`],
+    ],
+  );
+});
+
+test('every row reached through a link out of the site says so, whatever its action', () => {
+  const result = plan({
+    direction: 'both',
+    local: scan({ 'a.css': obs(1), 'b.css': obs(1), 'c.css': obs(5, T + 60_000) }, [], {
+      'a.css': linkTo(undefined, 'shared', 'a.css'),
+      'b.css': linkTo(undefined, 'shared', 'b.css'),
+      'c.css': linkTo(undefined, 'shared', 'c.css'),
+    }),
+    remote: scan({ 'b.css': obs(2, T + 60_000), 'c.css': obs(6, T + 60_000) }),
+    records: new Map([
+      ['b.css', { local: obs(1), remote: obs(1), syncedAt: T }],
+      ['c.css', { local: obs(1), remote: obs(1), syncedAt: T }],
+    ]),
+  });
+  assert.deepEqual(
+    result.items.map((item) => [item.path, item.action, item.status]),
+    [
+      ['a.css', 'put', STATUS.throughLinkOutside],
+      ['b.css', 'get', STATUS.throughLinkOutside],
+      ['c.css', 'resolve', `${STATUS.bothChanged} ${STATUS.throughLinkOutside}`],
+    ],
+  );
+});
+
+test('the fingerprint changes when a link points elsewhere, and only then', () => {
+  const files = { 'img/hero.svg': obs(1) };
+  const through = (folder: string): ScanResult => scan(files, [], { 'img/hero.svg': linkTo(undefined, folder, 'hero.svg') });
+  assert.equal(plan({ local: through('one') }).fingerprint, plan({ local: through('one') }).fingerprint);
+  assert.notEqual(plan({ local: through('one') }).fingerprint, plan({ local: through('two') }).fingerprint);
+  assert.notEqual(plan({ local: through('one') }).fingerprint, plan({ local: scan(files) }).fingerprint);
 });
 
 test('a saved plan round-trips through JSON and is refused once the scan changes', () => {

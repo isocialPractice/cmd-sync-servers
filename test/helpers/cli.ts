@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -88,12 +88,19 @@ export function makeFolder(root: string, ...parts: string[]): string {
   return dir;
 }
 
-/** Every file under `dir` whose content contains `needle`. */
+/**
+ * Every file under `dir` whose content contains `needle`. Links and
+ * junctions are not followed, so a link back into the folder cannot loop; a
+ * file a link reaches inside `dir` is searched where it is.
+ */
 export function filesContaining(dir: string, needle: string): string[] {
   const found: string[] = [];
-  for (const name of readdirSync(dir, { recursive: true, encoding: 'utf8' })) {
+  for (const name of readdirSync(dir, { encoding: 'utf8' })) {
     const file = path.join(dir, name);
-    if (statSync(file).isFile() && readFileSync(file).includes(needle)) {
+    const info = lstatSync(file);
+    if (info.isDirectory()) {
+      found.push(...filesContaining(file, needle));
+    } else if (info.isFile() && readFileSync(file).includes(needle)) {
       found.push(file);
     }
   }

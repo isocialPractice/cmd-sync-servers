@@ -69,6 +69,24 @@ export class Recovery {
     return destination;
   }
 
+  /**
+   * Removes the symbolic link `link`, never what it points to, and returns
+   * where a copy of what it points to was kept in this run's folder, or
+   * `undefined` when recovery is off. The copy holds the content, not the
+   * link, so it still opens after the link is gone.
+   */
+  async keepLink(link: string, target: RemotePath): Promise<string | undefined> {
+    if (!this.#settings.enabled) {
+      await unlink(link);
+      return undefined;
+    }
+    const destination = path.join(this.runDir, ...target.split('/'));
+    await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
+    await copyFile(link, destination);
+    await unlink(link);
+    return destination;
+  }
+
   /** Puts a kept file back, when a step after keeping it failed. */
   async restore(kept: string, file: string): Promise<void> {
     try {

@@ -17,6 +17,8 @@ export interface LinkedFile {
   readonly real: string;
   /** True when that path is outside the real local root. */
   readonly outside: boolean;
+  /** The site path of that place, when it is inside the site. */
+  readonly sitePath: RemotePath | undefined;
 }
 
 export interface ScanResult {
@@ -179,16 +181,22 @@ export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> 
     return real;
   };
 
+  /** The site path of a real place inside the real root other than the root itself; `undefined` anywhere else. */
+  const sitePathOf = (real: string): RemotePath | undefined => {
+    if (!isInside(realRoot, real, platform)) {
+      return undefined;
+    }
+    const at = checkPath(path.relative(realRoot, real).split(path.sep).join('/'), platform);
+    return at.ok && at.path !== ROOT ? at.path : undefined;
+  };
+
   /** True when `target`, or the place inside the site a followed link leads it to, is cloaked. */
   const cloakedAt = (target: RemotePath, real: string, linked: boolean, isDir: boolean): boolean => {
     if (options.cloak.isCloaked(target, isDir)) {
       return true;
     }
-    if (!linked || !isInside(realRoot, real, platform)) {
-      return false;
-    }
-    const at = checkPath(path.relative(realRoot, real).split(path.sep).join('/'), platform);
-    return at.ok && at.path !== ROOT && underCloak(options.cloak, at.path, isDir);
+    const at = linked ? sitePathOf(real) : undefined;
+    return at !== undefined && underCloak(options.cloak, at, isDir);
   };
 
   const addFile = async (target: RemotePath, full: string, info: Stats): Promise<void> => {
@@ -230,7 +238,7 @@ export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> 
       }
       await addFile(target, full, entry);
       if (linked) {
-        result.linked.set(target, { real, outside: !isInside(realRoot, real, platform) });
+        result.linked.set(target, { real, outside: !isInside(realRoot, real, platform), sitePath: sitePathOf(real) });
       }
     } else {
       problem(target, 'other', STATUS.notAFile);

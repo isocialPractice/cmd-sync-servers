@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, test } from 'node:test';
 import { isSyncError } from '../../src/errors.ts';
-import { isCaseSensitive } from '../../src/sync/paths.ts';
-import { resultLine } from '../../src/sync/execute.ts';
+import { STATUS } from '../../src/sync/messages.ts';
+import { isCaseSensitive, type LinkPolicy } from '../../src/sync/paths.ts';
+import { resultLine, type SyncResult } from '../../src/sync/execute.ts';
+import type { SyncPlan } from '../../src/sync/plan.ts';
 import { filesContaining } from '../helpers/cli.ts';
 import type { Kind } from '../sandbox/rig.ts';
 import { BASE_TIME, startSiteRig, type SiteRig, type SiteRigOptions } from '../sandbox/site-rig.ts';
@@ -331,6 +333,267 @@ for (const kind of KINDS) {
         } finally {
           await session.close();
         }
+      });
+    });
+  });
+}
+
+/** Makes a link, or says it could not: a file link needs a privilege on Windows that a junction does not. */
+function link(target: string, at: string, type: 'file' | 'junction'): boolean {
+  mkdirSync(path.dirname(at), { recursive: true });
+  try {
+    symlinkSync(target, at, type);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function writeAt(file: string, content: string): void {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, content);
+}
+
+const isLink = (file: string): boolean => lstatSync(file).isSymbolicLink();
+
+/**
+ * The local folder of a site with links: `shared/site.css` and
+ * `shared/img/hero.svg`; `css/site.css`, a file link to `../shared/site.css`;
+ * `img/`, a junction to `shared/img`; and out of the site, `css/theme.css`
+ * to `<outside>/theme/theme.css` and `fonts/` to `<outside>/fonts`. File
+ * links are left out where this system refuses them.
+ */
+function linkedSite(rig: SiteRig): { readonly outside: string; readonly fileLinks: boolean } {
+  rig.write('local', 'shared/site.css', 'body {}');
+  rig.write('local', 'shared/img/hero.svg', '<svg/>');
+  const outside = path.join(rig.localDir, '..', 'outside');
+  writeAt(path.join(outside, 'fonts', 'site.woff2'), 'font');
+  writeAt(path.join(outside, 'theme', 'theme.css'), 'h1 {}');
+  assert.ok(link(path.join(rig.localDir, 'shared', 'img'), path.join(rig.localDir, 'img'), 'junction'));
+  assert.ok(link(path.join(outside, 'fonts'), path.join(rig.localDir, 'fonts'), 'junction'));
+  const fileLinks =
+    link(path.join('..', 'shared', 'site.css'), path.join(rig.localDir, 'css', 'site.css'), 'file') &&
+    link(path.join(outside, 'theme', 'theme.css'), path.join(rig.localDir, 'css', 'theme.css'), 'file');
+  return { outside, fileLinks };
+}
+
+const linkPolicy = (symlinks: LinkPolicy, more: Pick<SiteRigOptions, 'site'>['site'] = {}): SiteRigOptions => ({ site: { ...more, sync: { symlinks } } });
+
+/** Runs a plan in `direction` and checks that nothing failed. */
+async function run(rig: SiteRig, direction: 'put' | 'get', deleteOrphans = false): Promise<SyncResult> {
+  const session = await rig.open();
+  try {
+    const result = await session.execute(await session.plan({ direction, deleteOrphans }), { allowMassDelete: true });
+    return result;
+  } finally {
+    await session.close();
+  }
+}
+
+async function planOf(rig: SiteRig, direction: 'put' | 'get' | 'both'): Promise<SyncPlan> {
+  const session = await rig.open();
+  try {
+    return await session.plan({ direction });
+  } finally {
+    await session.close();
+  }
+}
+
+const rows = (plan: SyncPlan): string[] => plan.items.filter((item) => item.state !== 'problem').map((item) => `${item.path} ${item.action}`);
+const problems = (plan: SyncPlan): string[] => plan.items.filter((item) => item.state === 'problem').map((item) => `${item.path}: ${item.status}`);
+const outcome = (result: SyncResult, target: string): string | undefined => result.items.find((item) => item.path === target)?.outcome;
+
+for (const kind of ['local', 'sftp', 'ftps'] as const) {
+  describe(`symbolic links over ${kind}`, () => {
+    test('follow-inside-root puts linked files and folders as ordinary files', async () => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        const { fileLinks } = linkedSite(rig);
+        const result = await run(rig, 'put');
+        assert.equal(result.failed, 0, JSON.stringify(result.items));
+        assert.equal(result.done, fileLinks ? 4 : 3);
+        assert.equal(rig.read('remote', 'img/hero.svg'), '<svg/>');
+        assert.equal(isLink(path.join(rig.remoteDir, 'img')), false);
+        if (fileLinks) {
+          assert.equal(rig.read('remote', 'css/site.css'), 'body {}');
+          assert.equal(isLink(path.join(rig.remoteDir, 'css', 'site.css')), false);
+        }
+        assert.deepEqual(rows(await planOf(rig, 'both')), []);
+      });
+    });
+
+    test('a Get through a file link writes the file it points to and keeps the link', async (t) => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        if (!linkedSite(rig).fileLinks) {
+          t.skip('creating file links is not permitted here');
+          return;
+        }
+        await run(rig, 'put');
+        rig.write('remote', 'css/site.css', 'h1 {}', LATER);
+        const result = await run(rig, 'get');
+        assert.equal(outcome(result, 'css/site.css'), 'done', JSON.stringify(result.items));
+        assert.equal(readFileSync(path.join(rig.localDir, 'shared', 'site.css'), 'utf8'), 'h1 {}');
+        assert.ok(isLink(path.join(rig.localDir, 'css', 'site.css')));
+        const kept = result.items.find((item) => item.path === 'css/site.css')?.recoveredTo ?? '';
+        assert.equal(readFileSync(kept, 'utf8'), 'body {}');
+        assert.deepEqual(rows(await planOf(rig, 'put')), ['shared/site.css put']);
+      });
+    });
+
+    test('a new file on the server lands in the folder a folder link points to', async () => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        linkedSite(rig);
+        await run(rig, 'put');
+        rig.write('remote', 'img/icon.svg', '<svg id="icon"/>', LATER);
+        const result = await run(rig, 'get');
+        assert.equal(outcome(result, 'img/icon.svg'), 'done', JSON.stringify(result.items));
+        assert.equal(readFileSync(path.join(rig.localDir, 'shared', 'img', 'icon.svg'), 'utf8'), '<svg id="icon"/>');
+        assert.ok(isLink(path.join(rig.localDir, 'img')));
+      });
+    });
+
+    test('two names of one file changed on the server: one Get runs, the other is stale and waits for a decision', async (t) => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        if (!linkedSite(rig).fileLinks) {
+          t.skip('creating file links is not permitted here');
+          return;
+        }
+        await run(rig, 'put');
+        rig.write('remote', 'css/site.css', 'a { color: red }', LATER);
+        rig.write('remote', 'shared/site.css', 'b {}', LATER);
+        const result = await run(rig, 'get');
+        assert.equal(outcome(result, 'css/site.css'), 'done', JSON.stringify(result.items));
+        assert.equal(outcome(result, 'shared/site.css'), 'stale', JSON.stringify(result.items));
+        assert.equal(readFileSync(path.join(rig.localDir, 'shared', 'site.css'), 'utf8'), 'a { color: red }');
+        assert.deepEqual(rows(await planOf(rig, 'both')), ['shared/site.css resolve']);
+      });
+    });
+
+    test('a local delete of a file link removes the link and keeps a copy of its content', async (t) => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        if (!linkedSite(rig).fileLinks) {
+          t.skip('creating file links is not permitted here');
+          return;
+        }
+        await run(rig, 'put');
+        rig.remove('remote', 'css/site.css');
+        const result = await run(rig, 'get', true);
+        assert.equal(outcome(result, 'css/site.css'), 'done', JSON.stringify(result.items));
+        assert.equal(existsSync(path.join(rig.localDir, 'css', 'site.css')), false);
+        assert.equal(readFileSync(path.join(rig.localDir, 'shared', 'site.css'), 'utf8'), 'body {}');
+        const kept = result.items.find((item) => item.path === 'css/site.css')?.recoveredTo ?? '';
+        assert.equal(isLink(kept), false);
+        assert.equal(readFileSync(kept, 'utf8'), 'body {}');
+      });
+    });
+
+    test('a folder link emptied by the delete option stays', async () => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        linkedSite(rig);
+        await run(rig, 'put');
+        rig.remove('remote', 'img');
+        const result = await run(rig, 'get', true);
+        assert.equal(outcome(result, 'img/hero.svg'), 'done', JSON.stringify(result.items));
+        assert.ok(isLink(path.join(rig.localDir, 'img')));
+        assert.equal(existsSync(path.join(rig.localDir, 'shared', 'img', 'hero.svg')), false);
+        assert.ok(existsSync(path.join(rig.localDir, 'shared', 'img')));
+      });
+    });
+
+    test('follow puts and gets through links out of the site, and says so on every such row', async () => {
+      await withSite(kind, linkPolicy('follow'), async (rig) => {
+        const { outside, fileLinks } = linkedSite(rig);
+        const put = await planOf(rig, 'put');
+        const out = put.items.filter((item) => item.status === STATUS.throughLinkOutside).map((item) => item.path);
+        assert.deepEqual(out, fileLinks ? ['css/theme.css', 'fonts/site.woff2'] : ['fonts/site.woff2']);
+        assert.equal((await run(rig, 'put')).failed, 0);
+        assert.equal(rig.read('remote', 'fonts/site.woff2'), 'font');
+        rig.write('remote', 'fonts/site.woff2', 'font 2', LATER);
+        const get = await planOf(rig, 'get');
+        assert.equal(get.item('fonts/site.woff2')?.status, STATUS.throughLinkOutside);
+        const result = await run(rig, 'get');
+        assert.equal(outcome(result, 'fonts/site.woff2'), 'done', JSON.stringify(result.items));
+        assert.equal(readFileSync(path.join(outside, 'fonts', 'site.woff2'), 'utf8'), 'font 2');
+        assert.ok(isLink(path.join(rig.localDir, 'fonts')));
+      });
+    });
+
+    test('links that are not followed are problem rows that say why, single paths too', async () => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        const { fileLinks } = linkedSite(rig);
+        assert.deepEqual(problems(await planOf(rig, 'put')), [
+          ...(fileLinks ? [`css/theme.css: ${STATUS.linkOutside}`] : []),
+          `fonts: ${STATUS.linkOutside}`,
+        ]);
+      });
+      await withSite(kind, linkPolicy('skip'), async (rig) => {
+        const { fileLinks } = linkedSite(rig);
+        assert.deepEqual(
+          problems(await planOf(rig, 'put')),
+          [...(fileLinks ? ['css/site.css', 'css/theme.css'] : []), 'fonts', 'img'].map((item) => `${item}: ${STATUS.linkNotFollowed}`),
+        );
+        const session = await rig.open();
+        try {
+          const single = await session.put(['img/hero.svg']);
+          assert.equal(single.result, undefined);
+          assert.deepEqual(problems(single.plan), [`img: ${STATUS.linkNotFollowed}`]);
+          assert.deepEqual(rows(single.plan), []);
+        } finally {
+          await session.close();
+        }
+      });
+    });
+
+    test('a link to a sensitive file is held back like the file', async (t) => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        rig.write('local', '.env', 'TOKEN=demo');
+        if (!link(path.join('..', '.env'), path.join(rig.localDir, 'css', 'app.css'), 'file')) {
+          t.skip('creating file links is not permitted here');
+          return;
+        }
+        const row = (await planOf(rig, 'put')).item('css/app.css');
+        assert.equal(row?.guarded, '.env');
+        assert.equal(row.checked, false);
+      });
+    });
+
+    test('a folder link into a cloaked folder is cloaked', async () => {
+      await withSite(kind, linkPolicy('follow-inside-root', { cloaking: { patterns: ['/drafts/'] } }), async (rig) => {
+        rig.write('local', 'drafts/img/raw.svg', '<svg id="raw"/>');
+        rig.write('local', 'index.html', '<h1>Home</h1>');
+        assert.ok(link(path.join(rig.localDir, 'drafts', 'img'), path.join(rig.localDir, 'img'), 'junction'));
+        const plan = await planOf(rig, 'put');
+        assert.deepEqual(rows(plan), ['index.html put']);
+        assert.deepEqual(problems(plan), []);
+      });
+    });
+
+    test('compare reads the file a link points to', async (t) => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        if (!linkedSite(rig).fileLinks) {
+          t.skip('creating file links is not permitted here');
+          return;
+        }
+        rig.write('remote', 'css/site.css', 'h1 {}');
+        const session = await rig.open();
+        try {
+          const comparison = await session.compare('css/site.css');
+          assert.equal(comparison.local?.file, path.join(realpathSync.native(rig.localDir), 'shared', 'site.css'));
+          assert.equal(path.basename(comparison.remote?.file ?? ''), 'site.css');
+          assert.equal(readFileSync(comparison.remote?.file ?? '', 'utf8'), 'h1 {}');
+          await comparison.dispose();
+        } finally {
+          await session.close();
+        }
+      });
+    });
+
+    test('a link back to the local root is a problem row, and the scan ends', async () => {
+      await withSite(kind, linkPolicy('follow-inside-root'), async (rig) => {
+        rig.write('local', 'index.html', '<h1>Home</h1>');
+        assert.ok(link(rig.localDir, path.join(rig.localDir, 'css', 'loop'), 'junction'));
+        const plan = await planOf(rig, 'put');
+        assert.deepEqual(rows(plan), ['index.html put']);
+        assert.deepEqual(problems(plan), [`css/loop: ${STATUS.linkLoop}`]);
       });
     });
   });

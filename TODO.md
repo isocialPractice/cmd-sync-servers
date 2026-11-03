@@ -308,6 +308,23 @@ the step of the plan that specifies it.
 - [x] Changelog, checks and commit for L1
   - **Goal**: Resolve to [Phase L1, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l1-the-setting-the-resolver-and-the-local-scan)
   - From: Symbolic Links
+- [x] The plan through links: the guard on the real path, the status of
+      rows reached through a link out of the site, and the fingerprint
+  - **Goal**: Resolve to [Phase L2, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
+  - From: Symbolic Links
+- [x] The executor through links: Put, Get and delete, emptied folders, one
+      row at a time per local file, and `Recovery.keepLink`
+  - **Goal**: Resolve to [Phase L2, step 2](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
+  - From: Symbolic Links
+- [x] `SyncSession.execute` and `compare` through links
+  - **Goal**: Resolve to [Phase L2, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
+  - From: Symbolic Links
+- [x] The link scenarios over `local`, `sftp` and `ftps`
+  - **Goal**: Resolve to [Phase L2, step 4](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
+  - From: Symbolic Links
+- [x] Changelog, checks and commit for L2
+  - **Goal**: Resolve to [Phase L2, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
+  - From: Symbolic Links
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -398,20 +415,8 @@ Next version: minor. Phases L1 to L3 together make `1.0.0-alpha.1.1.0`: L1
 sets the version, and L2 and L3 add to it. Phase L4 is tracked in the
 extension's `TODO.md`. Phase L5 moves no version.
 
-The items of Phase L1 are in Current.
+The items of Phases L1 and L2 are in Current.
 
-- [ ] The plan through links: the guard on the real path, the status of
-      rows reached through a link out of the site, and the fingerprint
-  - **Goal**: Resolve to [Phase L2, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
-- [ ] The executor through links: Put, Get and delete, emptied folders, one
-      row at a time per local file, and `Recovery.keepLink`
-  - **Goal**: Resolve to [Phase L2, step 2](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
-- [ ] `SyncSession.execute` and `compare` through links
-  - **Goal**: Resolve to [Phase L2, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
-- [ ] The link scenarios over `local`, `sftp` and `ftps`
-  - **Goal**: Resolve to [Phase L2, step 4](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
-- [ ] Changelog, checks and commit for L2
-  - **Goal**: Resolve to [Phase L2, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
 - [ ] Site Setup's Symbolic links choice, `site edit --symlinks` and the
       Links row of `site show`, with their tests
   - **Goal**: Resolve to [Phase L3, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)

@@ -29,11 +29,24 @@ Until the first stable release, versions use the pre-release form
 - A single path inside a local folder link is reached through that link,
   by the same rules as a full scan; when the link is not followed, the path
   is listed as inside a linked folder.
+- With `follow-inside-root` or `follow`, a Put reads the file a link
+  reaches, a Get writes that file and keeps the link, and a local delete of
+  a path that is a link removes only the link, keeping a copy of its
+  content in the recovery folder. A folder that is a link is never removed
+  as emptied. `diff` compares the file a link reaches.
+- Rows that reach one local file through two names run one at a time; the
+  later one is stale when the earlier one changed the file.
+- A saved plan is refused once a link in the site points somewhere else.
 
 ### Security
 
 - Cloaking sees through local links: a file or folder whose link leads to
   a cloaked place inside the site is cloaked.
+- The sensitive-file guard sees through local links: a link to a file such
+  as `.env`, or to a file in a `.ssh` folder outside the site, is held back
+  like the file.
+- Every preview row reached through a link that leads out of the site says
+  so.
 
 ## [1.0.0-alpha.1.0.0] - 2026-11-02
 

@@ -10,7 +10,7 @@ import { withRetry, type RetryOptions } from '../transport/retry.ts';
 import type { Capabilities, RemoteEntry, Transport } from '../transport/types.ts';
 import { STATUS } from './messages.ts';
 import { cappedFile, partName, partPath } from './part.ts';
-import { parentPath, ROOT, safeLocalTarget, toRemotePath, type RemotePath } from './paths.ts';
+import { parentPath, resolveLocalTarget, ROOT, toRemotePath, type LinkPolicy, type LocalTarget, type RemotePath } from './paths.ts';
 import type { PlanItem, SyncPlan } from './plan.ts';
 import type { Recovery } from './recovery.ts';
 import type { SyncRecords } from './state.ts';
@@ -77,7 +77,17 @@ export interface ExecuteContext {
   readonly logger: Logger;
   readonly retry: RetryOptions;
   readonly remoteRootIsTop: boolean;
+  /** How the site treats links in its local folder: Put reads, Get writes and a local delete removes through the links it follows. */
+  readonly symlinks: LinkPolicy;
 }
+
+/** A row's turn at its local file: wait for `ready`, then call `release` when done. */
+interface Turn {
+  readonly ready: Promise<void>;
+  readonly release: () => void;
+}
+
+const NO_WAIT: Turn = { ready: Promise.resolve(), release: () => undefined };
 
 /** `Synchronized 36 files. 1 failed. 0 skipped.` */
 export function resultLine(result: SyncResult): string {
@@ -153,6 +163,10 @@ class Run {
   readonly #options: ExecuteOptions;
   readonly #createdDirs = new Set<string>([ROOT]);
   readonly #results: ItemResult[] = [];
+  /** The last turn taken at each local file, by its real path. */
+  readonly #turns = new Map<string, Promise<void>>();
+  /** Turns are handed out one row at a time, so rows on one file run in row order. */
+  #handing: Promise<unknown> = Promise.resolve();
   #completed = 0;
   #bytes = 0;
   #total = 0;
@@ -274,6 +288,8 @@ class Run {
       return;
     }
     const target = toRemotePath(item.path);
+    const turn = await this.#turn(target);
+    await turn.ready;
     let recoveredTo: string | undefined;
     try {
       await withRetry(
@@ -292,8 +308,52 @@ class Run {
       this.#context.logger.warn(`${item.action} ${item.path} ${outcome}: ${message}`, { code });
       this.#results.push({ id: item.id, path: item.path, action: item.action, outcome, error: { code, message } });
       this.#progress(item, outcome === 'stale' ? 'stale' : 'failed');
+    } finally {
+      turn.release();
     }
     await this.#context.records.checkpoint();
+  }
+
+  /**
+   * The row's turn at the local file it reaches. Through links, two rows can
+   * reach one file; the later one waits, then finds the file changed and
+   * ends stale instead of overwriting it. Without links no two rows share a
+   * file, so no row waits.
+   */
+  #turn(target: RemotePath): Promise<Turn> {
+    const { localRoot, symlinks } = this.#context;
+    if (symlinks === 'skip') {
+      return Promise.resolve(NO_WAIT);
+    }
+    const handed = this.#handing.then(async (): Promise<Turn> => {
+      // A path that does not resolve waits for nothing; the row reports why when it runs.
+      const file = await resolveLocalTarget(localRoot, target, symlinks).then(
+        (local) => local.file,
+        () => undefined,
+      );
+      if (file === undefined) {
+        return NO_WAIT;
+      }
+      const key = process.platform === 'win32' || process.platform === 'darwin' ? file.normalize('NFC').toLowerCase() : file.normalize('NFC');
+      const ready = this.#turns.get(key) ?? Promise.resolve();
+      let finish = (): void => undefined;
+      const done = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const last = ready.then(() => done);
+      this.#turns.set(key, last);
+      return {
+        ready,
+        release: () => {
+          finish();
+          if (this.#turns.get(key) === last) {
+            this.#turns.delete(key);
+          }
+        },
+      };
+    });
+    this.#handing = handed.catch(() => undefined);
+    return handed;
   }
 
   #progress(item: PlanItem, outcome: 'done' | 'failed' | 'stale'): void {
@@ -311,9 +371,9 @@ class Run {
 
   /** Re-checks both sides, then runs one item. Returns where a local file was kept, if one was. */
   async #perform(item: PlanItem, target: RemotePath, transport: Transport): Promise<string | undefined> {
-    const { localRoot, records, recovery } = this.#context;
-    const localFile = await safeLocalTarget(localRoot, target);
-    const localInfo = await statLocal(localFile);
+    const { localRoot, records, recovery, symlinks } = this.#context;
+    const local = await resolveLocalTarget(localRoot, target, symlinks);
+    const localInfo = await statLocal(local.file);
     const remoteEntry = await transport.stat(target);
     const localNow = localInfo === undefined ? undefined : observe(localInfo);
     const remoteNow = remoteObservation(remoteEntry);
@@ -322,10 +382,10 @@ class Run {
     }
     switch (item.action) {
       case 'put':
-        await this.#put(target, localFile, localInfo, item.local?.sha256, transport);
+        await this.#put(target, local.file, localInfo, item.local?.sha256, transport);
         return undefined;
       case 'get':
-        return this.#get(target, localFile, localInfo, remoteNow, transport);
+        return this.#get(target, local, localInfo, remoteNow, transport);
       case 'synced':
         if (localNow !== undefined && remoteNow !== undefined) {
           const sha256 = item.local?.sha256;
@@ -337,7 +397,8 @@ class Run {
         records.delete(target);
         return undefined;
       case 'delete-local': {
-        const kept = await recovery.keep(localFile, target);
+        // A path that is itself a link loses the link; what it points to stays where it is.
+        const kept = local.link === undefined ? await recovery.keep(local.file, target) : await recovery.keepLink(local.link, target);
         records.delete(target);
         return kept;
       }
@@ -406,13 +467,18 @@ class Run {
     }
   }
 
-  async #get(target: RemotePath, localFile: string, localInfo: Stats | undefined, remoteNow: Observation | undefined, transport: Transport): Promise<string | undefined> {
+  /**
+   * Downloads beside the real file the path reaches and renames the copy
+   * over it, so a link on the way, or the path itself as a link, is never
+   * replaced.
+   */
+  async #get(target: RemotePath, local: LocalTarget, localInfo: Stats | undefined, remoteNow: Observation | undefined, transport: Transport): Promise<string | undefined> {
     if (remoteNow === undefined) {
       throw stale(target);
     }
-    const { records, recovery } = this.#context;
-    await mkdir(path.dirname(localFile), { recursive: true });
-    const safeFile = await safeLocalTarget(this.#context.localRoot, target);
+    const { records, recovery, localRoot, symlinks } = this.#context;
+    await mkdir(path.dirname(local.file), { recursive: true });
+    const safeFile = (await resolveLocalTarget(localRoot, target, symlinks)).file;
     const part = path.join(path.dirname(safeFile), partName(target));
     let kept: string | undefined;
     try {
@@ -475,7 +541,12 @@ class Run {
             }
           });
         } else if (!this.#plan.remoteDirs.has(dir)) {
-          await rmdir(await safeLocalTarget(this.#context.localRoot, dir)).catch((error: unknown) => {
+          const local = await resolveLocalTarget(this.#context.localRoot, dir, this.#context.symlinks);
+          if (local.link !== undefined) {
+            // A folder that is a link stays: removing it would remove the link, which the server never made.
+            continue;
+          }
+          await rmdir(local.file).catch((error: unknown) => {
             if (!(typeof error === 'object' && error !== null && 'code' in error && (error.code === 'ENOTEMPTY' || error.code === 'EEXIST' || error.code === 'ENOENT'))) {
               throw error;
             }

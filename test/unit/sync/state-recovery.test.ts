@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { isSyncError } from '../../../src/errors.ts';
@@ -96,6 +96,37 @@ test('recovery off deletes the file instead', async () => {
   assert.equal(recovery.enabled, false);
   assert.equal(await recovery.keep(file, toRemotePath('a.txt')), undefined);
   assert.deepEqual(readdirSync(temp.dir), []);
+});
+
+test('a link is removed with a copy of what it points to kept, and what it points to stays', async (t) => {
+  const site = path.join(temp.dir, 'site');
+  mkdirSync(path.join(site, 'css'), { recursive: true });
+  mkdirSync(path.join(site, 'shared'));
+  const real = path.join(site, 'shared', 'site.css');
+  writeFileSync(real, 'body {}');
+  const links = [path.join(site, 'css', 'site.css'), path.join(site, 'css', 'copy.css')];
+  try {
+    for (const link of links) {
+      symlinkSync(path.join('..', 'shared', 'site.css'), link, 'file');
+    }
+  } catch {
+    t.skip('creating file links is not permitted here');
+    return;
+  }
+  const kept = await new Recovery(path.join(temp.dir, 'state'), 'site-1', { enabled: true, keepDays: 14, maxMegabytes: 1024 }, new Date('2026-10-29T12:00:00Z')).keepLink(
+    links[0] ?? '',
+    toRemotePath('css/site.css'),
+  );
+  assert.equal(kept, path.join(temp.dir, 'state', 'recovery', 'site-1', '20261029-120000-000', 'css', 'site.css'));
+  assert.equal(lstatSync(kept).isFile(), true);
+  assert.equal(readFileSync(kept, 'utf8'), 'body {}');
+  assert.equal(existsSync(links[0] ?? ''), false);
+  assert.equal(readFileSync(real, 'utf8'), 'body {}');
+
+  const off = new Recovery(path.join(temp.dir, 'state'), 'site-1', { enabled: false, keepDays: 14, maxMegabytes: 1024 });
+  assert.equal(await off.keepLink(links[1] ?? '', toRemotePath('css/copy.css')), undefined);
+  assert.deepEqual(readdirSync(path.join(site, 'css')), []);
+  assert.equal(readFileSync(real, 'utf8'), 'body {}');
 });
 
 test('pruning removes runs past keepDays, then the oldest while over the size limit', async () => {

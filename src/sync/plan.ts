@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import * as z from 'zod';
 import { formatIssues } from '../config/schema.ts';
 import { SyncError } from '../errors.ts';
@@ -6,7 +7,7 @@ import type { Guard } from './guard.ts';
 import { classify, type CompareOptions, type SyncState } from './classify.ts';
 import { guardedStatus, STATUS } from './messages.ts';
 import { checkPath, type RemotePath } from './paths.ts';
-import type { ScanResult } from './scan-local.ts';
+import type { LinkedFile, ScanResult } from './scan-local.ts';
 import type { SyncRecord } from './state.ts';
 import type { Action, Direction, Observation, ProblemKind, Scope } from './types.ts';
 
@@ -159,6 +160,20 @@ export function decide(state: SyncState, direction: Direction, deleteOrphans: bo
   }
 }
 
+/**
+ * The sensitive pattern the file a link reaches matches: by its site path
+ * when it is inside the site, otherwise by its real path from the top of its
+ * drive or share, so `keys/site.txt` linked to a file in a `.ssh` folder is
+ * held back like the file itself.
+ */
+function guardThroughLink(guard: Guard, linked: LinkedFile | undefined): string | undefined {
+  if (linked === undefined) {
+    return undefined;
+  }
+  const name = linked.sitePath ?? path.relative(path.parse(linked.real).root, linked.real).split(path.sep).join('/');
+  return name === '' ? undefined : guard.match(name);
+}
+
 function fold(value: string): string {
   return value.normalize('NFC').toLowerCase();
 }
@@ -175,6 +190,8 @@ function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 
   const records = [...input.records.entries()]
     .sort(([a], [b]) => compareText(a, b))
     .map(([key, value]) => [key, value.local.size, value.local.mtimeMs ?? null, value.remote.size, value.remote.mtimeMs ?? null]);
+  // Where each link leads, so a saved plan is refused once a link points elsewhere. A site without links digests as before.
+  const linked = [...input.local.linked.entries()].sort(([a], [b]) => compareText(a, b)).map(([key, value]) => [key, value.real]);
   const canonical = JSON.stringify({
     direction: input.direction,
     deleteOrphans: input.deleteOrphans,
@@ -183,6 +200,7 @@ function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 
     remote: side(input.remote),
     problems,
     records,
+    ...(linked.length === 0 ? {} : { linked }),
   });
   return createHash('sha256').update(canonical).digest('hex');
 }
@@ -353,14 +371,16 @@ export class SyncPlan {
         unlisted += 1;
         continue;
       }
-      const guarded = input.guard.match(target);
+      const linked = input.local.linked.get(checked.path);
+      const guarded = input.guard.match(target) ?? guardThroughLink(input.guard, linked);
+      const status = guarded === undefined ? decision.status : guardedStatus(guarded);
       rows.push({
         path: target,
         state,
         problem: undefined,
         action: decision.action,
         checked: guarded !== undefined && decision.checked === true ? false : decision.checked,
-        status: guarded === undefined ? decision.status : guardedStatus(guarded),
+        status: linked?.outside === true ? [status, STATUS.throughLinkOutside].filter((text) => text !== '').join(' ') : status,
         guarded,
         local,
         remote,

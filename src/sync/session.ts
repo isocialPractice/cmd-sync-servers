@@ -15,7 +15,7 @@ import { siteCloak, type Cloak } from './cloak.ts';
 import { executePlan, type ExecuteOptions, type SyncResult } from './execute.ts';
 import { siteGuard } from './guard.ts';
 import { cappedFile } from './part.ts';
-import { isCaseSensitive, joinRemote, ROOT, safeLocalTarget, toRemotePath, type RemotePath } from './paths.ts';
+import { baseName, isCaseSensitive, joinRemote, resolveLocalTarget, ROOT, toRemotePath, type RemotePath } from './paths.ts';
 import { SyncPlan } from './plan.ts';
 import { Recovery } from './recovery.ts';
 import { HashCache, scanLocal, underCloak, type ScanResult } from './scan-local.ts';
@@ -372,6 +372,7 @@ export class SyncSession {
         logger: this.#logger,
         retry: this.#retry,
         remoteRootIsTop: this.#remoteRootIsTop(),
+        symlinks: this.site.sync.symlinks,
       },
       options,
     );
@@ -423,7 +424,7 @@ export class SyncSession {
   async compare(target: string, signal?: AbortSignal): Promise<Comparison> {
     const remotePath = toRemotePath(target);
     const localRoot = await this.#localRoot();
-    const localFile = await safeLocalTarget(localRoot, remotePath);
+    const localFile = (await resolveLocalTarget(localRoot, remotePath, this.site.sync.symlinks)).file;
     const localInfo = await lstat(localFile).catch(() => undefined);
     const pool = this.#getPool();
     const remoteEntry = await pool.runWithRetry((transport) => transport.stat(remotePath), { ...this.#retry, signal });
@@ -432,7 +433,8 @@ export class SyncSession {
     try {
       let remote: ComparedSide | undefined;
       if (remoteEntry?.type === 'file') {
-        const file = path.join(dir, path.basename(localFile));
+        // Named after the site path, which a diff shows, not after the file a link reaches.
+        const file = path.join(dir, baseName(remotePath));
         const size = remoteEntry.size;
         await pool.runWithRetry((transport) => transport.get(remotePath, cappedFile(file, { flags: 'w', maxBytes: size, what: `Comparing ${remotePath}` }), signal), { ...this.#retry, signal });
         remote = { file, size: remoteEntry.size, mtimeMs: remoteEntry.mtimeMs };
