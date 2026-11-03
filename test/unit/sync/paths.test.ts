@@ -15,9 +15,11 @@ import {
   nameProblem,
   parentPath,
   realpathOfNearest,
+  resolveLocalTarget,
   ROOT,
   safeLocalTarget,
   toRemotePath,
+  type LocalLookup,
   type RemotePath,
 } from '../../../src/sync/paths.ts';
 import { tempDir } from '../../helpers/cli.ts';
@@ -272,6 +274,222 @@ describe('safeLocalTarget', () => {
       return;
     }
     await assert.rejects(safeLocalTarget(site, toRemotePath('link.txt')), isLink);
+  });
+});
+
+/** One entry of a fake file system: a link to `link`, a broken link, a folder or file that answers to `real`, or an error. */
+interface FakeEntry {
+  readonly link?: string;
+  readonly broken?: true;
+  readonly real?: string;
+  readonly lstatError?: string;
+  readonly realpathError?: string;
+}
+
+function fakeLookup(entries: Record<string, FakeEntry>): LocalLookup {
+  const fail = (code: string): Promise<never> => Promise.reject(Object.assign(new Error(code), { code }));
+  return {
+    lstat(file) {
+      const entry = entries[file];
+      if (entry === undefined) {
+        return fail('ENOENT');
+      }
+      if (entry.lstatError !== undefined) {
+        return fail(entry.lstatError);
+      }
+      return Promise.resolve({ isSymbolicLink: () => entry.link !== undefined || entry.broken === true });
+    },
+    realpath(file) {
+      const entry = entries[file];
+      if (entry === undefined || entry.broken === true) {
+        return fail('ENOENT');
+      }
+      if (entry.realpathError !== undefined) {
+        return fail(entry.realpathError);
+      }
+      return Promise.resolve(entry.link ?? entry.real ?? file);
+    },
+  };
+}
+
+describe('resolveLocalTarget', () => {
+  const top = path.resolve(path.sep, 'fake');
+  const site = path.join(top, 'site');
+  const outside = path.join(top, 'outside');
+  const at = (...parts: string[]): string => path.join(site, ...parts);
+  const target = (relative: string): RemotePath => toRemotePath(relative);
+  const following = ['follow-inside-root', 'follow'] as const;
+  const message = (pattern: RegExp) => (error: unknown): boolean => unsafe(error) && error instanceof Error && pattern.test(error.message);
+
+  const lookup = fakeLookup({
+    [site]: {},
+    [at('css')]: {},
+    [at('css', 'index.css')]: {},
+    [at('css', 'site.css')]: { link: at('shared', 'site.css') },
+    [at('css', 'theme.css')]: { link: path.join(outside, 'theme', 'theme.css') },
+    [at('css', 'gone.css')]: { broken: true },
+    [at('css', 'locked.css')]: { link: at('shared', 'locked.css'), realpathError: 'EACCES' },
+    [at('img')]: { link: at('shared', 'img') },
+    [at('shared')]: {},
+    [at('shared', 'site.css')]: {},
+    [at('shared', 'img')]: {},
+    [at('shared', 'img', 'hero.svg')]: {},
+    [at('shared', 'img', 'up')]: { link: at('shared', 'deep') },
+    [at('shared', 'deep')]: {},
+    [at('fonts')]: { link: path.join(outside, 'fonts') },
+    [path.join(outside, 'fonts')]: {},
+    [path.join(outside, 'theme', 'theme.css')]: {},
+    [at('private')]: { lstatError: 'EACCES' },
+    [at('docs')]: { real: at('other') },
+    [at('notes')]: { real: at('notes', 'inner') },
+    [at('Css')]: { real: at('css') },
+  });
+
+  test('the root and paths that do not exist yet resolve under the real root', async () => {
+    for (const policy of following) {
+      assert.deepEqual(await resolveLocalTarget(site, ROOT, policy, lookup), { file: site, link: undefined, outside: false });
+      assert.deepEqual(await resolveLocalTarget(site, target('new/deep/file.txt'), policy, lookup), { file: at('new', 'deep', 'file.txt'), link: undefined, outside: false });
+      assert.deepEqual(await resolveLocalTarget(site, target('css/new.css'), policy, lookup), { file: at('css', 'new.css'), link: undefined, outside: false });
+      assert.deepEqual(await resolveLocalTarget(site, target('css/index.css'), policy, lookup), { file: at('css', 'index.css'), link: undefined, outside: false });
+    }
+  });
+
+  test('a file link resolves to the file it points to, and names itself as the link', async () => {
+    for (const policy of following) {
+      assert.deepEqual(await resolveLocalTarget(site, target('css/site.css'), policy, lookup), {
+        file: at('shared', 'site.css'),
+        link: at('css', 'site.css'),
+        outside: false,
+      });
+    }
+  });
+
+  test('a folder link on the way leads into the folder it points to, nested links too', async () => {
+    for (const policy of following) {
+      assert.deepEqual(await resolveLocalTarget(site, target('img/hero.svg'), policy, lookup), { file: at('shared', 'img', 'hero.svg'), link: undefined, outside: false });
+      assert.deepEqual(await resolveLocalTarget(site, target('img/icon.svg'), policy, lookup), { file: at('shared', 'img', 'icon.svg'), link: undefined, outside: false });
+      assert.deepEqual(await resolveLocalTarget(site, target('img/up/logo.svg'), policy, lookup), { file: at('shared', 'deep', 'logo.svg'), link: undefined, outside: false });
+      assert.deepEqual(await resolveLocalTarget(site, target('img'), policy, lookup), { file: at('shared', 'img'), link: at('img'), outside: false });
+    }
+  });
+
+  test('a link out of the root is followed only with follow, which reports it as outside', async () => {
+    const leadsOut = message(/^"fonts" leads out of the local root through a link, and this site follows only links inside it\.$/);
+    await assert.rejects(resolveLocalTarget(site, target('fonts/site.woff2'), 'follow-inside-root', lookup), leadsOut);
+    await assert.rejects(resolveLocalTarget(site, target('css/theme.css'), 'follow-inside-root', lookup), message(/^"css\/theme\.css" leads out/));
+    assert.deepEqual(await resolveLocalTarget(site, target('fonts/site.woff2'), 'follow', lookup), {
+      file: path.join(outside, 'fonts', 'site.woff2'),
+      link: undefined,
+      outside: true,
+    });
+    assert.deepEqual(await resolveLocalTarget(site, target('css/theme.css'), 'follow', lookup), {
+      file: path.join(outside, 'theme', 'theme.css'),
+      link: at('css', 'theme.css'),
+      outside: true,
+    });
+  });
+
+  test('a broken link is refused, and other errors pass through', async () => {
+    for (const policy of following) {
+      await assert.rejects(resolveLocalTarget(site, target('css/gone.css'), policy, lookup), message(/^"css\/gone\.css" is a symbolic link to something that does not exist\.$/));
+      await assert.rejects(resolveLocalTarget(site, target('css/locked.css'), policy, lookup), (error: unknown) => !unsafe(error) && error instanceof Error && error.message === 'EACCES');
+      await assert.rejects(resolveLocalTarget(site, target('private/notes.md'), policy, lookup), (error: unknown) => !unsafe(error) && error instanceof Error && error.message === 'EACCES');
+    }
+  });
+
+  test('a folder that answers to another real path is refused, as a short name would be', async () => {
+    const another = message(/is reached through another name for a folder, and is not written through\.$/);
+    for (const policy of following) {
+      await assert.rejects(resolveLocalTarget(site, target('docs/readme.html'), policy, lookup), another);
+      await assert.rejects(resolveLocalTarget(site, target('notes/today.md'), policy, lookup), another);
+    }
+  });
+
+  test('a real path that differs only by case is the same folder where names ignore case', async () => {
+    for (const platform of ['win32', 'darwin'] as const) {
+      assert.equal((await resolveLocalTarget(site, target('Css/new.css'), 'follow', lookup, platform)).file, at('Css', 'new.css'));
+    }
+    await assert.rejects(resolveLocalTarget(site, target('Css/new.css'), 'follow', lookup, 'linux'), message(/another name for a folder/));
+  });
+
+  test('skip is safeLocalTarget', async () => {
+    for (const relative of ['css/site.css', 'img/hero.svg', 'new/file.txt']) {
+      const expected = await safeLocalTarget(site, target(relative), lookup.realpath).then(
+        (file) => ({ file, link: undefined, outside: false }),
+        (error: unknown) => error,
+      );
+      const actual = await resolveLocalTarget(site, target(relative), 'skip', lookup).catch((error: unknown) => error);
+      assert.deepEqual(actual, expected, relative);
+    }
+  });
+
+  describe('on the file system', () => {
+    let temp: ReturnType<typeof tempDir>;
+    let real: string;
+    let local: string;
+    let folderLinks = true;
+    let fileLinks = true;
+
+    before(() => {
+      temp = tempDir();
+      real = realpathSync.native(temp.dir);
+      local = path.join(real, 'site');
+      mkdirSync(path.join(local, 'shared', 'img'), { recursive: true });
+      mkdirSync(path.join(local, 'css'));
+      mkdirSync(path.join(real, 'outside', 'fonts'), { recursive: true });
+      writeFileSync(path.join(local, 'shared', 'site.css'), 'body {}');
+      writeFileSync(path.join(local, 'shared', 'img', 'hero.svg'), '<svg/>');
+      writeFileSync(path.join(real, 'outside', 'fonts', 'site.woff2'), 'font');
+      try {
+        symlinkSync(path.join(local, 'shared', 'img'), path.join(local, 'img'), 'junction');
+        symlinkSync(path.join(real, 'outside', 'fonts'), path.join(local, 'fonts'), 'junction');
+      } catch {
+        folderLinks = false;
+      }
+      try {
+        symlinkSync(path.join('..', 'shared', 'site.css'), path.join(local, 'css', 'site.css'), 'file');
+      } catch {
+        fileLinks = false;
+      }
+    });
+
+    after(() => {
+      temp.cleanup();
+    });
+
+    test('folder links lead to their real folders, and only follow leaves the root', async (t) => {
+      if (!folderLinks) {
+        t.skip('creating folder links is not permitted here');
+        return;
+      }
+      for (const policy of following) {
+        assert.deepEqual(await resolveLocalTarget(local, target('img/hero.svg'), policy), { file: path.join(local, 'shared', 'img', 'hero.svg'), link: undefined, outside: false });
+        assert.deepEqual(await resolveLocalTarget(local, target('img'), policy), { file: path.join(local, 'shared', 'img'), link: path.join(local, 'img'), outside: false });
+      }
+      await assert.rejects(resolveLocalTarget(local, target('fonts/site.woff2'), 'follow-inside-root'), unsafe);
+      assert.deepEqual(await resolveLocalTarget(local, target('fonts/site.woff2'), 'follow'), {
+        file: path.join(real, 'outside', 'fonts', 'site.woff2'),
+        link: undefined,
+        outside: true,
+      });
+      await assert.rejects(resolveLocalTarget(local, target('img/hero.svg'), 'skip'), unsafe);
+      await assert.rejects(safeLocalTarget(local, target('img/hero.svg')), unsafe);
+    });
+
+    test('a file link leads to its file and names itself as the link', async (t) => {
+      if (!fileLinks) {
+        t.skip('creating file links is not permitted here');
+        return;
+      }
+      for (const policy of following) {
+        assert.deepEqual(await resolveLocalTarget(local, target('css/site.css'), policy), {
+          file: path.join(local, 'shared', 'site.css'),
+          link: path.join(local, 'css', 'site.css'),
+          outside: false,
+        });
+      }
+      await assert.rejects(resolveLocalTarget(local, target('css/site.css'), 'skip'), unsafe);
+    });
   });
 });
 

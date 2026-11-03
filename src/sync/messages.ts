@@ -19,7 +19,12 @@ export const STATUS = {
   caseCollision: 'Another file differs from this name only by case. Neither is transferred.',
   caseRename: 'Spelled differently on the other side only by case, which some servers cannot tell apart. Neither is transferred: use one spelling on both sides.',
   symlink: 'Symbolic link skipped.',
-  underLink: 'Inside a linked folder, which is never written through. Skipped.',
+  linkNotFollowed: 'Symbolic link skipped: this site does not follow links.',
+  linkOutside: 'Leads out of the site, and this site follows only links inside it. Skipped.',
+  linkBroken: 'Symbolic link to something that does not exist. Skipped.',
+  linkLoop: 'Leads back into a folder above it. Skipped.',
+  underLink: 'Inside a linked folder that is not followed. Skipped.',
+  throughLinkOutside: 'Reached through a link that leads out of the site.',
   notAFile: 'Not a regular file. Skipped.',
   stale: 'Changed since the preview. Skipped.',
 } as const;

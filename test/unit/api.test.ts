@@ -69,6 +69,7 @@ const EXPORTS = [
   'parseServerAddress',
   'parseSitesFile',
   'recordsFile',
+  'resolveLocalTarget',
   'resultLine',
   'runLogSink',
   'safeLocalTarget',

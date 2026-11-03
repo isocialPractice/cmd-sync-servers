@@ -163,7 +163,12 @@ const syncSchema = z.strictObject({
   maintainInfo: z.boolean().default(true).describe('Keep sync records, so changes on both sides are detected.'),
   compare: z.enum(['metadata', 'checksum']).default('metadata'),
   mtimeToleranceSeconds: z.number().min(0).max(3600).default(2),
-  symlinks: z.enum(['skip', 'follow-inside-root']).default('skip'),
+  symlinks: z
+    .enum(['skip', 'follow-inside-root', 'follow'])
+    .default('skip')
+    .describe(
+      '"skip" lists links as problems; "follow-inside-root" follows links that stay inside the local root; "follow" follows every link. A followed link is put and got as the file or folder it points to.',
+    ),
   concurrency: z.number().int().min(1).max(16).default(4),
   guard: z
     .strictObject({

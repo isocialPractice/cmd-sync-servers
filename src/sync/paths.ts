@@ -209,6 +209,107 @@ export async function safeLocalTarget(localRoot: string, target: RemotePath, res
   return full;
 }
 
+/**
+ * How a site treats symbolic links and junctions in its local folder:
+ * `skip` lists them as problems, `follow-inside-root` follows those whose
+ * real path stays inside the local root, and `follow` follows every one.
+ */
+export type LinkPolicy = 'skip' | 'follow-inside-root' | 'follow';
+
+/** The file system lookups of {@link resolveLocalTarget}, replaceable in tests. */
+export interface LocalLookup {
+  /** The entry at `file`, without following a link there. */
+  readonly lstat: (file: string) => Promise<{
+    /** True for a symbolic link or junction. */
+    isSymbolicLink(): boolean;
+  }>;
+  /** The real path of `file`, with every link on it resolved. */
+  readonly realpath: (file: string) => Promise<string>;
+}
+
+const NODE_LOOKUP: LocalLookup = { lstat, realpath };
+
+/** Where a site path lives on this computer, as {@link resolveLocalTarget} finds it. */
+export interface LocalTarget {
+  /** The real path to read or write, with no link on it; for a path that does not exist yet, where it will be created. */
+  readonly file: string;
+  /** The path itself when it is a symbolic link or junction, which a local delete removes; otherwise `undefined`. */
+  readonly link: string | undefined;
+  /** True when `file` is outside the real local root, which only `follow` allows. */
+  readonly outside: boolean;
+}
+
+/** True when `a` and `b` name the same place, with the platform's case rules. */
+function samePlace(a: string, b: string, platform: NodeJS.Platform): boolean {
+  const first = a.normalize('NFC');
+  const second = b.normalize('NFC');
+  return isInside(first, second, platform) && isInside(second, first, platform);
+}
+
+/**
+ * The real file behind a site path under a site's link policy. With `skip`
+ * it is {@link safeLocalTarget}: no link is read or written through. With
+ * `follow-inside-root` and `follow`, each link on the way is followed to its
+ * real path, refused when it leads nowhere, and with `follow-inside-root`
+ * refused when it leads out of the real local root. Every other folder on
+ * the way must be the very folder its name says, so no Windows short name
+ * stands in for another. `lookup` and `platform` are replaceable in tests.
+ *
+ * @throws {@link SyncError} `E_PATH_UNSAFE` when the path cannot be used.
+ */
+export async function resolveLocalTarget(
+  localRoot: string,
+  target: RemotePath,
+  policy: LinkPolicy,
+  lookup: LocalLookup = NODE_LOOKUP,
+  platform: NodeJS.Platform = process.platform,
+): Promise<LocalTarget> {
+  if (policy === 'skip') {
+    return { file: await safeLocalTarget(localRoot, target, lookup.realpath), link: undefined, outside: false };
+  }
+  const realRoot = await lookup.realpath(localRoot);
+  const segments = target === ROOT ? [] : target.split('/');
+  let current = realRoot;
+  let link: string | undefined;
+  for (const [index, segment] of segments.entries()) {
+    const named = path.join(current, segment);
+    let isLink: boolean;
+    try {
+      isLink = (await lookup.lstat(named)).isSymbolicLink();
+    } catch (error) {
+      if (!hasCode(error, 'ENOENT')) {
+        throw error;
+      }
+      // The rest of the path does not exist yet; it is created under the real folder reached so far.
+      current = path.join(current, ...segments.slice(index));
+      break;
+    }
+    const shown = JSON.stringify(segments.slice(0, index + 1).join('/'));
+    if (isLink) {
+      let real: string;
+      try {
+        real = await lookup.realpath(named);
+      } catch (error) {
+        if (!hasCode(error, 'ENOENT')) {
+          throw error;
+        }
+        throw new SyncError('E_PATH_UNSAFE', `${shown} is a symbolic link to something that does not exist.`);
+      }
+      if (policy === 'follow-inside-root' && !isInside(realRoot, real, platform)) {
+        throw new SyncError('E_PATH_UNSAFE', `${shown} leads out of the local root through a link, and this site follows only links inside it.`);
+      }
+      current = real;
+      link = index === segments.length - 1 ? named : undefined;
+    } else {
+      if (!samePlace(named, await lookup.realpath(named), platform)) {
+        throw new SyncError('E_PATH_UNSAFE', `${JSON.stringify(target)} is reached through another name for a folder, and is not written through.`);
+      }
+      current = named;
+    }
+  }
+  return { file: current, link, outside: !isInside(realRoot, current, platform) };
+}
+
 /** The names that differ from another name only by case; on a case-insensitive file system none of them is safe. */
 export function caseCollisions(names: Iterable<string>): Set<string> {
   const byFolded = new Map<string, string[]>();

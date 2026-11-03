@@ -23,6 +23,7 @@ function scan(files: Record<string, Observation>, problems: ScanProblem[] = []):
     dirs: new Set<RemotePath>(),
     problems,
     cloaked: 0,
+    linked: new Map(),
   };
 }
 

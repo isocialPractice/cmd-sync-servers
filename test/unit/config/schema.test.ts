@@ -10,8 +10,10 @@ import {
   siteSchema,
   sitesFileSchema,
   type ServerInput,
+  type Site,
   type SiteInput,
 } from '../../../src/config/schema.ts';
+import type { LinkPolicy } from '../../../src/sync/paths.ts';
 import { sitesJsonSchemaText } from '../../../scripts/lib/schema-text.ts';
 
 const root = path.resolve('/sites/my-site');
@@ -49,6 +51,24 @@ test('a minimal site gets every default', () => {
   assert.deepEqual(parsed.sync.guard, { enabled: true, patterns: [] });
   assert.deepEqual(parsed.sync.massDelete, { maxCount: 50, maxPercent: 25 });
   assert.deepEqual(parsed.sync.recovery, { enabled: true, keepDays: 14, maxMegabytes: 1024 });
+});
+
+test('sync.symlinks takes skip, follow-inside-root or follow, and nothing else', () => {
+  for (const symlinks of ['skip', 'follow-inside-root', 'follow'] as const) {
+    assert.equal(siteSchema.parse(site({ sync: { symlinks } })).sync.symlinks, symlinks);
+  }
+  const lines = issues(siteSchema.safeParse({ ...site(), sync: { symlinks: 'always' } }));
+  const line = lines.find((text) => text.startsWith('sync.symlinks: '));
+  assert.ok(line !== undefined, lines.join('\n'));
+  for (const value of ['skip', 'follow-inside-root', 'follow']) {
+    assert.ok(line.includes(`"${value}"`), line);
+  }
+});
+
+test('LinkPolicy is the type of sync.symlinks', () => {
+  type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+  const same: Same<LinkPolicy, Site['sync']['symlinks']> = true;
+  assert.equal(same, true);
 });
 
 test('a new site has cloaking on and no cloaking patterns', () => {

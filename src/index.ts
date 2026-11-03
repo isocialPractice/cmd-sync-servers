@@ -88,8 +88,12 @@ export {
   joinRemote,
   nameProblem,
   parentPath,
+  resolveLocalTarget,
   safeLocalTarget,
   toRemotePath,
+  type LinkPolicy,
+  type LocalLookup,
+  type LocalTarget,
   type PathCheck,
   type RemotePath,
 } from './sync/paths.ts';

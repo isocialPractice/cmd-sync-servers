@@ -366,10 +366,12 @@
               },
               "symlinks": {
                 "default": "skip",
+                "description": "\"skip\" lists links as problems; \"follow-inside-root\" follows links that stay inside the local root; \"follow\" follows every link. A followed link is put and got as the file or folder it points to.",
                 "type": "string",
                 "enum": [
                   "skip",
-                  "follow-inside-root"
+                  "follow-inside-root",
+                  "follow"
                 ]
               },
               "concurrency": {

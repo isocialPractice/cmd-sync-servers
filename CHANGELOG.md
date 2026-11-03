@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Until the first stable release, versions use the pre-release form
 `1.0.0-alpha.x.y.z`, where `x.y.z` counts alpha iterations toward `1.0.0`.
 
+## [1.0.0-alpha.1.1.0] - 2026-11-03
+
+### Added
+
+- `follow` for `sync.symlinks`, which follows every symbolic link and
+  junction in a site's local folder, including links that lead out of the
+  site. A followed file link is listed as a file at the link's path, and a
+  followed folder link as a folder whose files are listed under the link's
+  path.
+- `resolveLocalTarget` in the library API, with the `LinkPolicy`,
+  `LocalLookup` and `LocalTarget` types: the real file behind a site path
+  under a site's link policy.
+
+### Changed
+
+- A local symbolic link that is not followed is a problem row that says
+  why: the site does not follow links, the link leads to something that
+  does not exist, it leads out of the site under `follow-inside-root`, or
+  it leads back into a folder above it. Two links to one folder are both
+  followed.
+- A single path inside a local folder link is reached through that link,
+  by the same rules as a full scan; when the link is not followed, the path
+  is listed as inside a linked folder.
+
+### Security
+
+- Cloaking sees through local links: a file or folder whose link leads to
+  a cloaked place inside the site is cloaked.
+
 ## [1.0.0-alpha.1.0.0] - 2026-11-02
 
 ### Changed

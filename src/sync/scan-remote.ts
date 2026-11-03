@@ -31,7 +31,7 @@ export interface RemoteScanOptions {
  * no times are asked file by file (FTP MDTM).
  */
 export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult> {
-  const result: ScanResult = { files: new Map(), dirs: new Set(), problems: [], cloaked: 0 };
+  const result: ScanResult = { files: new Map(), dirs: new Set(), problems: [], cloaked: 0, linked: new Map() };
   const mutable = result as { cloaked: number };
   const { pool, cloak } = options;
   const retry = { ...options.retry, signal: options.signal };
