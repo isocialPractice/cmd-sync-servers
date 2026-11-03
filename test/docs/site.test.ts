@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { commandReference, END, START } from '../../scripts/lib/cli-reference.ts';
+import { commandReference, END, optionIndex, START } from '../../scripts/lib/cli-reference.ts';
 import { COMMANDS } from '../../src/cli/router.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -16,9 +16,13 @@ const built = existsSync(path.join(site, 'index.html'));
 
 const PAGES = [
   'index.html',
+  'quickstart.html',
   'getting-started.html',
+  'examples.html',
+  'cheatsheets.html',
   'configuration.html',
   'cli.html',
+  'options.html',
   'synchronization.html',
   'api.html',
   'security.html',
@@ -129,6 +133,29 @@ test('the command reference on cli.html matches the commands, as --help prints t
   assert.equal(html.slice(start, end + END.length), commandReference(), 'cli.html is out of date: run npm run docs:cli');
   for (const command of COMMANDS) {
     assert.ok(html.includes(`id="command-${command.path.join('-')}"`), command.path.join(' '));
+  }
+});
+
+test('the option index on options.html matches the command definitions', () => {
+  const html = read('options.html');
+  const start = html.indexOf(START);
+  const end = html.indexOf(END);
+  assert.ok(start !== -1 && end > start, 'options.html has the generated section');
+  assert.equal(html.slice(start, end + END.length), optionIndex(), 'options.html is out of date: run npm run docs:cli');
+});
+
+test('options.html names every SYNC_SERVERS_ variable the program reads', () => {
+  const source = path.join(root, 'src');
+  const names = new Set<string>();
+  for (const name of readdirSync(source, { recursive: true, encoding: 'utf8' }).filter((file) => file.endsWith('.ts'))) {
+    for (const match of readFileSync(path.join(source, name), 'utf8').matchAll(/SYNC_SERVERS_[A-Z_]+/g)) {
+      names.add(match[0]);
+    }
+  }
+  assert.ok(names.size > 0);
+  const html = read('options.html');
+  for (const name of names) {
+    assert.ok(html.includes(`<code>${name}</code>`), `${name} is missing from options.html`);
   }
 });
 

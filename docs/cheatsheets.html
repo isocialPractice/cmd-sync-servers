@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Every everyday sync-servers command and key on one page: tasks, sites and servers, synchronizing, the preview's keys, plain mode, cloaking, exit codes and where settings live.">
+<title>Cheatsheets | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="cheatsheets.html" aria-current="page">Cheatsheets</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="options.html">Options</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Cheatsheets</h1>
+<p class="lead">The commands and keys you use most, each with what it does in plain words. Commands act on the site of the current folder, or on the one named with <code>--site "My Site"</code>.</p>
+
+<div class="note">
+  <p><strong>Start here</strong></p>
+  <ul>
+    <li><code>sync-servers site add</code> sets up a site and its server, asking each question in turn.</li>
+    <li><code>sync-servers sync --put</code>, in the site's folder, previews your changes and sends what you check.</li>
+    <li><kbd>?</kbd> on any screen of the interface lists every key of that screen.</li>
+  </ul>
+</div>
+
+<h2 id="tasks">Everyday tasks</h2>
+<table>
+  <caption>Everyday tasks</caption>
+  <thead><tr><th scope="col">To</th><th scope="col">Run</th></tr></thead>
+  <tbody>
+    <tr><td>Set up a site and its server</td><td><code>sync-servers site add</code></td></tr>
+    <tr><td>Send your changes, after a preview</td><td><code>sync-servers sync --put</code></td></tr>
+    <tr><td>Bring down changes made on the server</td><td><code>sync-servers sync --get</code></td></tr>
+    <tr><td>Do both at once</td><td><code>sync-servers sync --both</code></td></tr>
+    <tr><td>See what changed, moving nothing</td><td><code>sync-servers status</code></td></tr>
+    <tr><td>See how one file differs</td><td><code>sync-servers diff css/site.css</code></td></tr>
+    <tr><td>Send one file now</td><td><code>sync-servers put index.html</code></td></tr>
+    <tr><td>Check that the server still answers</td><td><code>sync-servers server test</code></td></tr>
+    <tr><td>Work from menus instead</td><td><code>sync-servers</code></td></tr>
+    <tr><td>Find out what is wrong with the setup</td><td><code>sync-servers doctor</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="sites">Sites and servers</h2>
+<table>
+  <caption>Sites and servers</caption>
+  <thead><tr><th scope="col">Run</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>sites</code></td><td>Lists every site</td></tr>
+    <tr><td><code>site add</code></td><td>Adds a site and its first server, connecting first</td></tr>
+    <tr><td><code>site show</code></td><td>Shows a site, its servers and its cloaking</td></tr>
+    <tr><td><code>site edit --name "New Name"</code></td><td>Renames a site; <code>--local-root</code> moves it</td></tr>
+    <tr><td><code>site remove</code></td><td>Removes a site; its folder and the server's files stay</td></tr>
+    <tr><td><code>server add --name Staging --testing</code></td><td>Adds another server, here as the Testing server</td></tr>
+    <tr><td><code>server edit</code></td><td>Changes a server, asking the setup questions again in a terminal</td></tr>
+    <tr><td><code>server test</code></td><td>Connects, signs in and checks the site's folder on the server</td></tr>
+    <tr><td><code>server set-remote Production</code></td><td>Chooses the server <code>sync</code> uses</td></tr>
+    <tr><td><code>server set-testing Staging</code></td><td>Chooses the server the VS Code extension uploads to on save</td></tr>
+    <tr><td><code>password set</code>, <code>password forget</code></td><td>Saves or forgets a server's password</td></tr>
+  </tbody>
+</table>
+<p>Every command and option: <a href="cli.html#commands">Commands</a> and <a href="options.html">Options</a>.</p>
+
+<h2 id="synchronizing">Synchronizing</h2>
+<table>
+  <caption>Synchronizing</caption>
+  <thead><tr><th scope="col">Run</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>sync --put</code></td><td>Puts files that are newer on your computer</td></tr>
+    <tr><td><code>sync --get</code></td><td>Gets files that are newer on the server</td></tr>
+    <tr><td><code>sync --both</code></td><td>Both; a file changed on both sides waits for your decision</td></tr>
+    <tr><td><code>sync --put --delete</code></td><td>Also deletes server files that are gone locally</td></tr>
+    <tr><td><code>sync --put --dry-run</code></td><td>Shows the preview and moves nothing</td></tr>
+    <tr><td><code>sync --put --yes</code></td><td>Runs without a preview, for scripts</td></tr>
+    <tr><td><code>sync --put css</code></td><td>Limits the preview to one folder</td></tr>
+    <tr><td><code>put img</code>, <code>get img</code></td><td>Moves these files now, with a preview only when a decision is needed</td></tr>
+    <tr><td><code>status</code></td><td>Lists what changed on each side since the last sync</td></tr>
+    <tr><td><code>diff css/site.css</code></td><td>Shows how the two copies of a file differ</td></tr>
+    <tr><td><code>mark-synced css/site.css</code></td><td>Records a file as in sync without moving it</td></tr>
+  </tbody>
+</table>
+<p>How changes are found and turned into actions: <a href="synchronization.html">Synchronization</a>.</p>
+
+<h2 id="preview-keys">Preview keys</h2>
+<p>The menu at the bottom of the preview, then the keys <kbd>?</kbd> adds:</p>
+<table>
+  <caption>Keys of the preview</caption>
+  <thead><tr><th scope="col">Key</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Space</kbd> = Check/Uncheck</td><td>Checks or unchecks the focused file</td></tr>
+    <tr><td><kbd>p</kbd> = Put</td><td>Sends the file to the server</td></tr>
+    <tr><td><kbd>g</kbd> = Get</td><td>Brings the file down from the server</td></tr>
+    <tr><td><kbd>s</kbd> = Skip</td><td>Leaves the file as it is</td></tr>
+    <tr><td><kbd>d</kbd> = Diff</td><td>Shows how the two copies differ</td></tr>
+    <tr><td><kbd>a</kbd> = All</td><td>Checks or unchecks every file that can run</td></tr>
+    <tr><td><kbd>q</kbd> = Quit</td><td>Quits, transferring nothing, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
+    <tr><td><kbd>Enter</kbd> = Synchronize</td><td>Runs the checked files, after one question</td></tr>
+    <tr><td><kbd>m</kbd></td><td>Records both copies as in sync without moving the file</td></tr>
+    <tr><td><kbd>x</kbd></td><td>Deletes the file, asking where when both copies exist</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Shows only one kind of row: All, Put, Get, Resolve, Delete, Guarded or Errors</td></tr>
+    <tr><td><kbd>/</kbd></td><td>Finds a path as you type</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Goes back, transferring nothing</td></tr>
+  </tbody>
+</table>
+
+<h2 id="screen-keys">Keys on every screen</h2>
+<table>
+  <caption>Keys on every screen</caption>
+  <thead><tr><th scope="col">Key</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Up</kbd> <kbd>Down</kbd>, <kbd>j</kbd> <kbd>k</kbd></td><td>Move</td></tr>
+    <tr><td><kbd>Page Up</kbd> <kbd>Page Down</kbd>, <kbd>Home</kbd> <kbd>End</kbd></td><td>Move by a page, or to the first or last row</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Changes pane or tab</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Toggles a checkbox, or changes a choice</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Opens the focused item, or runs the screen's main action</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Goes back, or cancels a question or a running task</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Saves</td></tr>
+    <tr><td><kbd>?</kbd></td><td>Lists every key of the screen</td></tr>
+    <tr><td><kbd>q</kbd></td><td>Quits, from a top screen or the preview</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Cancels the running task, or quits</td></tr>
+  </tbody>
+</table>
+<p>A dashed line at the top or bottom of a list means more rows are hidden past it. More about the interface: <a href="cli.html#tui">The terminal interface</a>.</p>
+
+<h2 id="plain">Plain mode</h2>
+<p>With <code>--plain</code>, the preview prints numbered rows and takes typed commands:</p>
+<table>
+  <caption>Plain preview commands</caption>
+  <thead><tr><th scope="col">Type</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>3</code>, <code>1 4</code>, <code>2-6</code></td><td>Checks or unchecks rows</td></tr>
+    <tr><td><code>p 3</code>, <code>g 3</code>, <code>s 3</code>, <code>m 3</code></td><td>Sets Put, Get, Skip or Synchronized for row 3</td></tr>
+    <tr><td><code>x 3</code></td><td>Deletes row 3, asking where when both copies exist</td></tr>
+    <tr><td><code>all</code>, <code>none</code></td><td>Checks or unchecks every row that can run</td></tr>
+    <tr><td><code>diff 3</code></td><td>Shows how the two copies of row 3 differ</td></tr>
+    <tr><td><code>list</code>, <code>help</code></td><td>Shows the rows, or the commands, again</td></tr>
+    <tr><td><code>go</code></td><td>Synchronizes the checked rows, after one question</td></tr>
+    <tr><td><code>q</code></td><td>Cancels, transferring nothing</td></tr>
+  </tbody>
+</table>
+
+<h2 id="cloaking">Cloaking</h2>
+<table>
+  <caption>Cloaking patterns</caption>
+  <thead><tr><th scope="col">Pattern</th><th scope="col">Cloaks</th></tr></thead>
+  <tbody>
+    <tr><td><code>.psd</code></td><td>Every name ending in <code>.psd</code></td></tr>
+    <tr><td><code>archive*</code></td><td>Every name starting with <code>archive</code></td></tr>
+    <tr><td><code>node_modules/</code></td><td>Every folder named <code>node_modules</code>, and all it holds</td></tr>
+    <tr><td><code>/drafts/</code></td><td>Only the <code>drafts</code> folder at the top of the site</td></tr>
+    <tr><td><code>!keep.psd</code></td><td>Uncloaks what an earlier pattern cloaked</td></tr>
+  </tbody>
+</table>
+<table>
+  <caption>Cloaking commands</caption>
+  <thead><tr><th scope="col">Run</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>cloak .psd "archive*"</code></td><td>Cloaks patterns in this site</td></tr>
+    <tr><td><code>cloak img/raw</code></td><td>Cloaks one existing file or folder</td></tr>
+    <tr><td><code>cloak --global .git/ node_modules/</code></td><td>Cloaks patterns in every site</td></tr>
+    <tr><td><code>cloak --ignore-global</code>, <code>cloak --use-global</code></td><td>Stops or starts using the global patterns in this site</td></tr>
+    <tr><td><code>cloak --list</code>, <code>cloak --global</code></td><td>Shows the site's cloaking, or the global patterns</td></tr>
+    <tr><td><code>uncloak .psd</code>, <code>uncloak --global node_modules/</code></td><td>Removes a pattern or a path</td></tr>
+  </tbody>
+</table>
+<p>The full rules: <a href="configuration.html#cloaking">Cloaking</a>.</p>
+
+<h2 id="exit-codes">Exit codes</h2>
+<table>
+  <caption>Exit codes</caption>
+  <thead><tr><th scope="col">Code</th><th scope="col">Means</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Done, or nothing to do</td></tr>
+    <tr><td>1</td><td>The command could not run</td></tr>
+    <tr><td>2</td><td>A usage error, or no site could be chosen</td></tr>
+    <tr><td>3</td><td>Finished, with failed rows or rows still waiting for a decision</td></tr>
+    <tr><td>4</td><td>Cancelled</td></tr>
+    <tr><td>5</td><td>Stopped by a safety guard</td></tr>
+  </tbody>
+</table>
+
+<h2 id="files">Where settings live</h2>
+<p><code>sync-servers config path</code> prints the folders in use.</p>
+<table>
+  <caption>Where sites.json is kept</caption>
+  <thead><tr><th scope="col">System</th><th scope="col">Folder</th></tr></thead>
+  <tbody>
+    <tr><td>Windows</td><td><code>%APPDATA%\sync-servers</code></td></tr>
+    <tr><td>macOS</td><td><code>~/Library/Application Support/sync-servers</code></td></tr>
+    <tr><td>Linux and other systems</td><td><code>~/.config/sync-servers</code></td></tr>
+  </tbody>
+</table>
+<p>State, logs and the environment variables that move them: <a href="configuration.html#folders">Where things are kept</a> and <a href="options.html#environment">Environment variables</a>.</p>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -121,6 +121,11 @@ Until the first stable release, versions use the pre-release form
 - `SiteRegistry.globalCloaking`, `SiteRegistry.updateGlobalCloaking()`, the
   `GlobalCloaking` type, and the global patterns as the third argument of
   `siteCloak()`.
+- The documentation site has a Quickstart, a page of Examples for common
+  jobs, Cheatsheets of the everyday commands and keys, and an Options page
+  that lists every option with the commands that take it, every environment
+  variable and the preview modes. `npm run docs:cli` writes its option
+  index from the command definitions.
 
 ### Fixed
 

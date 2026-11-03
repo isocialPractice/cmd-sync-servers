@@ -258,6 +258,20 @@ the step of the plan that specifies it.
 - [x] Documentation for P3, `npm run docs:cli`, changelog, checks and commit
   - **Goal**: Resolve to [Phase P3, step 6](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)
   - From: Patches 1.0.0-alpha.1.0.0
+- [x] The generated option index, `docs:cli` for both pages, and the
+      environment variable test
+  - **Goal**: Resolve to [Phase P4, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] The Quickstart, Examples, Cheatsheets and Options pages
+  - **Goal**: Resolve to [Phase P4, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] The navigation on every page, the page list in the docs test, and the
+      links from the home page and the README
+  - **Goal**: Resolve to [Phase P4, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Changelog, checks and commit for P4
+  - **Goal**: Resolve to [Phase P4, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
+  - From: Patches 1.0.0-alpha.1.0.0
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -340,16 +354,6 @@ items of Phase S5 move no version.
 Next version: none. Every item adds to `1.0.0-alpha.1.0.0`. Phase P5 is
 tracked in the extension's `TODO.md`.
 
-- [ ] The generated option index, `docs:cli` for both pages, and the
-      environment variable test
-  - **Goal**: Resolve to [Phase P4, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
-- [ ] The Quickstart, Examples, Cheatsheets and Options pages
-  - **Goal**: Resolve to [Phase P4, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
-- [ ] The navigation on every page, the page list in the docs test, and the
-      links from the home page and the README
-  - **Goal**: Resolve to [Phase P4, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
-- [ ] Changelog, checks and commit for P4
-  - **Goal**: Resolve to [Phase P4, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
 - [ ] Run the engine's and the extension's checks once more from clean
       builds
   - **Goal**: Resolve to [Phase P6, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)

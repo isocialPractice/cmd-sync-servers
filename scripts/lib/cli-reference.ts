@@ -1,5 +1,6 @@
-// Builds the command reference of docs/cli.html from the same command
-// definitions `--help` prints, so the page and the program cannot disagree.
+// Builds the command reference of docs/cli.html and the option index of
+// docs/options.html from the same command definitions `--help` prints, so
+// the pages and the program cannot disagree.
 import type { CommandSpec, OptionSpecs } from '../../src/cli/command.ts';
 import { exampleRoot } from '../../src/cli/commands/shared.ts';
 import { commandSignature, optionLabel } from '../../src/cli/help.ts';
@@ -60,12 +61,59 @@ export function commandReference(): string {
   ].join('\n');
 }
 
-/** `page` with its generated section replaced by `section`. */
-export function replaceGenerated(page: string, section: string): string {
+/** One row of the option index: an option as help shows it, what it does, and the commands that take it. */
+interface IndexRow {
+  readonly name: string;
+  readonly label: string;
+  readonly description: string;
+  readonly commands: CommandSpec[];
+}
+
+/**
+ * The generated part of docs/options.html, markers included: the global
+ * options, then every command option from A to Z with the commands that
+ * take it. An option that does something different in two commands gets a
+ * row for each.
+ */
+export function optionIndex(): string {
+  const rows = new Map<string, IndexRow>();
+  for (const command of COMMANDS) {
+    for (const [name, spec] of Object.entries(command.options ?? {})) {
+      const label = optionLabel(name, spec);
+      const key = JSON.stringify([label, spec.description]);
+      const row = rows.get(key) ?? { name, label, description: spec.description, commands: [] };
+      row.commands.push(command);
+      rows.set(key, row);
+    }
+  }
+  const sorted = [...rows.values()].sort((a, b) => a.name.localeCompare(b.name) || a.label.localeCompare(b.label) || a.description.localeCompare(b.description));
+  return [
+    START,
+    '<h2 id="global-options">Global options</h2>',
+    '<p>Every command takes these, before or after its own options.</p>',
+    ...optionTable(GLOBAL_OPTIONS, 'Global options').map((line) => line.slice(2)),
+    '<h2 id="command-options">Command options from A to Z</h2>',
+    '<p>Each option once, with what it does and the commands that take it. <code>sync-servers &lt;command&gt; --help</code> lists the options of one command.</p>',
+    '<table>',
+    '  <caption>Command options</caption>',
+    '  <thead><tr><th scope="col">Option</th><th scope="col">Does</th><th scope="col">Commands</th></tr></thead>',
+    '  <tbody>',
+    ...sorted.map((row) => {
+      const commands = row.commands.map((command) => `<a href="cli.html#${commandId(command)}"><code>${escapeHtml(command.path.join(' '))}</code></a>`).join(', ');
+      return `    <tr><td><code>${escapeHtml(row.label)}</code></td><td>${escapeHtml(row.description)}</td><td>${commands}</td></tr>`;
+    }),
+    '  </tbody>',
+    '</table>',
+    END,
+  ].join('\n');
+}
+
+/** `page` with its generated section replaced by `section`; `name` names the page in the error. */
+export function replaceGenerated(page: string, section: string, name = 'docs/cli.html'): string {
   const start = page.indexOf(START);
   const end = page.indexOf(END);
   if (start === -1 || end === -1 || end < start) {
-    throw new Error('docs/cli.html has no generated section markers.');
+    throw new Error(`${name} has no generated section markers.`);
   }
   return page.slice(0, start) + section + page.slice(end + END.length);
 }

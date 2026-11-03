@@ -9,6 +9,11 @@ The same engine is a library: the `vscode-sync-servers` extension for VS Code
 uses it in-process, and both read one shared list of sites.
 
 **Documentation: <https://isocialpractice.github.io/cmd-sync-servers/>**
+New to it? Start with the
+[Quickstart](https://isocialpractice.github.io/cmd-sync-servers/quickstart.html),
+and keep the
+[Cheatsheets](https://isocialpractice.github.io/cmd-sync-servers/cheatsheets.html)
+at hand.
 
 > **Status: early alpha.** Sites, servers, saved passwords, cloaking and
 > synchronizing work from the command line, in a full-screen terminal UI,
@@ -90,13 +95,20 @@ sync-servers server add --site "My Site" --name Staging \
 
 ## Documentation
 
+- [Quickstart](https://isocialpractice.github.io/cmd-sync-servers/quickstart.html):
+  five steps to a first sync
 - [Getting started](https://isocialpractice.github.io/cmd-sync-servers/getting-started.html):
   a site and its server in one command, and the first preview
+- [Examples](https://isocialpractice.github.io/cmd-sync-servers/examples.html)
+  and [cheatsheets](https://isocialpractice.github.io/cmd-sync-servers/cheatsheets.html):
+  commands for common jobs, and every everyday command and key on one page
 - [Configuration](https://isocialpractice.github.io/cmd-sync-servers/configuration.html):
   where settings live, every field, cloaking, the guard and secrets
 - [Command line](https://isocialpractice.github.io/cmd-sync-servers/cli.html):
   every command, the terminal interface, editor and plain modes, shell
-  integration, exit codes and JSON output
+  integration, exit codes and JSON output; every option, environment
+  variable and preview mode on
+  [Options](https://isocialpractice.github.io/cmd-sync-servers/options.html)
 - [Synchronization](https://isocialpractice.github.io/cmd-sync-servers/synchronization.html):
   how changes are found and turned into actions
 - [Library API](https://isocialpractice.github.io/cmd-sync-servers/api.html)

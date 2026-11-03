@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="The shortest path to a first sync with sync-servers: install, add a site, preview and send changes, get changes, and keep files off every server.">
+<title>Quickstart | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="quickstart.html" aria-current="page">Quickstart</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="cheatsheets.html">Cheatsheets</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="options.html">Options</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Quickstart</h1>
+<p class="lead"><code>sync-servers</code> keeps a folder on your computer and a folder on a web server the same, and shows you every change before anything moves.</p>
+
+<h2 id="install">1. Install</h2>
+<p>Install <a href="https://nodejs.org/">Node.js</a> 22.14 or later, then <code>sync-servers</code>. Until the alpha is on npm, <a href="index.html#install">install it from a clone</a>.</p>
+<pre><code>npm install --global @isocialpractice/cmd-sync-servers@alpha</code></pre>
+
+<h2 id="add">2. Add your site</h2>
+<p>Give it a name, its folder on your computer, and the server's protocol, host and user; it asks for the password, connects, and lets you pick the site's folder on the server.</p>
+<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --protocol ftps --host ftp.example.com --user demo-user</code></pre>
+<p>On Windows, in <code>cmd.exe</code>:</p>
+<pre><code>sync-servers site add --name "My Site" --local-root "C:\Users\&lt;user&gt;\Sites\my-site" ^
+  --protocol ftps --host ftp.example.com --user demo-user</code></pre>
+
+<h2 id="put">3. Preview and send your changes</h2>
+<p>In the site's folder, ask for the files that are newer on your computer; a preview lists them before anything moves.</p>
+<pre><code>cd ~/sites/my-site
+sync-servers sync --put</code></pre>
+<table>
+  <caption>The preview's menu</caption>
+  <thead><tr><th scope="col">Key</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Space</kbd></td><td>Check or uncheck the file</td></tr>
+    <tr><td><kbd>p</kbd>, <kbd>g</kbd>, <kbd>s</kbd></td><td>Put, get or skip the file</td></tr>
+    <tr><td><kbd>d</kbd></td><td>Show how the two copies differ</td></tr>
+    <tr><td><kbd>a</kbd></td><td>Check or uncheck every file</td></tr>
+    <tr><td><kbd>q</kbd></td><td>Quit, sending nothing</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Send the checked files</td></tr>
+  </tbody>
+</table>
+<p>Nothing moves until you press <kbd>Enter</kbd> and confirm.</p>
+
+<h2 id="get">4. Get what changed on the server</h2>
+<p>The same preview, for files that are newer on the server.</p>
+<pre><code>sync-servers sync --get</code></pre>
+
+<h2 id="cloak">5. Keep files off every server</h2>
+<p>Cloaked files are never listed, sent or deleted, in any of your sites.</p>
+<pre><code>sync-servers cloak --global .git/ node_modules/</code></pre>
+
+<h2 id="next">Next</h2>
+<ul class="cards">
+  <li><a href="getting-started.html">Getting started</a><p>The same steps in full, with what each question means.</p></li>
+  <li><a href="examples.html">Examples</a><p>Commands for common jobs, ready to adapt.</p></li>
+  <li><a href="cheatsheets.html">Cheatsheets</a><p>Every everyday command and key on one page.</p></li>
+  <li><a href="troubleshooting.html">Troubleshooting</a><p>What to do when a connection or a sign-in fails.</p></li>
+</ul>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="sync-servers commands for common jobs: setting up FTPS and SFTP sites, a Testing server, putting and getting files, deletes, previews in an editor, plain mode, scripts, cloaking and shell integration.">
+<title>Examples | cmd-sync-servers</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">cmd-sync-servers</a>
+    <nav aria-label="Pages">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="examples.html" aria-current="page">Examples</a></li>
+        <li><a href="cheatsheets.html">Cheatsheets</a></li>
+        <li><a href="configuration.html">Configuration</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="options.html">Options</a></li>
+        <li><a href="synchronization.html">Synchronization</a></li>
+        <li><a href="api.html">Library API</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<h1>Examples</h1>
+<p class="lead">Commands for common jobs, ready to adapt. Each one acts on the site of the current folder unless it names one with <code>--site</code>.</p>
+<ul>
+  <li><a href="#ftps-site">Set up a site over FTPS</a></li>
+  <li><a href="#sftp-key">Set up a site over SFTP with a key</a></li>
+  <li><a href="#staging">Add a Staging server</a></li>
+  <li><a href="#put-part">Put one folder or one file</a></li>
+  <li><a href="#get">Get files from the server</a></li>
+  <li><a href="#delete">Delete server files that are gone locally</a></li>
+  <li><a href="#check">Check what changed, moving nothing</a></li>
+  <li><a href="#editor">Review the preview in your editor</a></li>
+  <li><a href="#plain">Use plain prompts</a></li>
+  <li><a href="#unattended">Run unattended, in a script or CI</a></li>
+  <li><a href="#cloaking">Cloak in one site or in every site</a></li>
+  <li><a href="#mark-synced">Record files as in sync</a></li>
+  <li><a href="#ssv">Change to a site's folder from anywhere</a></li>
+  <li><a href="#start-over">Start over with one server</a></li>
+</ul>
+
+<h2 id="ftps-site">Set up a site over FTPS</h2>
+<p>One command sets up the site and its server, connects, and lets you pick the site's folder from what the server shows.</p>
+<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com</code></pre>
+<p>On Windows, in <code>cmd.exe</code>:</p>
+<pre><code>sync-servers site add --name "My Site" --local-root "C:\Users\&lt;user&gt;\Sites\my-site" ^
+  --protocol ftps --host 203.0.113.10 --user demo-user@example.com</code></pre>
+<p>On shared hosting the certificate often names the hosting company's machine, such as <code>server1.hosting.example.net</code>, not the address you typed. Setup then shows the certificate and offers to connect to that name, which keeps full verification, to check the certificate as that name, or to trust this certificate. See <a href="security.html#certificates">Certificates</a> and <a href="cli.html#command-site-add"><code>site add</code></a>.</p>
+
+<h2 id="sftp-key">Set up a site over SFTP with a key</h2>
+<p>SFTP is the default protocol. The first connection shows the server's host key: compare it with the fingerprint your host publishes before you trust it.</p>
+<pre><code>sync-servers site add --name "My Site" --local-root ~/sites/my-site \
+  --host sftp.example.com --user demo-user \
+  --auth key --key-path ~/.ssh/id_ed25519 --remote-root /var/www/my-site</code></pre>
+<p>On Windows, in <code>cmd.exe</code>:</p>
+<pre><code>sync-servers site add --name "My Site" --local-root "C:\Users\&lt;user&gt;\Sites\my-site" ^
+  --host sftp.example.com --user demo-user ^
+  --auth key --key-path "C:\Users\&lt;user&gt;\.ssh\id_ed25519" --remote-root /var/www/my-site</code></pre>
+<p>A key with a passphrase asks for it, or reads <code>SYNC_SERVERS_KEY_PASSPHRASE</code>. <code>--auth agent</code> uses your SSH agent instead. See <a href="security.html#host-keys">Host keys</a>.</p>
+
+<h2 id="staging">Add a Staging server</h2>
+<p>A site has one Remote server, which <code>sync</code> uses, and may have a Testing server, where the VS Code extension uploads files on save.</p>
+<pre><code>sync-servers server add --name Staging --host 192.0.2.20 --user demo-user \
+  --remote-root /var/www/staging --testing
+sync-servers server set-testing --clear</code></pre>
+<p>The second line takes the Testing role away again; <code>server set-remote Staging</code> would make it the server <code>sync</code> uses. See <a href="cli.html#command-server-add"><code>server add</code></a>.</p>
+
+<h2 id="put-part">Put one folder or one file</h2>
+<p>A path limits the preview to that part of the site. <code>put</code> sends at once, with a preview only when a file changed on both sides.</p>
+<pre><code>sync-servers sync --put css
+sync-servers put index.html</code></pre>
+<p>See <a href="cli.html#command-sync"><code>sync</code></a> and <a href="cli.html#command-put"><code>put</code></a>.</p>
+
+<h2 id="get">Get files from the server</h2>
+<p>The same, the other way: files that are newer on the server come down.</p>
+<pre><code>sync-servers sync --get
+sync-servers get img</code></pre>
+<p>Local files a get replaces are kept in the recovery folder for 14 days. See <a href="cli.html#command-get"><code>get</code></a>.</p>
+
+<h2 id="delete">Delete server files that are gone locally</h2>
+<p><code>--delete</code> also lists the files on the server that no longer exist on your computer. Look first with <code>--dry-run</code>, which moves nothing.</p>
+<pre><code>sync-servers sync --put --delete --dry-run
+sync-servers sync --put --delete</code></pre>
+<p>Files that were never synchronized stay unchecked, so you decide each one. A run that would delete more than 50 files, or more than 25 percent of the files on that side, asks you to confirm the count first; <code>--allow-mass-delete</code> lets a script go past that limit. See <a href="synchronization.html">Synchronization</a>.</p>
+
+<h2 id="check">Check what changed, moving nothing</h2>
+<pre><code>sync-servers status
+sync-servers diff css/site.css</code></pre>
+<p><code>status</code> lists what changed on each side since the last sync, and <code>diff</code> shows how the two copies of one file differ. See <a href="cli.html#command-status"><code>status</code></a>.</p>
+
+<h2 id="editor">Review the preview in your editor</h2>
+<p>The preview becomes a text file: check or uncheck rows, change the action words, then save and close to synchronize. Closing without saving cancels.</p>
+<pre><code>sync-servers sync --put --preview editor</code></pre>
+<p>An editor that returns at once needs its wait flag, as VS Code does:</p>
+<pre><code>export SYNC_SERVERS_EDITOR="code --wait"</code></pre>
+<p>On Windows, in <code>cmd.exe</code>:</p>
+<pre><code>set "SYNC_SERVERS_EDITOR=code --wait"</code></pre>
+<p>See <a href="cli.html#editor-mode">Editor mode</a>.</p>
+
+<h2 id="plain">Use plain prompts</h2>
+<p>Numbered rows and typed commands, with no full-screen drawing, for screen readers and logging terminals.</p>
+<pre><code>sync-servers sync --put --plain</code></pre>
+<p>In the preview, <code>2-6</code> checks or unchecks rows, <code>p 3</code> puts row 3, <code>go</code> synchronizes and <code>q</code> cancels. <code>SYNC_SERVERS_UI=plain</code> makes it the default. See <a href="cli.html#plain-mode">Plain mode</a>.</p>
+
+<h2 id="unattended">Run unattended, in a script or CI</h2>
+<p><code>--yes</code> runs without a preview, the password comes from the environment, and <code>--json</code> prints one document a script can read.</p>
+<pre><code>export SYNC_SERVERS_PASSWORD="$FTP_PASSWORD"
+sync-servers sync --site "My Site" --put --yes --json</code></pre>
+<p>Or save a plan for review and run exactly that plan later; it is refused if the site or the server changed in between:</p>
+<pre><code>sync-servers sync --put --plan-out plan.json
+sync-servers sync --put --plan-in plan.json --yes</code></pre>
+<p>A script cannot answer a question about a new host key or certificate: connect once in a terminal first, or pass <code>--host-key</code> or <code>--trust-certificate</code> with the fingerprint. The exit code is 0 when everything ran, 3 when rows failed or wait for a decision, 4 when cancelled and 5 when a safety guard stopped the run. See <a href="cli.html#unattended">Unattended runs</a> and <a href="cli.html#exit-codes">Exit codes</a>.</p>
+
+<h2 id="cloaking">Cloak in one site or in every site</h2>
+<p>Cloaked files are never scanned, listed, transferred or deleted.</p>
+<pre><code>sync-servers cloak .psd "archive*"                  # in this site
+sync-servers cloak --global .git/ node_modules/      # in every site
+sync-servers cloak "!node_modules/"                  # this site keeps node_modules/ after all
+sync-servers cloak --ignore-global                   # or ignores the global patterns
+sync-servers cloak --list</code></pre>
+<p>See <a href="configuration.html#cloaking">Cloaking</a> and <a href="configuration.html#global-cloaking">Global patterns</a>.</p>
+
+<h2 id="mark-synced">Record files as in sync</h2>
+<p>When both copies are already the same, for example after a site was copied to the server another way, record them as in sync so the next sync starts from there.</p>
+<pre><code>sync-servers mark-synced .</code></pre>
+<p>See <a href="cli.html#command-mark-synced"><code>mark-synced</code></a>.</p>
+
+<h2 id="ssv">Change to a site's folder from anywhere</h2>
+<p>A program cannot change its shell's folder, so <code>shell-init</code> prints a small <code>ssv</code> function that does. For bash, in <code>~/.bashrc</code>:</p>
+<pre><code>eval "$(sync-servers shell-init bash)"</code></pre>
+<p>In <code>cmd.exe</code>, with <code>%USERPROFILE%\bin</code> on your <code>PATH</code>:</p>
+<pre><code>sync-servers shell-init cmd &gt; "%USERPROFILE%\bin\ssv.cmd"</code></pre>
+<p>Then <code>ssv</code> opens the sites and lands in the folder of the one you open. See <a href="cli.html#shell-integration">Shell integration</a>.</p>
+
+<h2 id="start-over">Start over with one server</h2>
+<p>Forget what the last sync recorded for the site and its server, so the next sync compares both sides as if for the first time.</p>
+<pre><code>sync-servers state reset --site "My Site"</code></pre>
+<p>See <a href="cli.html#command-state-reset"><code>state reset</code></a>.</p>
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <p>cmd-sync-servers is open source under the MIT license. Source, issues and releases are on <a href="https://github.com/isocialPractice/cmd-sync-servers">GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>
