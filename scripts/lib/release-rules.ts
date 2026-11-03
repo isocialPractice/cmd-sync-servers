@@ -31,8 +31,5 @@ export function releaseProblems(tag: string, files: ReleaseFiles): string[] {
   if (!new RegExp(`^## \\[${version.replaceAll('.', '\\.')}\\] - \\d{4}-\\d{2}-\\d{2}$`, 'm').test(files.changelog)) {
     problems.push(`CHANGELOG.md has no "## [${version}] - YYYY-MM-DD" heading.`);
   }
-  if (!/-alpha\./.test(version)) {
-    problems.push(`${version} is not an alpha; stable releases are not set up yet.`);
-  }
   return problems;
 }

@@ -2,9 +2,25 @@
 
 All notable changes to **cmd-sync-servers** are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Until the first stable release, versions use the pre-release form
-`1.0.0-alpha.x.y.z`, where `x.y.z` counts alpha iterations toward `1.0.0`.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and versions follow [Semantic Versioning](https://semver.org/). Before
+`1.0.0`, versions used the pre-release form `1.0.0-alpha.x.y.z`, where
+`x.y.z` counted alpha iterations toward `1.0.0`.
+
+## [1.0.0] - 2026-11-03
+
+The first stable release. From this version on, a breaking change to the
+library API or to `sites.json` comes only in a new major version; names
+marked experimental in the API reference are outside that promise.
+
+### Changed
+
+- The package is published as npm's `latest`:
+  `npm install --global @isocialpractice/cmd-sync-servers` installs it.
+- The release workflow builds stable versions, publishes them as `latest`,
+  and publishes a pre-release under its own label, such as `alpha`.
+- Only the latest `1.x` release receives security fixes, and a fix ships as
+  a new patch version.
 
 ## [1.0.0-alpha.1.1.0] - 2026-11-03
 
@@ -426,13 +442,4 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
-[1.0.0-alpha.1.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.1.0.0...v1.0.0-alpha.1.1.0
-[1.0.0-alpha.1.0.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.1...v1.0.0-alpha.1.0.0
-[1.0.0-alpha.0.6.1]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.0...v1.0.0-alpha.0.6.1
-[1.0.0-alpha.0.6.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...v1.0.0-alpha.0.6.0
-[1.0.0-alpha.0.5.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.4.0...v1.0.0-alpha.0.5.0
-[1.0.0-alpha.0.4.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.3.0...v1.0.0-alpha.0.4.0
-[1.0.0-alpha.0.3.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.2.0...v1.0.0-alpha.0.3.0
-[1.0.0-alpha.0.2.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.1.0...v1.0.0-alpha.0.2.0
-[1.0.0-alpha.0.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.0.0...v1.0.0-alpha.0.1.0
-[1.0.0-alpha.0.0.0]: https://github.com/isocialPractice/cmd-sync-servers/releases/tag/v1.0.0-alpha.0.0.0
+[1.0.0]: https://github.com/isocialPractice/cmd-sync-servers/releases/tag/v1.0.0

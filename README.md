@@ -15,9 +15,10 @@ and keep the
 [Cheatsheets](https://isocialpractice.github.io/cmd-sync-servers/cheatsheets.html)
 at hand.
 
-> **Status: early alpha.** Sites, servers, saved passwords, cloaking and
-> synchronizing work from the command line, in a full-screen terminal UI,
-> in your own editor and in plain prompts. Try it on a copy of a site first.
+> Sites, servers, saved passwords, cloaking and synchronizing work from the
+> command line, in a full-screen terminal UI, in your own editor and in
+> plain prompts. Read the preview of a new site's first sync before you run
+> it.
 
 ## Highlights
 
@@ -41,13 +42,12 @@ at hand.
 
 Requires [Node.js](https://nodejs.org/) 22.14 or later.
 
-Once the alpha is published on npm:
-
 ```sh
-npm install --global @isocialpractice/cmd-sync-servers@alpha
+npm install --global @isocialpractice/cmd-sync-servers
+sync-servers --version
 ```
 
-Until then, from a clone (building needs Node.js 22.18 or later):
+Or from a clone (building needs Node.js 22.18 or later):
 
 ```sh
 git clone https://github.com/isocialPractice/cmd-sync-servers.git

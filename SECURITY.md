@@ -5,13 +5,13 @@ credentials, so security reports are welcome and taken seriously.
 
 ## Supported Versions
 
-Until `1.0.0`, only the latest alpha release receives security fixes. Update
-to it before reporting, and say so if the problem is still there.
+Only the latest release receives security fixes. Update to it before
+reporting, and say so if the problem is still there.
 
 | Version | Supported |
 | --- | --- |
-| Latest `1.0.0-alpha.x.y.z` | Yes |
-| Earlier alphas | No |
+| Latest `1.x` release | Yes |
+| Earlier releases, including the `1.0.0-alpha` pre-releases | No |
 
 ## Reporting a Vulnerability
 
@@ -47,7 +47,7 @@ generate throwaway keys for any proof of concept.
 - An acknowledgement within 7 days.
 - An assessment, with a severity and a plan, within 14 days.
 - Progress updates in the private advisory until the issue is resolved.
-- A fix released as a new alpha, then a published GitHub security advisory
+- A fix released as a new patch version, then a published GitHub security advisory
   that credits you, unless you ask not to be named.
 
 Please give the fix a chance to ship before disclosing details publicly.

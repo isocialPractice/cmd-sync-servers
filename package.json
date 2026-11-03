@@ -1,6 +1,6 @@
 {
   "name": "@isocialpractice/cmd-sync-servers",
-  "version": "1.0.0-alpha.1.1.0",
+  "version": "1.0.0",
   "description": "Cross-platform command-line site synchronization with a library API, modelled on Dreamweaver's Synchronize: sites, servers, cloaking and a preview of every change.",
   "keywords": [
     "sync",
@@ -49,8 +49,7 @@
     "node": ">=22.14.0"
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
+    "access": "public"
   },
   "scripts": {
     "build": "node scripts/clean.ts out && tsc -p tsconfig.json && node scripts/generate-schema.ts",

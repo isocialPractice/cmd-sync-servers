@@ -18,8 +18,8 @@ import type { Transport } from './types.ts';
  * What a transport for one server needs: the site and server, the host that
  * answers for secrets, host keys and certificates, and the environment.
  *
- * @experimental The transport layer may change before 1.0.0; most programs
- * use {@link SyncSession} instead.
+ * @experimental The transport layer may change in a minor version; most
+ * programs use {@link SyncSession} instead.
  */
 export interface TransportContext {
   /** The site the server belongs to, for secret lookups and messages. */

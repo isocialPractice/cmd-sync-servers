@@ -37,7 +37,7 @@
 <p>The <a href="api/index.html">API reference</a> lists every export with its types. This page shows how the parts fit.</p>
 
 <h2 id="install">Install and import</h2>
-<pre><code>npm install @isocialpractice/cmd-sync-servers@alpha</code></pre>
+<pre><code>npm install @isocialpractice/cmd-sync-servers</code></pre>
 <p>The package is ESM only and needs Node.js 22.14 or later. It has one entry point, plus an optional one for the operating system's credential store:</p>
 <table>
   <caption>What the package exports</caption>
@@ -49,7 +49,7 @@
   </tbody>
 </table>
 <div class="note">
-  <p><strong>Alpha.</strong> Names marked <em>experimental</em> in the reference, such as the transports, the connection pool and the classification helpers, may change before 1.0.0. <code>SiteRegistry</code>, <code>SyncSession</code> and <code>SyncPlan</code> are the parts to build on.</p>
+  <p><strong>Stability.</strong> The API follows semantic versioning: a breaking change to it, or to <code>sites.json</code>, comes only in a new major version. Names marked <em>experimental</em> in the reference, such as the transports, the connection pool and the classification helpers, are outside that promise and may change in a minor version. <code>SiteRegistry</code>, <code>SyncSession</code> and <code>SyncPlan</code> are the parts to build on.</p>
 </div>
 
 <h2 id="first-run">A first synchronization</h2>

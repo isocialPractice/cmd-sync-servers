@@ -14,7 +14,8 @@ function files(version: string, overrides: Partial<ReleaseFiles> = {}): ReleaseF
 }
 
 test('a tag that matches every version file and the changelog can be released', () => {
-  assert.deepEqual(releaseProblems('v1.0.0-alpha.0.6.0', files('1.0.0-alpha.0.6.0')), []);
+  assert.deepEqual(releaseProblems('v1.0.0', files('1.0.0')), []);
+  assert.deepEqual(releaseProblems('v1.1.0-alpha.0', files('1.1.0-alpha.0')), []);
 });
 
 test('the repository as committed is releasable at its own version', () => {
@@ -36,6 +37,5 @@ test('every disagreement is reported', () => {
   assert.match(releaseProblems(`v${version}`, files(version, { versionTs: "export const VERSION = '1.0.0-alpha.0.5.0';" })).join('\n'), /src\/version\.ts/);
   assert.match(releaseProblems(`v${version}`, files(version, { changelog: '## [1.0.0-alpha.0.5.0] - 2026-10-28\n' })).join('\n'), /CHANGELOG\.md/);
   assert.match(releaseProblems(`v${version}`, files(version, { changelog: `## [${version}]\n` })).join('\n'), /YYYY-MM-DD/);
-  assert.match(releaseProblems('v1.0.0', files('1.0.0')).join('\n'), /not an alpha/);
   assert.match(releaseProblems('v', files('one')).join('\n'), /no valid version/);
 });

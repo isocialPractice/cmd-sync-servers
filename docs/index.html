@@ -37,7 +37,7 @@
 <p>New here? The <a href="quickstart.html">Quickstart</a> gets you to a first sync in five steps, and the <a href="cheatsheets.html">Cheatsheets</a> keep every everyday command and key on one page.</p>
 
 <div class="note">
-  <p><strong>Early alpha.</strong> Everything on these pages works today, and details may still change before 1.0.0. Try it on a copy of a site first.</p>
+  <p><strong>Before a new site's first sync,</strong> read its preview: it lists every file that would move, and nothing moves until you confirm.</p>
 </div>
 
 <h2 id="what-it-does">What it does</h2>
@@ -52,10 +52,9 @@
 
 <h2 id="install">Install</h2>
 <p>It needs <a href="https://nodejs.org/">Node.js</a> 22.14 or later, on Windows, macOS or Linux.</p>
-<p>Once the alpha is published on npm:</p>
-<pre><code>npm install --global @isocialpractice/cmd-sync-servers@alpha
+<pre><code>npm install --global @isocialpractice/cmd-sync-servers
 sync-servers --version</code></pre>
-<p>Until then, run it from a clone; <code>npm link</code> puts the <code>sync-servers</code> command on your <code>PATH</code>:</p>
+<p>Or run it from a clone; <code>npm link</code> puts the <code>sync-servers</code> command on your <code>PATH</code>:</p>
 <pre><code>git clone https://github.com/isocialPractice/cmd-sync-servers.git
 cd cmd-sync-servers
 npm ci --ignore-scripts

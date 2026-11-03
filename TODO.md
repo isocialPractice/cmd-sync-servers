@@ -466,7 +466,7 @@ Remove `- paused` from this heading to resume.
   - **Goal**: Resolve to [Later roadmap, item 7](.claude/prompts/init-sync-servers.prompt.md#17-later-roadmap)
 - [ ] Bandwidth limit per server
   - **Goal**: Resolve to [Later roadmap, item 8](.claude/prompts/init-sync-servers.prompt.md#17-later-roadmap)
-- [ ] `1.0.0`: API and schema frozen, npm `latest`, the alpha suffix dropped
+- [x] `1.0.0`: API and schema frozen, npm `latest`, the alpha suffix dropped
   - **Goal**: Resolve to [Later roadmap, item 10](.claude/prompts/init-sync-servers.prompt.md#17-later-roadmap)
 
 ## User Use Only

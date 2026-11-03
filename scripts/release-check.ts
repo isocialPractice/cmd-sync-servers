@@ -1,5 +1,5 @@
 // Fails a release whose tag, version files and changelog disagree.
-// Usage: node scripts/release-check.ts v1.0.0-alpha.0.6.0
+// Usage: node scripts/release-check.ts v1.0.0
 import { readFileSync } from 'node:fs';
 import { releaseProblems } from './lib/release-rules.ts';
 

@@ -159,21 +159,28 @@ undocumented one.
 
 ## Versions
 
-Until `1.0.0`, versions use the pre-release form `1.0.0-alpha.x.y.z`:
+Versions follow [Semantic Versioning](https://semver.org/):
 
 | Change | Example |
 | --- | --- |
-| A completed update | `1.0.0-alpha.0.1.0` to `1.0.0-alpha.0.2.0` |
-| A fix between updates | `1.0.0-alpha.0.2.0` to `1.0.0-alpha.0.2.1` |
-| A breaking change to the library API or the sites file, once an alpha is published | `1.0.0-alpha.0.6.2` to `1.0.0-alpha.1.0.0` |
+| A fix | `1.0.0` to `1.0.1` |
+| A feature that keeps the library API and the sites file compatible | `1.0.1` to `1.1.0` |
+| A breaking change to the library API or the sites file | `1.1.0` to `2.0.0` |
+
+Names marked experimental in the API reference are outside this promise and
+may change in a minor version. A pre-release for testing carries a suffix,
+such as `1.1.0-alpha.0`, and is published under that label rather than as
+`latest`. Before `1.0.0`, versions used the pre-release form
+`1.0.0-alpha.x.y.z`.
 
 A version bump changes `package.json`, `package-lock.json`, `src/version.ts`
 and `CHANGELOG.md` in one commit. A unit test fails when they disagree.
 
 ## Releases
 
-A maintainer creates the tag `v<version>` and publishes a GitHub
-pre-release for it; `.github/workflows/release.yml` does the rest:
+A maintainer creates the tag `v<version>` and publishes a GitHub release for
+it, marked as a pre-release when the version has a suffix;
+`.github/workflows/release.yml` does the rest:
 
 1. `build` checks out `refs/tags/v<version>` and runs
    `node scripts/release-check.ts v<version>`, which fails unless the tag,
@@ -188,8 +195,9 @@ pre-release for it; `.github/workflows/release.yml` does the rest:
    to the release, and fails rather than replace files already there.
 4. When the repository variable `NPM_PUBLISH` is `true`, `publish-npm` waits
    for approval in the `npm` environment, checks the tarball's attestation
-   against this workflow, and publishes it with npm trusted publishing and the
-   `alpha` tag. No npm token is stored anywhere.
+   against this workflow, and publishes it with npm trusted publishing: a
+   stable version as `latest`, a pre-release under its label, such as
+   `alpha`. No npm token is stored anywhere.
 
 A failed run can be repeated by hand from the Actions tab with the tag as
 input. Builds never run from npm lifecycle scripts: installs use
