@@ -167,6 +167,23 @@ test('site edit renames and moves a site, and needs something to change', async 
   assert.match(nothing.stderr, /Nothing to change/);
 });
 
+test('site edit sets how a site follows symbolic links, and site show names it', async () => {
+  await addSite();
+  assert.match((await cli({ home }, 'site', 'show', 'My Site')).stdout, /^Links +skipped$/m);
+  for (const [symlinks, shown] of [
+    ['follow', 'followed everywhere'],
+    ['follow-inside-root', 'followed inside the site'],
+  ] as const) {
+    const edited = await cli({ home }, 'site', 'edit', 'My Site', '--symlinks', symlinks);
+    assert.equal(edited.code, 0, edited.stderr);
+    assert.equal(json<{ site: { sync: { symlinks: string } } }>((await cli({ home }, 'site', 'show', 'My Site', '--json')).stdout).site.sync.symlinks, symlinks);
+    assert.match((await cli({ home }, 'site', 'show', 'My Site')).stdout, new RegExp(`^Links +${shown}$`, 'm'));
+  }
+  const refused = await cli({ home }, 'site', 'edit', 'My Site', '--symlinks', 'always');
+  assert.equal(refused.code, 2);
+  assert.match(refused.stderr, /--symlinks must be one of: skip, follow-inside-root, follow\./);
+});
+
 test('cloak sorts paths from patterns, and uncloak removes them', async () => {
   await addSite();
   makeFolder(root, 'img', 'raw');

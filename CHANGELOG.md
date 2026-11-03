@@ -18,6 +18,12 @@ Until the first stable release, versions use the pre-release form
 - `resolveLocalTarget` in the library API, with the `LinkPolicy`,
   `LocalLookup` and `LocalTarget` types: the real file behind a site path
   under a site's link policy.
+- `site edit --symlinks skip|follow-inside-root|follow`, and a Links line
+  in `site show`. The Symbolic links choice in Site Setup's Synchronization
+  category offers Follow all.
+- A Symbolic links section on the configuration page, Link problems on the
+  troubleshooting page, and an example of putting and getting linked files
+  and folders.
 
 ### Changed
 

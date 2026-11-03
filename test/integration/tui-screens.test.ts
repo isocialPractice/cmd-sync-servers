@@ -532,6 +532,22 @@ test('removing a site leaves its folder and asks first; a site setup for a missi
   });
 });
 
+test('Site Setup sets how the site follows symbolic links', async () => {
+  await withRig(async (rig) => {
+    const app = testApp();
+    await open(app, new SitesView(services(rig)));
+    await press(app, 'e', 'down', 'down', 'down', 'down');
+    assert.match(screen(app), /^> {3}Synchronization/m);
+    assert.match(screen(app), /Symbolic links +< Skip them >/);
+    await press(app, 'tab', 'down', 'down', 'down', 'right');
+    assert.match(screen(app), /Symbolic links +< Follow inside site >/);
+    assert.match(screen(app), /A followed link is put and got as the file or folder it points to\./);
+    await press(app, 'right', 'ctrl+s');
+    assert.match(screen(app), /Symbolic links +< Follow all >/);
+    assert.equal(rig.registry.get(rig.site.id)?.sync.symlinks, 'follow');
+  });
+});
+
 test('global cloaking is edited from the Sites screen and from Site Setup, where one site can stop using it', async () => {
   await withRig(async (rig) => {
     const app = testApp();

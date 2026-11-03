@@ -154,11 +154,13 @@ sync-servers site add --name &quot;My Site&quot; --local-root ~/sites/my-site --
       <tr><td><code>--web-url &lt;url&gt;</code></td><td>The local web address, such as http://localhost:8080/</td></tr>
       <tr><td><code>--case-sensitive</code></td><td>Treat file names as case-sensitive (--no-case-sensitive to turn off)</td></tr>
       <tr><td><code>--cache</code></td><td>Cache local scans between runs (--no-cache to turn off)</td></tr>
+      <tr><td><code>--symlinks &lt;policy&gt;</code></td><td>Symbolic links in the local folder: skip them (skip), follow those inside the site (follow-inside-root), or follow all (follow)</td></tr>
       <tr><td><code>--editor</code></td><td>Edit the whole site as JSON in your editor</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers site edit &quot;My Site&quot; --name &quot;Sample App&quot;
 sync-servers site edit --local-root ~/sites/my-site
+sync-servers site edit --symlinks follow-inside-root
 sync-servers site edit --editor</code></pre>
 </section>
 <section class="command" id="command-site-show">

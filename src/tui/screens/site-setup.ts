@@ -6,6 +6,7 @@ import type { Site } from '../../config/schema.ts';
 import { isSyncError } from '../../errors.ts';
 import { splitPatterns } from '../../sync/cloak.ts';
 import { DEFAULT_GUARD_PATTERNS } from '../../sync/guard.ts';
+import type { LinkPolicy } from '../../sync/paths.ts';
 import type { App, Hint, View, ViewBody } from '../app.ts';
 import { isKey, type Key } from '../keys.ts';
 import { openSession, type TuiServices } from '../services.ts';
@@ -185,7 +186,8 @@ export class SiteSetupView implements View {
           field.choice('symlinks', 'Symbolic links', [
             { label: 'Skip them', value: 'skip' },
             { label: 'Follow inside site', value: 'follow-inside-root' },
-          ], sync?.symlinks ?? 'skip'),
+            { label: 'Follow all', value: 'follow' },
+          ], sync?.symlinks ?? 'skip', 'A followed link is put and got as the file or folder it points to.'),
           field.text('concurrency', 'Transfers at once', String(sync?.concurrency ?? 4), { help: 'From 1 to 16.' }),
           field.text('maxCount', 'Delete limit (files)', String(sync?.massDelete.maxCount ?? 50), { help: 'Deleting more files than this asks you to confirm by typing the count.' }),
           field.text('maxPercent', 'Delete limit (percent)', String(sync?.massDelete.maxPercent ?? 25), { help: 'Deleting more than this share of the files asks you to confirm too.' }),
@@ -470,7 +472,7 @@ export class SiteSetupView implements View {
         maintainInfo: syncForm.toggle('maintainInfo'),
         compare: syncForm.choice('compare') as 'metadata' | 'checksum',
         mtimeToleranceSeconds: numbers.tolerance as number,
-        symlinks: syncForm.choice('symlinks') as 'skip' | 'follow-inside-root',
+        symlinks: syncForm.choice('symlinks') as LinkPolicy,
         concurrency: numbers.concurrency as number,
         guard: { enabled: securityForm.toggle('guard'), patterns: splitPatterns(securityForm.text('guardPatterns')) },
         massDelete: { maxCount: numbers.maxCount as number, maxPercent: numbers.maxPercent as number },

@@ -93,7 +93,7 @@
     <tr><td>Resolve</td><td>Changed on both sides, or differs with no record. Choose an action first.</td></tr>
     <tr><td>Guarded</td><td>Matches a sensitive pattern such as <code>.env</code>; see <a href="configuration.html#guard">the guard</a>.</td></tr>
     <tr><td>Never-synchronized delete</td><td>Offered by the delete option for a file with no record.</td></tr>
-    <tr><td>Problem</td><td>A name that cannot be used here: not valid on this system, a symbolic link, or two names that differ only by case on a file system that cannot tell them apart. Problem rows never run.</td></tr>
+    <tr><td>Problem</td><td>A name that cannot be used here: not valid on this system, a symbolic link that is not followed, or two names that differ only by case on a file system that cannot tell them apart. Problem rows never run.</td></tr>
   </tbody>
 </table>
 <p>You can change any row: check or uncheck it, or choose another action that the file can take. Put needs a local copy, Get a server copy, and Synchronized both.</p>
@@ -103,6 +103,7 @@
   <li><strong>Checked once more.</strong> Just before a file moves, both sides are looked at again. A file that changed since the preview is skipped and reported as stale.</li>
   <li><strong>Written whole or not at all.</strong> A file is written to a partial copy, its size checked, and only then renamed into place, so an interrupted transfer never leaves half a file.</li>
   <li><strong>Local files kept.</strong> A local file that a run deletes or overwrites is moved to the recovery folder of the state folder first, and kept 14 days.</li>
+  <li><strong>Through links.</strong> When the site follows <a href="configuration.html#links">symbolic links</a>, a Get through a link writes the file the link points to and keeps the link, and rows that reach one file through two names run one at a time.</li>
   <li><strong>Folders in order.</strong> Folders are created before their files and removed after them.</li>
   <li><strong>Retries.</strong> A dropped connection or a timeout is retried on a fresh connection after 1, 2 and 4 seconds.</li>
   <li><strong>Recorded as it goes.</strong> Records are saved during the run, so a cancelled or interrupted sync keeps what it finished. Cancelling starts no new transfer and removes partial files.</li>

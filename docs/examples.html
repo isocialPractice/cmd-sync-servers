@@ -133,6 +133,12 @@ sync-servers cloak --ignore-global                   # or ignores the global pat
 sync-servers cloak --list</code></pre>
 <p>See <a href="configuration.html#cloaking">Cloaking</a> and <a href="configuration.html#global-cloaking">Global patterns</a>.</p>
 
+<h2 id="links">Put and Get through linked files and folders</h2>
+<p>A site whose folder links to files kept elsewhere, such as fonts shared by several sites, can put and get them as if they were its own. The server gets ordinary files; a Get writes the file a link points to and keeps the link.</p>
+<pre><code>sync-servers site edit --symlinks follow        # every link; follow-inside-root keeps to the site's folder
+sync-servers sync --put --dry-run               # the preview marks rows reached through a link out of the site</code></pre>
+<p>See <a href="configuration.html#links">Symbolic links</a>.</p>
+
 <h2 id="mark-synced">Record files as in sync</h2>
 <p>When both copies are already the same, for example after a site was copied to the server another way, record them as in sync so the next sync starts from there.</p>
 <pre><code>sync-servers mark-synced .</code></pre>

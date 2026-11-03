@@ -109,7 +109,7 @@
     <tr><td><code>sync.maintainInfo</code></td><td><code>true</code></td><td>Keep sync records, so a change on both sides is detected.</td></tr>
     <tr><td><code>sync.compare</code></td><td><code>metadata</code></td><td><code>metadata</code> compares size and time; <code>checksum</code> also compares SHA-256 hashes where both are known.</td></tr>
     <tr><td><code>sync.mtimeToleranceSeconds</code></td><td><code>2</code></td><td>Times this close count as equal, for servers that round them.</td></tr>
-    <tr><td><code>sync.symlinks</code></td><td><code>skip</code></td><td><code>skip</code> reports symbolic links; <code>follow-inside-root</code> reads through those that stay inside the site. Downloads are never written through a link.</td></tr>
+    <tr><td><code>sync.symlinks</code></td><td><code>skip</code></td><td>Which symbolic links in the local folder are followed: none (<code>skip</code>), those inside the site (<code>follow-inside-root</code>) or all (<code>follow</code>); see <a href="#links">Symbolic links</a>.</td></tr>
     <tr><td><code>sync.concurrency</code></td><td><code>4</code></td><td>Transfers at once, from 1 to 16.</td></tr>
     <tr><td><code>sync.guard.enabled</code></td><td><code>true</code></td><td>Hold back sensitive files; see <a href="#guard">The sensitive-file guard</a>.</td></tr>
     <tr><td><code>sync.guard.patterns</code></td><td><code>[]</code></td><td>More patterns to hold back, added to the built-in list.</td></tr>
@@ -187,6 +187,35 @@ sync-servers cloak --site "My Site" --use-global         # and uses them again</
 <pre><code>.env  .env.*  *.pem  *.key  *.p12  *.pfx  *.kdbx  id_rsa*  id_ecdsa*  id_ed25519*
 .git/  .hg/  .svn/  .ssh/  .aws/  .npmrc  .pypirc  .netrc  *.sqlite-journal</code></pre>
 <p>Add patterns of your own in <code>sync.guard.patterns</code> or the Security category of Site Setup. Unattended runs with <code>--yes</code> never transfer a guarded file.</p>
+
+<h2 id="links">Symbolic links</h2>
+<p>A site's local folder can hold symbolic links and, on Windows, junctions. <code>sync.symlinks</code> says which of them the site follows. Set it with <code>sync-servers site edit --symlinks</code>, in the Synchronization category of Site Setup, or with <code>sync-servers config edit</code>.</p>
+<table>
+  <caption>Values of sync.symlinks</caption>
+  <thead><tr><th scope="col">Value</th><th scope="col">Follows</th></tr></thead>
+  <tbody>
+    <tr><td><code>skip</code> (default)</td><td>No link. Each one is listed as a problem, and nothing is read or written through it.</td></tr>
+    <tr><td><code>follow-inside-root</code></td><td>Links that lead to a place inside the site's folder.</td></tr>
+    <tr><td><code>follow</code></td><td>Every link, including links to files and folders outside the site's folder.</td></tr>
+  </tbody>
+</table>
+<p>A followed link is synchronized as what it points to, so the server gets ordinary files and folders, never a link:</p>
+<ul>
+  <li>A file link is a file at the link's path. A Put sends the file it points to; a Get writes that file and keeps the link.</li>
+  <li>A folder link is a folder whose files are listed under the link's path. A file inside it is a file of the folder the link points to, so a Get or a delete changes it there.</li>
+  <li>A local delete of a path that is itself a link removes the link, never what it points to, and the recovery folder keeps a copy of the content.</li>
+  <li>A folder that is a link is never removed when a delete leaves it empty.</li>
+  <li>Two names for one file, such as a link and the file it points to, are two paths of the site. Both are put, and a Get through one changes the other, which the next sync puts too. Rows on one file run one at a time.</li>
+  <li>Cloaking and the guard see through links: a link to a cloaked file or folder is cloaked, and a link to a file such as <code>.env</code> is held back like the file.</li>
+</ul>
+<p>Never followed: links on the server, links to something that does not exist, links back into a folder above them, and, with <code>follow-inside-root</code>, links that lead out of the site. Each is a problem row that says why; see <a href="troubleshooting.html#links">Link problems</a>.</p>
+<p>With <code>follow</code>, a Get or a delete through a link that leads out of the site changes a file outside the site's folder, and the preview says so on each such row. A link to a large folder makes every scan read all of it, so cloak what the site does not need. A local root that is itself a link is followed with every value.</p>
+<p>On Windows, junctions and symbolic links both count. Creating a junction needs no privilege; creating a file symbolic link needs Developer Mode or an administrator. Shortcuts (<code>.lnk</code> files) are ordinary files, not links. In <code>cmd.exe</code>, from the site's folder:</p>
+<pre><code>mklink /J fonts C:\Users\&lt;user&gt;\Shared\fonts
+mklink css\theme.css C:\Users\&lt;user&gt;\Shared\theme\theme.css</code></pre>
+<p>On macOS and Linux:</p>
+<pre><code>ln -s ~/shared/fonts fonts
+ln -s ~/shared/theme/theme.css css/theme.css</code></pre>
 
 <h2 id="secrets">Secrets</h2>
 <p>Passwords and key passphrases are never written to a file. When a connection needs one, it is looked for in this order:</p>

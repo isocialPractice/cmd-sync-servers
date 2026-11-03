@@ -325,6 +325,16 @@ the step of the plan that specifies it.
 - [x] Changelog, checks and commit for L2
   - **Goal**: Resolve to [Phase L2, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l2-put-get-and-delete-through-links)
   - From: Symbolic Links
+- [x] Site Setup's Symbolic links choice, `site edit --symlinks` and the
+      Links row of `site show`, with their tests
+  - **Goal**: Resolve to [Phase L3, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
+  - From: Symbolic Links
+- [x] `npm run docs:cli` and the documentation of symbolic links
+  - **Goal**: Resolve to [Phase L3, step 2](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
+  - From: Symbolic Links
+- [x] Changelog, checks and commit for L3
+  - **Goal**: Resolve to [Phase L3, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
+  - From: Symbolic Links
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -415,15 +425,8 @@ Next version: minor. Phases L1 to L3 together make `1.0.0-alpha.1.1.0`: L1
 sets the version, and L2 and L3 add to it. Phase L4 is tracked in the
 extension's `TODO.md`. Phase L5 moves no version.
 
-The items of Phases L1 and L2 are in Current.
+The items of Phases L1, L2 and L3 are in Current.
 
-- [ ] Site Setup's Symbolic links choice, `site edit --symlinks` and the
-      Links row of `site show`, with their tests
-  - **Goal**: Resolve to [Phase L3, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
-- [ ] `npm run docs:cli` and the documentation of symbolic links
-  - **Goal**: Resolve to [Phase L3, step 2](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
-- [ ] Changelog, checks and commit for L3
-  - **Goal**: Resolve to [Phase L3, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
 - [ ] Run the engine's and the extension's checks once more from clean
       builds
   - **Goal**: Resolve to [Phase L5, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)

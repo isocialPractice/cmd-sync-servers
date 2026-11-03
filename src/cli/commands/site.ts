@@ -4,7 +4,8 @@ import path from 'node:path';
 import type { NewServer } from '../../config/registry.ts';
 import { formatIssues, siteSchema, type Site } from '../../config/schema.ts';
 import { cloakingSummary } from '../../sync/cloak.ts';
-import { flag, booleanOption, stringOption, type CommandSpec, type OptionValues } from '../command.ts';
+import type { LinkPolicy } from '../../sync/paths.ts';
+import { flag, booleanOption, choiceOption, stringOption, type CommandSpec, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
 import { editJsonUntilValid } from '../editor.ts';
 import { CancelledError, UsageError } from '../errors.ts';
@@ -130,7 +131,16 @@ export const siteAddCommand: CommandSpec = {
   },
 };
 
-const SITE_EDIT_OPTIONS = ['name', 'local-root', 'web-url', 'case-sensitive', 'cache'] as const;
+const SITE_EDIT_OPTIONS = ['name', 'local-root', 'web-url', 'case-sensitive', 'cache', 'symlinks'] as const;
+
+const LINK_POLICIES: readonly LinkPolicy[] = ['skip', 'follow-inside-root', 'follow'];
+
+/** How `site show` names a link policy. */
+const LINK_POLICY_NAMES: Readonly<Record<LinkPolicy, string>> = {
+  skip: 'skipped',
+  'follow-inside-root': 'followed inside the site',
+  follow: 'followed everywhere',
+};
 
 export const siteEditCommand: CommandSpec = {
   path: ['site', 'edit'],
@@ -143,11 +153,17 @@ export const siteEditCommand: CommandSpec = {
     'web-url': { type: 'string', value: '<url>', description: 'The local web address, such as http://localhost:8080/' },
     'case-sensitive': { type: 'boolean', description: 'Treat file names as case-sensitive (--no-case-sensitive to turn off)' },
     cache: { type: 'boolean', description: 'Cache local scans between runs (--no-cache to turn off)' },
+    symlinks: {
+      type: 'string',
+      value: '<policy>',
+      description: 'Symbolic links in the local folder: skip them (skip), follow those inside the site (follow-inside-root), or follow all (follow)',
+    },
     editor: { type: 'boolean', description: 'Edit the whole site as JSON in your editor' },
   },
   examples: [
     'sync-servers site edit "My Site" --name "Sample App"',
     'sync-servers site edit --local-root {root}',
+    'sync-servers site edit --symlinks follow-inside-root',
     'sync-servers site edit --editor',
   ],
   async run(ctx, { values, args }) {
@@ -170,6 +186,7 @@ export const siteEditCommand: CommandSpec = {
     const webUrl = webUrlOption === undefined ? undefined : normalizeWebUrl(webUrlOption).replace(/^https:\/\/(localhost|127\.0\.0\.1)\b/, 'http://$1');
     const caseSensitive = booleanOption(values, 'case-sensitive');
     const cache = booleanOption(values, 'cache');
+    const symlinks = choiceOption(values, 'symlinks', LINK_POLICIES);
     const updated = await (await ctx.registry()).update(site.id, (draft) => {
       if (name !== undefined) {
         draft.name = name;
@@ -185,6 +202,9 @@ export const siteEditCommand: CommandSpec = {
       }
       if (cache !== undefined) {
         draft.local.cache = cache;
+      }
+      if (symlinks !== undefined) {
+        draft.sync.symlinks = symlinks;
       }
     });
     if (ctx.flags.json) {
@@ -257,6 +277,7 @@ export const siteShowCommand: CommandSpec = {
         ['Testing', testing === undefined ? 'none' : describeServer(testing)],
         ['Cloaking', cloakingSummary(site.cloaking, globalPatterns)],
         ['Guard', site.sync.guard.enabled ? 'on' : 'off'],
+        ['Links', LINK_POLICY_NAMES[site.sync.symlinks]],
       ]),
     );
     if (site.servers.length > 0) {

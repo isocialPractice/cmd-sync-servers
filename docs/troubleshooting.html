@@ -100,8 +100,22 @@
   <dd>The file is <code>Logo.png</code> here and <code>logo.png</code> on the server, as after renaming it by case. A server that ignores case would take the upload and the delete for the same file, so neither runs. Rename it on the server to match, then synchronize again.</dd>
   <dt>"Name is not valid on this system"</dt>
   <dd>The name holds a backslash, or a name Windows does not allow: one ending in a dot, containing <code>:</code>, or shaped like a short 8.3 name such as <code>GIT~1</code>. Rename it on the server.</dd>
-  <dt>"Inside a linked folder"</dt>
-  <dd>A folder on one side is a symbolic link, so nothing inside it is transferred: a link can lead out of the site. Replace the link with a real folder to synchronize its files.</dd>
+</dl>
+
+<h2 id="links">Link problems</h2>
+<dl>
+  <dt>"Symbolic link skipped: this site does not follow links"</dt>
+  <dd>The site's <code>sync.symlinks</code> is <code>skip</code>, the default. To put and get links as the files and folders they point to, run <code>sync-servers site edit --symlinks follow-inside-root</code>, or <code>--symlinks follow</code> for links that lead out of the site too. See <a href="configuration.html#links">Symbolic links</a>.</dd>
+  <dt>"Leads out of the site, and this site follows only links inside it"</dt>
+  <dd>The link points outside the site's folder, and the site is set to <code>follow-inside-root</code>. Set it to <code>follow</code> to synchronize the link, or move what it points to into the site.</dd>
+  <dt>"Symbolic link to something that does not exist"</dt>
+  <dd>What the link points to was moved or deleted. Point the link at it again, or remove the link.</dd>
+  <dt>"Leads back into a folder above it"</dt>
+  <dd>A folder link points at the site's folder, or at a folder that holds the link, so following it would never end. Remove the link, or point it somewhere else.</dd>
+  <dt>"Inside a linked folder that is not followed"</dt>
+  <dd>A folder on one side is a symbolic link that is not followed, so nothing inside it is transferred. Links on the server are never followed. For a link in the local folder, set <a href="configuration.html#links"><code>sync.symlinks</code></a> to follow it, or replace the link with a real folder.</dd>
+  <dt>"Reached through a link that leads out of the site"</dt>
+  <dd>The site is set to <code>follow</code>, and the file is reached through a link out of the site's folder. A Get or a delete of that row changes the file where it is, outside the site. Uncheck the row to leave it alone.</dd>
 </dl>
 
 <h2 id="other">Other problems</h2>
@@ -133,7 +147,7 @@
     <tr><td><code>E_REMOTE</code></td><td>The server refused an operation, such as a write without permission.</td><td>Check the account's permissions on the server.</td></tr>
     <tr><td><code>E_REMOTE_ROOT</code></td><td>The root directory does not exist on the server, or is not a folder.</td><td>Set it as the account sees it; the message names the folder the account opens in.</td></tr>
     <tr><td><code>E_LISTING_LIMIT</code></td><td>A folder holds more than 100,000 entries.</td><td>Cloak it, or narrow the sync to some paths.</td></tr>
-    <tr><td><code>E_PATH_UNSAFE</code></td><td>A path would leave the site or is not valid here.</td><td>Rename the file.</td></tr>
+    <tr><td><code>E_PATH_UNSAFE</code></td><td>A path would leave the site, is not valid here, or is reached through a link the site does not follow.</td><td>Rename the file, or see <a href="#links">Link problems</a>.</td></tr>
     <tr><td><code>E_MASS_DELETE</code></td><td>More deletes than the limit, not confirmed.</td><td>Review the preview; confirm, or pass <code>--allow-mass-delete</code>.</td></tr>
     <tr><td><code>E_EMPTY_ROOT</code></td><td>One side is empty and the plan would delete everything on the other.</td><td>Check that the drive is mounted and the root directory is right.</td></tr>
     <tr><td><code>E_ROOT_DELETE</code></td><td>Deletes at the top of a server were refused.</td><td>Point the server at the site's folder, or set <code>allowRootDeletes</code>.</td></tr>
