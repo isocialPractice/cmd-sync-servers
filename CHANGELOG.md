@@ -421,6 +421,7 @@ Until the first stable release, versions use the pre-release form
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
+[1.0.0-alpha.1.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.1.0.0...v1.0.0-alpha.1.1.0
 [1.0.0-alpha.1.0.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.1...v1.0.0-alpha.1.0.0
 [1.0.0-alpha.0.6.1]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.6.0...v1.0.0-alpha.0.6.1
 [1.0.0-alpha.0.6.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0-alpha.0.5.0...v1.0.0-alpha.0.6.0
