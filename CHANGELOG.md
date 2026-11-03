@@ -43,6 +43,11 @@ Until the first stable release, versions use the pre-release form
 - Rows that reach one local file through two names run one at a time; the
   later one is stale when the earlier one changed the file.
 - A saved plan is refused once a link in the site points somewhere else.
+- In the preview of the terminal interface, `Space` checks or unchecks
+  every row: it unchecks them all when most are checked, and otherwise
+  checks them all, so once the rows agree each press turns them all the
+  other way. `c` checks or unchecks the focused row, as `Space` did. The
+  menu holds up to nine keys.
 
 ### Security
 

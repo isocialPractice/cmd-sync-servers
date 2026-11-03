@@ -16,7 +16,7 @@ degrades to plain ASCII without losing meaning.
 - **Grouping by space, not boxes.** Two solid rules frame the content, one
   under the title and one above the menu, and blank columns separate table
   columns.
-- **Few choices at a time.** The menu shows at most eight keys for the
+- **Few choices at a time.** The menu shows at most nine keys for the
   screen in front of the user. `?` opens the full key list.
 - **Works at 80 x 24.** Every screen fits a standard terminal and gives any
   extra width to the column that needs it most, usually the path.
@@ -73,7 +73,7 @@ rests on the symbol alone.
   <content: lists, tables, forms>
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  ______________________________________________________________________________
-  <key> = <action>  |  <key> = <action>  |  ...  at most eight, wrapped
+  <key> = <action>  |  <key> = <action>  |  ...  at most nine, wrapped
  <message bar>
 ```
 
@@ -115,7 +115,7 @@ Keys mean the same thing on every screen.
 | --- | --- |
 | Arrow keys, `j`, `k` | Move |
 | `Tab`, `Shift+Tab` | Next or previous pane, or the next filter in a table |
-| `Space` | Toggle the focused checkbox or option |
+| `Space` | Toggle the focused checkbox or option; in the preview, check or uncheck every row |
 | `Enter` | Activate the focused item or the primary action |
 | `Esc` | Go back, or cancel the current prompt |
 | `/` | Filter the list as you type |
@@ -408,13 +408,17 @@ Resolve, Delete, Guarded or Errors.
   [ ] x Delete   old/legacy.html     On the server only and never synchroni...
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  ______________________________________________________________________________
-  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
-  a = All  |  q = Quit  |  Enter = Synchronize
+  Space = CHECK/UNCHECK ALL  |  c = Check/Uncheck  |  p = Put  |  g = Get
+  s = Skip  |  d = Diff  |  a = All  |  q = Quit  |  Enter = Synchronize
  img/hero.svg
 ```
 
-`d` opens the difference of the focused file as a scrolling text screen,
-and `q` quits without transferring anything, as `Ctrl+C` does.
+`c` checks or unchecks the focused row, and `Space` every row at once:
+when most rows are checked it unchecks them all, and otherwise it checks
+them all, so once the rows agree each press turns them all the other way.
+`a` checks every row, or unchecks them all when all are checked. `d` opens
+the difference of the focused file as a scrolling text screen, and `q`
+quits without transferring anything, as `Ctrl+C` does.
 `Enter` asks once more before anything moves:
 
 ```text

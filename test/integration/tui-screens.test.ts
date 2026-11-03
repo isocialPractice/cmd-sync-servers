@@ -92,10 +92,10 @@ test('sites, site home, synchronize, preview, progress and results, all from the
     assert.match(screen(app), /^ \/old$/m);
     await press(app, 'enter');
     assert.match(screen(app), /^ {2}\[ \] x Delete +old\.html +On the server only and never synchronized/m);
-    await press(app, 'space');
+    await press(app, 'c');
     assert.match(screen(app), /^ {2}\[x\] x Delete +old\.html/m);
     assert.match(screen(app), /1 will be deleted/);
-    await press(app, 'space', 'escape');
+    await press(app, 'c', 'escape');
     assert.match(screen(app), /index\.html/);
 
     await press(app, 'end', 'up', 'd');
@@ -162,6 +162,40 @@ test('a long preview draws dashed edges only where rows are hidden, and q quits 
     await app.finished;
     assert.equal(app.outcome, undefined);
     assert.equal(rig.read('remote', 'page-01.html'), undefined);
+  });
+});
+
+test('Space checks or unchecks every row by what most rows are, and c checks or unchecks the focused row', async () => {
+  await withRig(async (rig) => {
+    for (const name of ['a.html', 'b.html', 'c.html', 'd.html']) {
+      rig.write('local', name, name);
+    }
+    const app = testApp();
+    await PreviewView.plan(app, services(rig), rig.site, { direction: 'put', deleteOrphans: false });
+    const checked = (): number => (screen(app).match(/\[x\]/g) ?? []).length;
+    assert.equal(checked(), 4);
+    await press(app, 'space');
+    assert.equal(checked(), 0, 'more were checked, so every row is unchecked');
+    assert.match(screen(app), /^ Unchecked all 4 files\.$/m);
+    await press(app, 'c');
+    assert.equal(checked(), 1, 'c checks the focused row only');
+    await press(app, 'space');
+    assert.equal(checked(), 4, 'more were unchecked, so every row is checked');
+    assert.match(screen(app), /^ Checked all 4 files\.$/m);
+    await press(app, 'c', 'down', 'c');
+    assert.equal(checked(), 2);
+    await press(app, 'space');
+    assert.equal(checked(), 4, 'as many checked as unchecked: every row is checked');
+    await press(app, 'c', 'space');
+    assert.equal(checked(), 0, 'three of four checked: every row is unchecked');
+    await press(app, 'space');
+    assert.equal(checked(), 4, 'once the rows agree, each press turns them all the other way');
+    await press(app, '?');
+    assert.match(screen(app), /Space +Check or uncheck every row/);
+    assert.match(screen(app), /c +Check or uncheck the focused row/);
+    await press(app, 'escape', 'escape');
+    await app.finished;
+    assert.equal(rig.read('remote', 'a.html'), undefined);
   });
 });
 

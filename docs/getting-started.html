@@ -110,7 +110,7 @@ sync-servers cloak --global .git/ node_modules/ Thumbs.db</code></pre>
 <pre><code>cd ~/sites/my-site
 sync-servers sync --put</code></pre>
 <p><code>--put</code> sends newer local files to the server, <code>--get</code> fetches newer files from it, and <code>--both</code> does each. Add <code>--delete</code> to also remove files that are missing on the other side.</p>
-<p>In a terminal the preview opens full screen. Each row is a file with a difference: a checkbox, an action and a status. <kbd>Space</kbd> checks a row, <kbd>p</kbd>, <kbd>g</kbd> and <kbd>s</kbd> choose Put, Get or Skip, <kbd>d</kbd> shows the difference, and <kbd>Enter</kbd> synchronizes the checked rows after one more question. <kbd>Esc</kbd> leaves without changing anything.</p>
+<p>In a terminal the preview opens full screen. Each row is a file with a difference: a checkbox, an action and a status. <kbd>c</kbd> checks or unchecks a row and <kbd>Space</kbd> every row, <kbd>p</kbd>, <kbd>g</kbd> and <kbd>s</kbd> choose Put, Get or Skip, <kbd>d</kbd> shows the difference, and <kbd>Enter</kbd> synchronizes the checked rows after one more question. <kbd>Esc</kbd> leaves without changing anything.</p>
 <pre><code> Synchronize: My Site -&gt; Production (SFTP)            Put newer files to remote
  Files: 37 will be updated, 169 will be skipped, 12 need a decision
  ------------------------------------------------------------------------------

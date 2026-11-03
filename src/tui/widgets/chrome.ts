@@ -6,7 +6,7 @@ import { plain, span, symbols, type Frame, type Line, type Theme } from '../styl
 import { padEnd, textWidth, truncate } from '../text.ts';
 
 /** The most hints a footer menu shows. */
-const MAX_HINTS = 8;
+const MAX_HINTS = 9;
 
 /** The indent of each menu row, and the separator between two hints. */
 const MENU_INDENT = '  ';
@@ -17,7 +17,7 @@ const MIN_BODY = 3;
 
 /**
  * The footer menu, `Key = Label  |  Key = Label`, keys in bold: at most
- * eight hints, wrapped onto as many rows as `width` needs, a hint never
+ * nine hints, wrapped onto as many rows as `width` needs, a hint never
  * split and no row starting or ending with a separator.
  */
 export function hintLines(hints: readonly Hint[], width = Number.POSITIVE_INFINITY): Line[] {

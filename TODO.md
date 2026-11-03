@@ -507,7 +507,7 @@ or needs a person at a real terminal.
 - [ ] For Scorecard, outside the repository's files: enable branch and tag
       rulesets (section 11.7) and register for the OpenSSF Best Practices
       badge; fuzzing is not set up
-- [ ] Fill the git-ignored `.claude/leak-denylist.txt` with personal names,
+- [x] Fill the git-ignored `.claude/leak-denylist.txt` with personal names,
       hosts and paths for the docs leak scan, including the host names,
       account name, domains and IP address of the server first set up by
       hand, and copy it to `vscode-sync-servers/.claude/leak-denylist.txt`,

@@ -543,8 +543,8 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
 <p>Every screen has the same frame. Two solid lines frame the content. While rows are hidden above or below what is shown, a dashed line marks that edge; at the first or last row it disappears. Under the bottom line, the menu lists the screen's keys as <code>key = action</code>, with a pipe between them, wrapping onto more rows on a narrow terminal. The last row shows messages, the progress of a running task, or the full text of the focused row.</p>
 <pre><code> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  ______________________________________________________________________________
-  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
-  a = All  |  q = Quit  |  Enter = Synchronize
+  Space = CHECK/UNCHECK ALL  |  c = Check/Uncheck  |  p = Put  |  g = Get
+  s = Skip  |  d = Diff  |  a = All  |  q = Quit  |  Enter = Synchronize
  css/site.css</code></pre>
 <table>
   <caption>Keys on every screen</caption>
@@ -553,7 +553,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
     <tr><td><kbd>Up</kbd> <kbd>Down</kbd>, <kbd>j</kbd> <kbd>k</kbd></td><td>Move</td></tr>
     <tr><td><kbd>Page Up</kbd> <kbd>Page Down</kbd>, <kbd>Home</kbd> <kbd>End</kbd></td><td>Move by a page, or to the first or last row</td></tr>
     <tr><td><kbd>Tab</kbd>, <kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Change pane or tab, or the preview's filter</td></tr>
-    <tr><td><kbd>Space</kbd></td><td>Toggle a checkbox, or change a choice</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Toggle a checkbox, or change a choice; in the preview, check or uncheck every row</td></tr>
     <tr><td><kbd>Enter</kbd></td><td>Activate the focused item or the screen's primary action</td></tr>
     <tr><td><kbd>Esc</kbd></td><td>Go back, or cancel a question or a running task</td></tr>
     <tr><td><kbd>/</kbd></td><td>Filter a list as you type</td></tr>
@@ -576,7 +576,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
     <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing. In Cloaking: Use global patterns turns the global patterns on or off for the site, which lists them, and Edit global patterns... opens them</td></tr>
     <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the host key and the trusted certificate, with Forget buttons</td></tr>
     <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview</td></tr>
-    <tr><td>Preview</td><td><kbd>Space</kbd> check, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize, <kbd>q</kbd> quit without transferring anything, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
+    <tr><td>Preview</td><td><kbd>Space</kbd> check or uncheck every row (all unchecked when most are checked, else all checked), <kbd>c</kbd> check or uncheck the focused row, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, or uncheck all when all are checked, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize, <kbd>q</kbd> quit without transferring anything, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
     <tr><td>Progress</td><td><kbd>Esc</kbd> cancels cleanly between files</td></tr>
     <tr><td>Results</td><td>Failures first; <kbd>Esc</kbd> done</td></tr>
   </tbody>

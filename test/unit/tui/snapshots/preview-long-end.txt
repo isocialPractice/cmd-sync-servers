@@ -19,6 +19,6 @@
   [x] ^ Put      page-60.html
 
  ______________________________________________________________________________
-  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
-  a = All  |  q = Quit  |  Enter = Synchronize
+  Space = CHECK/UNCHECK ALL  |  c = Check/Uncheck  |  p = Put  |  g = Get
+  s = Skip  |  d = Diff  |  a = All  |  q = Quit  |  Enter = Synchronize
  page-60.html

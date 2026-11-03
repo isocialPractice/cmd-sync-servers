@@ -209,7 +209,8 @@ class SampleView implements View {
   }
   hints(): readonly Hint[] {
     return [
-      { key: 'Space', label: 'Check/Uncheck' },
+      { key: 'Space', label: 'CHECK/UNCHECK ALL' },
+      { key: 'c', label: 'Check/Uncheck' },
       { key: 'p', label: 'Put' },
       { key: 'g', label: 'Get' },
       { key: 's', label: 'Skip' },
@@ -217,7 +218,7 @@ class SampleView implements View {
       { key: 'a', label: 'All' },
       { key: 'q', label: 'Quit' },
       { key: 'Enter', label: 'Synchronize' },
-      { key: 'x', label: 'Never shown: a ninth hint' },
+      { key: 'x', label: 'Never shown: a tenth hint' },
     ];
   }
   status(): string {
@@ -275,7 +276,7 @@ test('the folder picker lists, scrolls, counts files, opens and goes up, and sho
   assert.equal(await broken, undefined);
 });
 
-test('the chrome lays out title, summary, rules, body, menu and message bar, with at most eight hints', () => {
+test('the chrome lays out title, summary, rules, body, menu and message bar, with at most nine hints', () => {
   const app = testApp(ASCII);
   app.push(new SampleView());
   matchSnapshot('chrome-ascii-80x24', screen(app));
@@ -316,7 +317,7 @@ test('messages, the busy spinner and dialogs draw over the screen; ? opens every
   await press(app, '?');
   const help = screen(app);
   assert.match(help, /Keys: Synchronize: My Site/);
-  assert.match(help, /Never shown: a ninth hint/);
+  assert.match(help, /Never shown: a tenth hint/);
   await press(app, 'escape');
   assert.equal(app.topDialog, undefined);
 
@@ -386,8 +387,8 @@ test('the frame draws solid rules, a dashed edge only while rows are hidden past
   assert.equal(rows[18], '  page-15.html', 'the body has 15 rows at 80 x 24');
   assert.match(rows[19] ?? '', dashes);
   assert.equal(rows[20], rule);
-  assert.equal(rows[21], '  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff');
-  assert.equal(rows[22], '  a = All  |  q = Quit  |  Enter = Synchronize');
+  assert.equal(rows[21], '  Space = CHECK/UNCHECK ALL  |  c = Check/Uncheck  |  p = Put  |  g = Get');
+  assert.equal(rows[22], '  s = Skip  |  d = Diff  |  a = All  |  q = Quit  |  Enter = Synchronize');
   assert.equal(rows[23], '', 'the message bar is the last row');
 
   const frame = app.render(80, 24);
@@ -418,9 +419,10 @@ test('the frame draws solid rules, a dashed edge only while rows are hidden past
 test('a narrow terminal wraps the menu without splitting a hint, and a short one gives up the edges before menu rows', () => {
   const app = testApp(ASCII);
   app.push(new ScrollingView());
-  const rows = screen(app, 40, 13).split('\n');
-  assert.deepEqual(rows.slice(8, 12), [
-    '  Space = Check/Uncheck  |  p = Put',
+  const rows = screen(app, 40, 14).split('\n');
+  assert.deepEqual(rows.slice(8, 13), [
+    '  Space = CHECK/UNCHECK ALL',
+    '  c = Check/Uncheck  |  p = Put',
     '  g = Get  |  s = Skip  |  d = Diff',
     '  a = All  |  q = Quit',
     '  Enter = Synchronize',
@@ -437,7 +439,7 @@ test('a narrow terminal wraps the menu without splitting a hint, and a short one
   const tiny = screen(app, 40, 9).split('\n');
   assert.equal(tiny[3], '> page-01.html');
   assert.equal(tiny[6], ` ${'_'.repeat(38)}`);
-  assert.deepEqual(tiny.slice(7, 8), ['  Space = Check/Uncheck  |  p = Put'], 'the menu keeps the rows that fit');
+  assert.deepEqual(tiny.slice(7, 8), ['  Space = CHECK/UNCHECK ALL'], 'the menu keeps the rows that fit');
 });
 
 test('a dialog stays between the rules, over the edges and the body', async () => {
@@ -447,7 +449,7 @@ test('a dialog stays between the rules, over the edges and the body', async () =
   const rows = screen(app, 80, 12).split('\n');
   assert.match(rows[3] ?? '', /^ +\+- Synchronize -+\+$/);
   assert.equal(rows[8], ` ${'_'.repeat(78)}`);
-  assert.equal(rows[9], '  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff');
+  assert.equal(rows[9], '  Space = CHECK/UNCHECK ALL  |  c = Check/Uncheck  |  p = Put  |  g = Get');
   await press(app, 'escape');
   assert.equal(await answer, false);
 });

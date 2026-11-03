@@ -25,7 +25,7 @@ export interface View {
   primary?(): string | undefined;
   /** A line under the title, such as the preview's summary. */
   summary?(): Line | undefined;
-  /** At most eight key hints for the footer menu. */
+  /** At most nine key hints for the footer menu. */
   hints(): readonly Hint[];
   /** Every key of the screen, for the `?` help. */
   keys?(): readonly Hint[];

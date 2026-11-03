@@ -5,8 +5,8 @@
   [ ] ? Resolve  css/site.css   Changed
 
  ______________________________________
-  Space = Check/Uncheck  |  p = Put
+  Space = CHECK/UNCHECK ALL
+  c = Check/Uncheck  |  p = Put
   g = Get  |  s = Skip  |  d = Diff
   a = All  |  q = Quit
-  Enter = Synchronize
  css/site.css: Changed locally and on th

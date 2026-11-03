@@ -92,7 +92,8 @@ export class PreviewView implements View {
 
   hints(): readonly Hint[] {
     return [
-      { key: 'Space', label: 'Check/Uncheck' },
+      { key: 'Space', label: 'CHECK/UNCHECK ALL' },
+      { key: 'c', label: 'Check/Uncheck' },
       { key: 'p', label: 'Put' },
       { key: 'g', label: 'Get' },
       { key: 's', label: 'Skip' },
@@ -105,7 +106,9 @@ export class PreviewView implements View {
 
   keys(): readonly Hint[] {
     return [
-      ...this.hints().filter((hint) => hint.key !== 'q'),
+      { key: 'Space', label: 'Check or uncheck every row: unchecks them all when most are checked, else checks them all' },
+      { key: 'c', label: 'Check or uncheck the focused row' },
+      ...this.hints().filter((hint) => !['Space', 'c', 'q'].includes(hint.key)),
       { key: 'm', label: 'Mark synchronized: record both copies as in sync' },
       { key: 'x', label: 'Delete' },
       { key: 'Tab', label: 'Show All, Put, Get, Resolve, Delete, Guarded or Errors' },
@@ -165,6 +168,30 @@ export class PreviewView implements View {
     this.#list.items = this.#plan.items.filter(test);
   }
 
+  /** The rows a checkbox acts on: not a problem, and with an action that runs. */
+  #checkable(): PlanItem[] {
+    return this.#plan.items.filter((row) => row.state !== 'problem' && row.action !== 'resolve' && row.action !== 'skip');
+  }
+
+  /**
+   * Checks or unchecks every row by what most rows are: unchecks them all
+   * when more are checked than not, and otherwise checks them all, so the
+   * next press turns them all the other way.
+   */
+  #checkByMost(app: App): void {
+    const rows = this.#checkable();
+    if (rows.length === 0) {
+      app.message('No row can be checked. A row that needs a decision takes p, g, s or m first.', 'warning');
+      return;
+    }
+    const checked = rows.filter((row) => row.checked === true).length;
+    const check = checked <= rows.length - checked;
+    for (const row of rows) {
+      this.#plan.setChecked(row.id, check);
+    }
+    app.message(`${check ? 'Checked' : 'Unchecked'} all ${String(rows.length)} ${rows.length === 1 ? 'file' : 'files'}.`);
+  }
+
   #setAction(app: App, item: PlanItem, action: Action): void {
     if (!this.#plan.allowedActions(item.id).includes(action)) {
       app.message(`${action === 'put' ? 'Put' : action === 'get' ? 'Get' : 'That'} is not possible for ${item.path}: ${item.state === 'problem' ? item.status : 'that copy does not exist.'}`, 'warning');
@@ -220,17 +247,21 @@ export class PreviewView implements View {
       return;
     }
     if (press.text === 'a') {
-      const checkable = this.#plan.items.filter((row) => row.state !== 'problem' && row.action !== 'resolve' && row.action !== 'skip');
+      const checkable = this.#checkable();
       const all = checkable.every((row) => row.checked === true);
       for (const row of checkable) {
         this.#plan.setChecked(row.id, !all);
       }
       return;
     }
+    if (isKey(press, 'space')) {
+      this.#checkByMost(app);
+      return;
+    }
     if (isKey(press, 'enter')) {
       const count = runnable(this.#plan);
       if (count === 0) {
-        app.message('Nothing is checked. Check a row with Space, or choose an action for it.', 'warning');
+        app.message('Nothing is checked. c checks the focused row, Space every row.', 'warning');
         return;
       }
       const go = await app.dialog(confirmDialog('Synchronize', `Synchronize ${String(count)} file(s) now?`, { yes: 'Synchronize', defaultYes: true }));
@@ -242,7 +273,7 @@ export class PreviewView implements View {
     if (item === undefined) {
       return;
     }
-    if (isKey(press, 'space')) {
+    if (press.text === 'c') {
       if (item.state === 'problem') {
         app.message(item.status, 'warning');
       } else if (item.action === 'resolve') {

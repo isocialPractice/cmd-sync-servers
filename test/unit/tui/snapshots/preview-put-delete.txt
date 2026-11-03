@@ -19,6 +19,6 @@
 
 
  ______________________________________________________________________________
-  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
-  a = All  |  q = Quit  |  Enter = Synchronize
+  Space = CHECK/UNCHECK ALL  |  c = Check/Uncheck  |  p = Put  |  g = Get
+  s = Skip  |  d = Diff  |  a = All  |  q = Quit  |  Enter = Synchronize
  .env: Matches the sensitive pattern ".env". Check to transfer anyway.
