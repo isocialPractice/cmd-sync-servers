@@ -335,6 +335,24 @@ the step of the plan that specifies it.
 - [x] Changelog, checks and commit for L3
   - **Goal**: Resolve to [Phase L3, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l3-the-terminal-interface-the-command-line-and-the-documentation)
   - From: Symbolic Links
+- [x] Run the engine's and the extension's checks once more from clean
+      builds
+  - **Goal**: Resolve to [Phase L5, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
+  - From: Symbolic Links
+- [x] Bring the plan files up to date; a headless run cannot write under
+      `.claude/`
+  - **Goal**: Resolve to [Phase L5, step 2](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
+  - From: Symbolic Links
+- [x] Write `.support/complete-symlinks.md`, the paste-ready prompt that
+      makes the same updates
+  - **Goal**: Resolve to [Phase L5, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
+  - From: Symbolic Links
+- [x] Check these items and commit
+  - **Goal**: Resolve to [Phase L5, step 4](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
+  - From: Symbolic Links
+- [x] Report what was checked and any owner step that remains
+  - **Goal**: Resolve to [Phase L5, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
+  - From: Symbolic Links
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -425,21 +443,7 @@ Next version: minor. Phases L1 to L3 together make `1.0.0-alpha.1.1.0`: L1
 sets the version, and L2 and L3 add to it. Phase L4 is tracked in the
 extension's `TODO.md`. Phase L5 moves no version.
 
-The items of Phases L1, L2 and L3 are in Current.
-
-- [ ] Run the engine's and the extension's checks once more from clean
-      builds
-  - **Goal**: Resolve to [Phase L5, step 1](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
-- [ ] Bring the plan files up to date; a headless run cannot write under
-      `.claude/`
-  - **Goal**: Resolve to [Phase L5, step 2](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
-- [ ] Write `.support/complete-symlinks.md`, the paste-ready prompt that
-      makes the same updates
-  - **Goal**: Resolve to [Phase L5, step 3](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
-- [ ] Check these items and commit
-  - **Goal**: Resolve to [Phase L5, step 4](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
-- [ ] Report what was checked and any owner step that remains
-  - **Goal**: Resolve to [Phase L5, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
+All items moved to Current and done.
 
 ## Later Roadmap - paused
 
