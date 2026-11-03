@@ -272,6 +272,24 @@ the step of the plan that specifies it.
 - [x] Changelog, checks and commit for P4
   - **Goal**: Resolve to [Phase P4, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p4-quickstart-examples-cheatsheets-and-options)
   - From: Patches 1.0.0-alpha.1.0.0
+- [x] Run the engine's and the extension's checks once more from clean
+      builds
+  - **Goal**: Resolve to [Phase P6, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Bring the plan files up to date; a headless run cannot write under
+      `.claude/`
+  - **Goal**: Resolve to [Phase P6, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Write `.support/complete-patches.md`, the paste-ready prompt that
+      makes the same updates
+  - **Goal**: Resolve to [Phase P6, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Check these items and commit
+  - **Goal**: Resolve to [Phase P6, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Report what was checked and any owner step that remains
+  - **Goal**: Resolve to [Phase P6, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+  - From: Patches 1.0.0-alpha.1.0.0
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -354,19 +372,7 @@ items of Phase S5 move no version.
 Next version: none. Every item adds to `1.0.0-alpha.1.0.0`. Phase P5 is
 tracked in the extension's `TODO.md`.
 
-- [ ] Run the engine's and the extension's checks once more from clean
-      builds
-  - **Goal**: Resolve to [Phase P6, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
-- [ ] Bring the plan files up to date; a headless run cannot write under
-      `.claude/`
-  - **Goal**: Resolve to [Phase P6, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
-- [ ] Write `.support/complete-patches.md`, the paste-ready prompt that
-      makes the same updates
-  - **Goal**: Resolve to [Phase P6, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
-- [ ] Check these items and commit
-  - **Goal**: Resolve to [Phase P6, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
-- [ ] Report what was checked and any owner step that remains
-  - **Goal**: Resolve to [Phase P6, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p6-close-the-plan)
+All items moved to Current and done.
 
 ## Later Roadmap - paused
 
