@@ -46,7 +46,10 @@ export interface Symbols {
   readonly skip: string;
   readonly synced: string;
   readonly cloaked: string;
+  /** The solid line above and below the content. */
   readonly rule: string;
+  /** The unit of the dashed line drawn at an edge of the content while rows are hidden past it. */
+  readonly edge: string;
   readonly ellipsis: string;
   readonly pointer: string;
   readonly bar: string;
@@ -67,7 +70,8 @@ const UNICODE: Symbols = {
   skip: '-',
   synced: '=',
   cloaked: '⊘',
-  rule: '─',
+  rule: '━',
+  edge: '━ ',
   ellipsis: '…',
   pointer: '>',
   bar: '█',
@@ -81,7 +85,8 @@ const ASCII: Symbols = {
   get: 'v',
   remove: 'x',
   cloaked: '#',
-  rule: '-',
+  rule: '_',
+  edge: '- ',
   ellipsis: '...',
   bar: '#',
   barEmpty: '.',

@@ -528,6 +528,12 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
 
 <h2 id="tui">The terminal interface</h2>
 <p>Run <code>sync-servers</code> with no command. It opens at the site of the current folder, or at the list of sites. Everything works from the keyboard at 80 by 24, and <kbd>?</kbd> on any screen lists every key of that screen. <code>--ascii</code> uses ASCII symbols only, and <code>--no-color</code> or <code>NO_COLOR</code> turns colour off; every symbol stands beside a word, so nothing is lost.</p>
+<p>Every screen has the same frame. Two solid lines frame the content. While rows are hidden above or below what is shown, a dashed line marks that edge; at the first or last row it disappears. Under the bottom line, the menu lists the screen's keys as <code>key = action</code>, with a pipe between them, wrapping onto more rows on a narrow terminal. The last row shows messages, the progress of a running task, or the full text of the focused row.</p>
+<pre><code> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ ______________________________________________________________________________
+  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit  |  Enter = Synchronize
+ css/site.css</code></pre>
 <table>
   <caption>Keys on every screen</caption>
   <thead><tr><th scope="col">Key</th><th scope="col">Does</th></tr></thead>
@@ -541,7 +547,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
     <tr><td><kbd>/</kbd></td><td>Filter a list as you type</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td></tr>
     <tr><td><kbd>?</kbd></td><td>Every key of this screen</td></tr>
-    <tr><td><kbd>q</kbd></td><td>Quit, from a top screen</td></tr>
+    <tr><td><kbd>q</kbd></td><td>Quit, from a top screen or the preview</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Cancel the running task, or quit</td></tr>
   </tbody>
 </table>
@@ -557,7 +563,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
     <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing</td></tr>
     <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the host key and the trusted certificate, with Forget buttons</td></tr>
     <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview</td></tr>
-    <tr><td>Preview</td><td><kbd>Space</kbd> check, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize</td></tr>
+    <tr><td>Preview</td><td><kbd>Space</kbd> check, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize, <kbd>q</kbd> quit without transferring anything, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
     <tr><td>Progress</td><td><kbd>Esc</kbd> cancels cleanly between files</td></tr>
     <tr><td>Results</td><td>Failures first; <kbd>Esc</kbd> done</td></tr>
   </tbody>

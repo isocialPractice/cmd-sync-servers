@@ -7,12 +7,13 @@ import { sealSecret } from '../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../src/credentials/memory.ts';
 import { createLogger } from '../../src/log/logger.ts';
 import type { App } from '../../src/tui/app.ts';
+import { PreviewView } from '../../src/tui/screens/preview.ts';
 import { ServerEditorView } from '../../src/tui/screens/server-editor.ts';
 import { SiteSetupView } from '../../src/tui/screens/site-setup.ts';
 import { SitesView } from '../../src/tui/screens/sites.ts';
 import type { TuiServices } from '../../src/tui/services.ts';
 import { makeFolder, tempDir } from '../helpers/cli.ts';
-import { matchSnapshot, press, screen, testApp, type } from '../helpers/tui.ts';
+import { matchSnapshot, press, screen, testApp, type, UNICODE } from '../helpers/tui.ts';
 import { testCertificate, type TestCertificate } from '../sandbox/cert.ts';
 import type { FtpSandbox } from '../sandbox/ftp-server.ts';
 import { startRig, type Rig } from '../sandbox/rig.ts';
@@ -126,6 +127,41 @@ test('sites, site home, synchronize, preview, progress and results, all from the
     assert.match(screen(app), /^ Sites +Enter Open$/m);
     await press(app, 'q');
     await app.finished;
+  });
+});
+
+test('a long preview draws dashed edges only where rows are hidden, and q quits transferring nothing, unless it is typed into the search', async () => {
+  await withRig(async (rig) => {
+    for (let index = 1; index <= 60; index += 1) {
+      rig.write('local', `page-${String(index).padStart(2, '0')}.html`, `page ${String(index)}`);
+    }
+    const down = Array.from({ length: 30 }, () => 'down');
+    const unicode = testApp(UNICODE);
+    await PreviewView.plan(unicode, services(rig), rig.site, { direction: 'put', deleteOrphans: false });
+    await press(unicode, ...down);
+    matchSnapshot('preview-long-middle-unicode', screen(unicode));
+    await press(unicode, 'escape');
+    await unicode.finished;
+
+    const app = testApp();
+    await PreviewView.plan(app, services(rig), rig.site, { direction: 'put', deleteOrphans: false });
+    await app.idle();
+    matchSnapshot('preview-long-top', screen(app));
+    matchSnapshot('preview-long-40x12', screen(app, 40, 12));
+    await press(app, ...down);
+    matchSnapshot('preview-long-middle', screen(app));
+    await press(app, 'end');
+    matchSnapshot('preview-long-end', screen(app));
+
+    await press(app, '?');
+    assert.match(screen(app), /q +Quit, transferring nothing, as Ctrl\+C does/);
+    await press(app, 'escape', '/');
+    await type(app, 'q');
+    assert.match(screen(app), /^ \/q$/m, 'q goes into the search while it is open');
+    await press(app, 'escape', 'q');
+    await app.finished;
+    assert.equal(app.outcome, undefined);
+    assert.equal(rig.read('remote', 'page-01.html'), undefined);
   });
 });
 

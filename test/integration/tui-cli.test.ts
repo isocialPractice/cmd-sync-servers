@@ -126,6 +126,23 @@ test('leaving the full-screen preview with Esc changes nothing and exits 4', asy
   });
 });
 
+test('q in the full-screen preview quits as Ctrl+C does: nothing changes and it exits 4', async () => {
+  await withRig(async (rig) => {
+    rig.write('local', 'a.html', 'a');
+    const terminal = new ScriptedTerminal([
+      { when: 'a.html', keys: [['/', '/'], ['q', 'q']] },
+      { when: '/q', keys: [ESC, ['q', 'q']] },
+    ]);
+    const code = await runCli(['--ascii', 'sync', '--put'], terminal.io(rig, rig.localDir));
+    assert.equal(code, 4, terminal.stderr.text);
+    assert.equal(terminal.pending, 0);
+    assert.ok(!terminal.raw, 'the terminal is restored');
+    assert.ok(terminal.text.includes('\u001b[?1049l'), 'the alternate screen is left');
+    assert.match(terminal.stderr.text, /Nothing was changed\./);
+    assert.equal(rig.read('remote', 'a.html'), undefined);
+  });
+});
+
 test('with no command, the full-screen UI opens at the sites, and the chosen site lands in --cd-file', async () => {
   await withRig(async (rig) => {
     const cdFile = path.join(rig.home, 'cd.txt');

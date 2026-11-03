@@ -92,24 +92,26 @@ export class PreviewView implements View {
 
   hints(): readonly Hint[] {
     return [
-      { key: 'Space', label: 'Check' },
+      { key: 'Space', label: 'Check/Uncheck' },
       { key: 'p', label: 'Put' },
       { key: 'g', label: 'Get' },
       { key: 's', label: 'Skip' },
       { key: 'd', label: 'Diff' },
       { key: 'a', label: 'All' },
+      { key: 'q', label: 'Quit' },
       { key: 'Enter', label: 'Synchronize' },
     ];
   }
 
   keys(): readonly Hint[] {
     return [
-      ...this.hints(),
+      ...this.hints().filter((hint) => hint.key !== 'q'),
       { key: 'm', label: 'Mark synchronized: record both copies as in sync' },
       { key: 'x', label: 'Delete' },
       { key: 'Tab', label: 'Show All, Put, Get, Resolve, Delete, Guarded or Errors' },
       { key: '/', label: 'Find a path' },
       { key: 'Esc', label: 'Back, transferring nothing' },
+      { key: 'q', label: 'Quit, transferring nothing, as Ctrl+C does' },
     ];
   }
 
@@ -142,8 +144,9 @@ export class PreviewView implements View {
     const longest = Math.max(4, ...visible.map((item) => textWidth(item.path)));
     const pathWidth = Math.min(longest, Math.max(12, Math.floor((width - 20) * 0.45)));
     const statusWidth = Math.max(0, width - pathWidth - 20);
-    const { start, items } = this.#list.window(height);
+    const { start, items, above, below } = this.#list.window(height);
     return {
+      more: { above, below },
       lines: items.map((item, offset): Line => {
         const focused = start + offset === this.#list.index;
         const row = `  ${checkbox(item, theme)} ${actionCell(item.action, theme)}  ${padEnd(truncatePath(item.path, pathWidth, sym.ellipsis), pathWidth)}  `;
@@ -204,6 +207,11 @@ export class PreviewView implements View {
     if (isKey(press, 'escape')) {
       await this.#session.close();
       app.pop();
+      return;
+    }
+    if (press.text === 'q') {
+      await this.#session.close();
+      app.quit();
       return;
     }
     if (isKey(press, 'tab') || isKey(press, 'shift+tab')) {

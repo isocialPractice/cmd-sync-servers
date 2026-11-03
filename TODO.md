@@ -219,6 +219,23 @@ the step of the plan that specifies it.
 - [x] Documentation for P1, changelog, checks and commit
   - **Goal**: Resolve to [Phase P1, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p1-every-folder-in-the-setup-list)
   - From: Patches 1.0.0-alpha.1.0.0
+- [x] The rule and edge symbols, the scroll edge rows, and each scrolling
+      view reporting what it hides
+  - **Goal**: Resolve to [Phase P2, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] The wrapping `key = label` menu, eight hints, the message bar as the
+      last row, the height rules and the dialog bound
+  - **Goal**: Resolve to [Phase P2, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] `q` in the preview, and the preview's hints
+  - **Goal**: Resolve to [Phase P2, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] Snapshots and tests of the frame, the menu and `q`
+  - **Goal**: Resolve to [Phase P2, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+  - From: Patches 1.0.0-alpha.1.0.0
+- [x] `DESIGN_LANGUAGE.md`, `docs/cli.html`, changelog, checks and commit
+  - **Goal**: Resolve to [Phase P2, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
+  - From: Patches 1.0.0-alpha.1.0.0
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -301,18 +318,6 @@ items of Phase S5 move no version.
 Next version: none. Every item adds to `1.0.0-alpha.1.0.0`. Phase P5 is
 tracked in the extension's `TODO.md`.
 
-- [ ] The rule and edge symbols, the scroll edge rows, and each scrolling
-      view reporting what it hides
-  - **Goal**: Resolve to [Phase P2, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
-- [ ] The wrapping `key = label` menu, eight hints, the message bar as the
-      last row, the height rules and the dialog bound
-  - **Goal**: Resolve to [Phase P2, step 2](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
-- [ ] `q` in the preview, and the preview's hints
-  - **Goal**: Resolve to [Phase P2, step 3](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
-- [ ] Snapshots and tests of the frame, the menu and `q`
-  - **Goal**: Resolve to [Phase P2, step 4](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
-- [ ] `DESIGN_LANGUAGE.md`, `docs/cli.html`, changelog, checks and commit
-  - **Goal**: Resolve to [Phase P2, step 5](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p2-the-terminal-frame-and-the-bottom-menu)
 - [ ] Global cloaking in the schema, written only when set, and the
       registry's `globalCloaking` and `updateGlobalCloaking`
   - **Goal**: Resolve to [Phase P3, step 1](.claude/prompts/patches-1.0.0-alpha.1.0.0.prompt.md#phase-p3-global-cloaking-patterns)

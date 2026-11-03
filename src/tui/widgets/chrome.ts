@@ -5,23 +5,45 @@ import type { App, Hint } from '../app.ts';
 import { plain, span, symbols, type Frame, type Line, type Theme } from '../style.ts';
 import { padEnd, textWidth, truncate } from '../text.ts';
 
-/** `Key Label   Key Label`, keys in bold: at most seven, and only whole hints that fit `width`. */
-export function hintLine(hints: readonly Hint[], width = Number.POSITIVE_INFINITY): Line {
-  const parts: Line[number][] = [span('  ')];
-  let used = 2;
-  for (const [index, hint] of hints.slice(0, 7).entries()) {
-    const gap = index > 0 ? 3 : 0;
-    const size = gap + textWidth(hint.key) + 1 + textWidth(hint.label);
-    if (used + size > width) {
-      break;
+/** The most hints a footer menu shows. */
+const MAX_HINTS = 8;
+
+/** The indent of each menu row, and the separator between two hints. */
+const MENU_INDENT = '  ';
+const MENU_SEPARATOR = '  |  ';
+
+/** The fewest body rows a frame keeps before it gives up the scroll edges, then menu rows. */
+const MIN_BODY = 3;
+
+/**
+ * The footer menu, `Key = Label  |  Key = Label`, keys in bold: at most
+ * eight hints, wrapped onto as many rows as `width` needs, a hint never
+ * split and no row starting or ending with a separator.
+ */
+export function hintLines(hints: readonly Hint[], width = Number.POSITIVE_INFINITY): Line[] {
+  const rows: Line[] = [];
+  let row: Line[number][] = [];
+  let used = 0;
+  for (const hint of hints.slice(0, MAX_HINTS)) {
+    const size = textWidth(hint.key) + 3 + textWidth(hint.label);
+    if (row.length > 0 && used + MENU_SEPARATOR.length + size > width - 1) {
+      rows.push(row);
+      row = [];
     }
-    if (gap > 0) {
-      parts.push(span('   '));
+    if (row.length === 0) {
+      row.push(span(MENU_INDENT));
+      used = MENU_INDENT.length;
+    } else {
+      row.push(span(MENU_SEPARATOR));
+      used += MENU_SEPARATOR.length;
     }
-    parts.push(span(hint.key, 'bold'), span(` ${hint.label}`));
+    row.push(span(hint.key, 'bold'), span(` = ${hint.label}`));
     used += size;
   }
-  return parts;
+  if (row.length > 0) {
+    rows.push(row);
+  }
+  return rows;
 }
 
 function titleBar(title: string, primary: string | undefined, columns: number, theme: Theme): Line {
@@ -31,8 +53,19 @@ function titleBar(title: string, primary: string | undefined, columns: number, t
   return [span(left, 'bold'), span(' '.repeat(Math.max(1, columns - textWidth(left) - textWidth(right)))), span(right, 'accent')];
 }
 
+/** The solid line above and below the content. */
 function rule(columns: number, theme: Theme): Line {
-  return [span(` ${symbols(theme).rule.repeat(Math.max(0, columns - 2))}`, 'dim')];
+  return [span(` ${symbols(theme).rule.repeat(Math.max(0, columns - 2))}`, 'bold')];
+}
+
+/** The row at an edge of the content: a dashed line while rows are hidden past it, else blank. */
+function edgeLine(hidden: boolean, columns: number, theme: Theme): Line {
+  if (!hidden) {
+    return [];
+  }
+  const unit = symbols(theme).edge;
+  const width = Math.max(0, columns - 2);
+  return [span(` ${unit.repeat(Math.ceil(width / unit.length)).slice(0, width).trimEnd()}`, 'bold')];
 }
 
 /** Pads a styled line to `width` columns. */
@@ -57,8 +90,12 @@ function messageLine(app: App, theme: Theme): Line {
 }
 
 /**
- * The whole screen: title bar, optional summary, rule, the view's body, rule,
- * message bar and key hints, with the top dialog drawn over the body.
+ * The whole screen: title bar, optional summary, a solid rule, the top
+ * edge, the view's body, the bottom edge, a solid rule, the menu and the
+ * message bar, with the top dialog drawn over the edges and the body.
+ *
+ * The edges show dashes while the body hides rows past them. When the body
+ * would get fewer than three rows, the edges go first, then menu rows.
  */
 export function renderFrame(app: App, columns: number, rows: number): Frame {
   const theme = app.theme;
@@ -69,14 +106,26 @@ export function renderFrame(app: App, columns: number, rows: number): Frame {
     lines.push([span(' '), ...summary]);
   }
   lines.push(rule(columns, theme));
-  const bodyTop = lines.length;
-  const bodyHeight = Math.max(1, rows - bodyTop - 3);
+  const menu = hintLines(view?.hints() ?? [], columns);
+  const room = rows - lines.length - 2;
+  const edges = room - 2 - menu.length >= MIN_BODY;
+  const menuRows = Math.min(menu.length, Math.max(1, room - (edges ? 2 : 0) - MIN_BODY));
+  const bodyHeight = Math.max(1, room - (edges ? 2 : 0) - menuRows);
+  const areaTop = lines.length;
   const body = view?.body(columns, bodyHeight, theme) ?? { lines: [] };
+  if (edges) {
+    lines.push(edgeLine(body.more?.above === true, columns, theme));
+  }
+  const bodyTop = lines.length;
   for (let row = 0; row < bodyHeight; row += 1) {
     lines.push(body.lines[row] ?? []);
   }
+  if (edges) {
+    lines.push(edgeLine(body.more?.below === true, columns, theme));
+  }
+  const areaBottom = lines.length;
   let cursor = body.cursor === undefined ? undefined : { row: bodyTop + body.cursor.row, col: body.cursor.col };
-  lines.push(rule(columns, theme), messageLine(app, theme), hintLine(view?.hints() ?? [], columns));
+  lines.push(rule(columns, theme), ...menu.slice(0, menuRows), messageLine(app, theme));
 
   const dialog = app.topDialog;
   if (dialog !== undefined) {
@@ -89,10 +138,10 @@ export function renderFrame(app: App, columns: number, rows: number): Frame {
       ...inner.lines.map((line): Line => [span(`${sym.v} `), ...padLine(line, width - 4), span(` ${sym.v}`)]),
       [span(`${sym.bl}${sym.h.repeat(width - 2)}${sym.br}`, 'bold')],
     ];
-    const top = bodyTop + Math.max(0, Math.floor((bodyHeight - box.length) / 2));
+    const top = areaTop + Math.max(0, Math.floor((areaBottom - areaTop - box.length) / 2));
     const left = Math.max(0, Math.floor((columns - width) / 2));
     box.forEach((line, index) => {
-      if (top + index < lines.length - 3) {
+      if (top + index < areaBottom) {
         lines[top + index] = [span(' '.repeat(left)), ...line];
       }
     });

@@ -33,6 +33,7 @@ export class TextView implements View {
   body(_width: number, height: number): ViewBody {
     this.#height = height;
     return {
+      more: { above: this.#offset > 0, below: this.#offset + height < this.#lines.length },
       lines: this.#lines.slice(this.#offset, this.#offset + height).map((line) => {
         const tone = line.startsWith('+') && !line.startsWith('+++') ? 'accent' : line.startsWith('-') && !line.startsWith('---') ? 'warning' : undefined;
         return [span(` ${line}`, tone)];

@@ -1,0 +1,24 @@
+ Synchronize: My Site -> Folder (Local/Network)       Put newer files to remote
+ Files: 60 will be updated, 0 will be skipped
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━
+  [x] ↑ Put      page-17.html
+  [x] ↑ Put      page-18.html
+  [x] ↑ Put      page-19.html
+  [x] ↑ Put      page-20.html
+  [x] ↑ Put      page-21.html
+  [x] ↑ Put      page-22.html
+  [x] ↑ Put      page-23.html
+  [x] ↑ Put      page-24.html
+  [x] ↑ Put      page-25.html
+  [x] ↑ Put      page-26.html
+  [x] ↑ Put      page-27.html
+  [x] ↑ Put      page-28.html
+  [x] ↑ Put      page-29.html
+  [x] ↑ Put      page-30.html
+  [x] ↑ Put      page-31.html
+ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit  |  Enter = Synchronize
+ page-31.html

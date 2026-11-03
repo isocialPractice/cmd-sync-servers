@@ -76,8 +76,9 @@ export class SitesView implements View {
     const nameWidth = Math.min(24, Math.max(4, ...sites.map((site) => site.name.length)));
     const remoteWidth = 16;
     const rootWidth = Math.max(10, width - nameWidth - remoteWidth - 8);
-    const { start, items } = this.#list.window(this.#height);
+    const { start, items, above, below } = this.#list.window(this.#height);
     return {
+      more: { above, below },
       lines: [
         headerRow(['Name', 'Local root', 'Remote server'], [nameWidth, rootWidth]),
         ...items.map((site, offset) =>

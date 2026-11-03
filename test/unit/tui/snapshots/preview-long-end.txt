@@ -1,0 +1,24 @@
+ Synchronize: My Site -> Folder (Local/Network)       Put newer files to remote
+ Files: 60 will be updated, 0 will be skipped
+ ______________________________________________________________________________
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  [x] ^ Put      page-46.html
+  [x] ^ Put      page-47.html
+  [x] ^ Put      page-48.html
+  [x] ^ Put      page-49.html
+  [x] ^ Put      page-50.html
+  [x] ^ Put      page-51.html
+  [x] ^ Put      page-52.html
+  [x] ^ Put      page-53.html
+  [x] ^ Put      page-54.html
+  [x] ^ Put      page-55.html
+  [x] ^ Put      page-56.html
+  [x] ^ Put      page-57.html
+  [x] ^ Put      page-58.html
+  [x] ^ Put      page-59.html
+  [x] ^ Put      page-60.html
+
+ ______________________________________________________________________________
+  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit  |  Enter = Synchronize
+ page-60.html

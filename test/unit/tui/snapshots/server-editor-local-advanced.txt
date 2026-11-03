@@ -1,5 +1,6 @@
  Second Site: New server                                            Ctrl+S Save
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+
    Basic    Advanced    Local/Network
 
   Web URL               ▏
@@ -17,8 +18,7 @@
 
 
 
-
-
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Tab = Basic  |  Up/Down = Move  |  Space = Change  |  Ctrl+S = Save
+  Esc = Back
  ! Enter a name.
-  Tab Basic   Up/Down Move   Space Change   Ctrl+S Save   Esc Back

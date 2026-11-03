@@ -1,5 +1,6 @@
  Site Setup: Second Site                                            Ctrl+S Save
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+
   Site                  Enable cloaking       [x]
   Servers               Cloak files matching
   Advanced Settings                           .psd
@@ -17,8 +18,7 @@
 
 
 
-
-
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Tab = Pane  |  Up/Down = Move  |  Space = Change  |  Ctrl+S = Save
+  Esc = Back
  Removed "Backup copy".
-  Tab Pane   Up/Down Move   Space Change   Ctrl+S Save   Esc Back

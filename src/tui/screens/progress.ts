@@ -140,8 +140,9 @@ export class ResultsView implements View {
 
   body(width: number, height: number, theme: Theme): ViewBody {
     this.#height = height;
-    const { start, items } = this.#list.window(height);
+    const { start, items, above, below } = this.#list.window(height);
     return {
+      more: { above, below },
       lines: items.map((item, offset): Line => {
         const focused = start + offset === this.#list.index;
         const bad = item.outcome === 'failed' || item.outcome === 'stale';

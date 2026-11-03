@@ -1,5 +1,6 @@
  Synchronize: My Site                                             Enter Preview
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+
 
   Synchronize                             Entire 'My Site' site
   Direction                               < Put newer files to remote >
@@ -18,7 +19,6 @@
 
 
 
-
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Up/Down = Move  |  Space = Change  |  Enter = Preview  |  Esc = Back
  Space or Left and Right change the direction.
-  Up/Down Move   Space Change   Enter Preview   Esc Back

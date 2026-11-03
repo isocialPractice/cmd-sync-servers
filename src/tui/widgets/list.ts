@@ -104,8 +104,11 @@ export class ListState<T> {
     return true;
   }
 
-  /** kilo's rowoff: the rows to draw in `height`, scrolled so the selection is visible. */
-  window(height: number): { start: number; items: readonly T[] } {
+  /**
+   * kilo's rowoff: the rows to draw in `height`, scrolled so the selection
+   * is visible, and whether rows are hidden above and below them.
+   */
+  window(height: number): { start: number; items: readonly T[]; above: boolean; below: boolean } {
     const visible = this.visible;
     if (this.#index < this.#offset) {
       this.#offset = this.#index;
@@ -113,7 +116,8 @@ export class ListState<T> {
       this.#offset = this.#index - height + 1;
     }
     this.#offset = Math.max(0, Math.min(this.#offset, Math.max(0, visible.length - height)));
-    return { start: this.#offset, items: visible.slice(this.#offset, this.#offset + height) };
+    const items = visible.slice(this.#offset, this.#offset + height);
+    return { start: this.#offset, items, above: this.#offset > 0, below: this.#offset + items.length < visible.length };
   }
 
   /** `/filter` while filtering or filtered, for a status line. */

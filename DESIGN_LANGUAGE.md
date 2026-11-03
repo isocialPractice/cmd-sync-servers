@@ -13,10 +13,11 @@ degrades to plain ASCII without losing meaning.
 - **One accent colour.** Cyan from the terminal's own palette, so the user's
   theme decides the exact hue. Yellow means warning and red means error,
   always beside a symbol and a word, never on their own.
-- **Grouping by space, not boxes.** One rule under the title, one rule above
-  the footer, and blank columns between table columns.
-- **Few choices at a time.** The footer shows at most seven key hints for
-  the screen in front of the user. `?` opens the full key list.
+- **Grouping by space, not boxes.** Two solid rules frame the content, one
+  under the title and one above the menu, and blank columns separate table
+  columns.
+- **Few choices at a time.** The menu shows at most eight keys for the
+  screen in front of the user. `?` opens the full key list.
 - **Works at 80 x 24.** Every screen fits a standard terminal and gives any
   extra width to the column that needs it most, usually the path.
 - **Colour is never the only signal.** `NO_COLOR` and `--no-color` remove
@@ -30,7 +31,8 @@ degrades to plain ASCII without losing meaning.
 | Text | Default foreground | Everything not listed below |
 | Focus | Inverse video | The focused row, field or button |
 | Accent | Cyan | The primary action and the title of the focused pane |
-| Muted | Dim | Counts, key hints, skipped rows |
+| Frame | Bold | The two rules, the dashed scroll edges, and each key in the menu |
+| Muted | Dim | Counts, the key hints inside a dialog, skipped rows |
 | Warning | Yellow, with `!` and a word | Guarded files, insecure protocols, rows that need a decision |
 | Error | Red, with `x` and a word | Failed items, refused operations |
 
@@ -55,6 +57,8 @@ Windows console whose code page is not UTF-8.
 | Checked and unchecked | `[x]` `[ ]` | `[x]` `[ ]` |
 | Selected and unselected option | `(*)` `( )` | `(*)` `( )` |
 | Truncated text | `…` | `...` |
+| Rule above and below the content | `━━━━` | `____` |
+| Scroll edge: rows hidden past it | `━ ━ ━` | `- - -` |
 
 Every action symbol is followed by its word (`↑ Put`), so the meaning never
 rests on the symbol alone.
@@ -64,15 +68,28 @@ rests on the symbol alone.
 ```text
  <Screen title>: <subject>                                  <primary shortcut>
  <summary line, when the screen has one>
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   <content: lists, tables, forms>
- ------------------------------------------------------------------------------
-  <at most seven key hints>
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ ______________________________________________________________________________
+  <key> = <action>  |  <key> = <action>  |  ...  at most eight, wrapped
+ <message bar>
 ```
 
 - The title bar names the screen and what it acts on, with the primary
   shortcut at the right.
-- The message bar below the content shows, in order of priority, a message
+- Two solid rules frame the content, drawn in bold so they take the
+  terminal's brightest foreground: white on a dark theme, dark on a light
+  one.
+- The row under the top rule and the row above the bottom rule are the
+  scroll edges. Each shows a dashed line while rows are hidden past it, and
+  stays blank at the first or the last row, so the content never moves when
+  the dashes come and go.
+- The menu lists the screen's keys as `key = action`, with a pipe between
+  them, and wraps onto more rows when the terminal is narrow, never
+  splitting one.
+- The message bar, the last row, shows, in order of priority, a message
   from the last action (for five seconds), the busy spinner with `Esc
   Cancel`, or the full status of the focused row or field: its help, or its
   problem when a save was refused.
@@ -83,10 +100,12 @@ rests on the symbol alone.
 - Form labels sit in one column, wide enough for the longest label unless
   the values need the room; a label never wraps. A field's problem shows on
   the line under it.
-- Dialogs are boxes drawn over the content, at most 72 columns wide, with
-  the safe answer focused unless the action was asked for explicitly.
-- On a narrow terminal the footer keeps only the hints that fit whole, and
-  rows are cut at the right edge; `?` still lists every key.
+- Dialogs are boxes drawn over the content and its edges, never over a
+  rule, the menu or the message bar, at most 72 columns wide, with the safe
+  answer focused unless the action was asked for explicitly.
+- When the content would get fewer than three rows, the scroll edges go
+  first, then the menu keeps only the rows that fit. Rows are cut at the
+  right edge; `?` still lists every key.
 
 ## Keys
 
@@ -102,7 +121,7 @@ Keys mean the same thing on every screen.
 | `/` | Filter the list as you type |
 | `Ctrl+S` | Save |
 | `?` | Show every key for this screen |
-| `q` | Quit, from a top-level screen |
+| `q` | Quit, from a top-level screen or the preview |
 | `Ctrl+C` | Cancel the running operation, or quit |
 
 While a text field has focus, typed characters go to it, so `?`, `q`, `j`
@@ -136,7 +155,8 @@ it starts work:
 
 The screens as they look at 80 x 24 with `--ascii`. In these drawings `>`
 marks the focused row where the terminal draws it in inverse video, and
-blank body rows are left out. Paths show the way the platform writes them,
+blank body rows, and scroll edges with nothing hidden past them, are left
+out. Paths show the way the platform writes them,
 such as `C:\Users\<user>\Sites\my-site` on Windows or `~/sites/my-site`
 elsewhere.
 
@@ -147,13 +167,14 @@ through the `ssv` shell function, changes the shell to its folder on exit.
 
 ```text
  Sites                                                               Enter Open
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
   Name       Local root                                       Remote server
 > Acme Corp  ~/sites/acme                                     Production
   My Site    ~/sites/my-site                                  Production
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  n = New  |  e = Edit  |  Enter = Open  |  d = Remove  |  / = Filter
+  q = Quit
  ~/sites/acme
-  n New   e Edit   Enter Open   d Remove   / Filter   q Quit
 ```
 
 `n` opens the new-site form; `Shift+N` opens Site Setup for a new site, with
@@ -169,7 +190,7 @@ protocol does not use are hidden.
 
 ```text
  New site                                                        Ctrl+S Connect
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
   FTPS
 
   Site name      My Site
@@ -180,9 +201,9 @@ protocol does not use are hidden.
   Password       ********
   Save password  [x]
   [ Connect ]
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Up/Down = Move  |  Space = Change  |  Ctrl+S = Connect  |  Esc = Back
  Many hosts name FTP accounts in full, such as demo-user@example.com.
-  Up/Down Move   Space Change   Ctrl+S Connect   Esc Back
 ```
 
 ### Folder picker
@@ -216,7 +237,7 @@ background when the screen opens and after every run.
 
 ```text
  Site: My Site                                                    s Synchronize
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
   Local root  ~/sites/my-site
   Server      Production (SFTP sftp.example.com)
   Last sync   2026-10-29 12:00 UTC
@@ -228,9 +249,9 @@ background when the screen opens and after every run.
   Get newer files from remote
   Check for changes
   Site settings
- ------------------------------------------------------------------------------
-
-  Enter Choose   s Synchronize   r Check   e Settings   Esc Back   q Quit
+ ______________________________________________________________________________
+  Enter = Choose  |  s = Synchronize  |  r = Check  |  e = Settings
+  Esc = Back  |  q = Quit
 ```
 
 ### Site setup
@@ -241,7 +262,7 @@ their own editor, so the Servers table acts at once.
 
 ```text
  Site Setup: My Site                                                Ctrl+S Save
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
   Site                  Name          Host       Protocol       Remote  Testing
 > Servers               Production    sftp.e...  SFTP           (*)     ( )
   Advanced Settings     Staging       stagin...  FTPS           ( )     (*)
@@ -249,9 +270,10 @@ their own editor, so the Servers table acts at once.
     Cloaking
     Synchronization
     Security
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  a = Add  |  Enter = Edit  |  c = Duplicate  |  Del = Remove  |  t = Test
+  r = Remote  |  Tab = Pane
  Production: SFTP sftp.example.com /var/www/my-site
-  a Add   Enter Edit   c Duplicate   Del Remove   t Test   r Remote   Tab Pane
 ```
 
 The Cloaking category edits the patterns one per line, in the multi-line
@@ -259,7 +281,7 @@ editor ported from kilo:
 
 ```text
  Site Setup: My Site                                                Ctrl+S Save
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
   Site                  Enable cloaking       [x]
   Servers               Cloak files matching
   Advanced Settings                           .psd
@@ -269,9 +291,10 @@ editor ported from kilo:
     Security
                         Cloaked paths         (none)
                         [ Uncloak a path... ]
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Tab = Pane  |  Up/Down = Move  |  Space = Change  |  Ctrl+S = Save
+  Esc = Back
  .psd cloaks a suffix, archive* a name, node_modules/ a folder, /drafts/ a root
-  Tab Pane   Up/Down Move   Space Change   Ctrl+S Save   Esc Back
 ```
 
 ### Server editor
@@ -287,7 +310,7 @@ or the trusted certificate and their Forget buttons.
 
 ```text
  My Site: Production                                                Ctrl+S Save
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
    Basic    Advanced    SFTP
 
   Server name     Production
@@ -301,9 +324,10 @@ or the trusted certificate and their Forget buttons.
   Root directory  /var/www/my-site
   [ Browse... ]
   [ Test ]
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Tab = Advanced  |  Up/Down = Move  |  Space = Change  |  Ctrl+S = Save
+  Esc = Back
  The host name or IP address, such as sftp.example.com. host:port fills Port.
-  Tab Advanced   Up/Down Move   Space Change   Ctrl+S Save   Esc Back
 ```
 
 ### Trust and password dialogs
@@ -331,15 +355,15 @@ as Dreamweaver words it. `Enter` scans both sides and opens the preview.
 
 ```text
  Synchronize: My Site                                             Enter Preview
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
 
   Synchronize                             Entire 'My Site' site
   Direction                               < Put newer files to remote >
   Delete remote files not on local drive  [ ]
   [ Preview ]
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Up/Down = Move  |  Space = Change  |  Enter = Preview  |  Esc = Back
  Space or Left and Right change the direction.
-  Up/Down Move   Space Change   Enter Preview   Esc Back
 ```
 
 ### Preview
@@ -351,18 +375,21 @@ Resolve, Delete, Guarded or Errors.
 ```text
  Synchronize: My Site -> Production (SFTP)            Put newer files to remote
  Files: 37 will be updated, 169 will be skipped, 12 need a decision
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
 > [x] ^ Put      img/hero.svg
   [x] ^ Put      scripts/lib/cli.js
   [ ] ? Resolve  css/site.css        Changed locally and on the server since...
   [ ] ^ Put      .env                Matches the sensitive pattern ".env". C...
   [ ] x Delete   old/legacy.html     On the server only and never synchroni...
- ------------------------------------------------------------------------------
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ ______________________________________________________________________________
+  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit  |  Enter = Synchronize
  img/hero.svg
-  Space Check   p Put   g Get   s Skip   d Diff   a All   Enter Synchronize
 ```
 
-`d` opens the difference of the focused file as a scrolling text screen.
+`d` opens the difference of the focused file as a scrolling text screen,
+and `q` quits without transferring anything, as `Ctrl+C` does.
 `Enter` asks once more before anything moves:
 
 ```text
@@ -380,28 +407,28 @@ cleanly between files. The results list failures first.
 
 ```text
  Synchronizing: My Site -> Production (SFTP)
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
 
   12 of 37 files   ##############..................................
   480 KB moved
 
   scripts/lib/cli.js
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Esc = Cancel
  | Synchronizing  Esc Cancel
-  Esc Cancel
 ```
 
 ```text
  Results: My Site -> Production
  Synchronized 36 files. 1 failed. 169 skipped.
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
 > failed    img/banner.png  Permission denied.
   done      img/hero.svg
   done      scripts/lib/cli.js
   skipped   css/site.css
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Up/Down = Move  |  Esc = Done
  img/banner.png: Permission denied.
-  Up/Down Move   Esc Done
 ```
 
 ### Plain mode

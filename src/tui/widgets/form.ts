@@ -295,6 +295,7 @@ export class Form {
     return {
       lines: shown.map((row) => row.line),
       cursor: active && cursorRow?.cursor !== undefined ? { row: cursorIndex, col: cursorRow.cursor } : undefined,
+      more: { above: this.#offset > 0, below: this.#offset + shown.length < rows.length },
     };
   }
 }

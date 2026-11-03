@@ -14,6 +14,8 @@ export interface Hint {
 export interface ViewBody {
   readonly lines: readonly Line[];
   readonly cursor?: { readonly row: number; readonly col: number } | undefined;
+  /** Whether rows are hidden above or below what the body shows, for a body that scrolls. */
+  readonly more?: { readonly above: boolean; readonly below: boolean } | undefined;
 }
 
 /** One screen of the terminal UI. */
@@ -23,7 +25,7 @@ export interface View {
   primary?(): string | undefined;
   /** A line under the title, such as the preview's summary. */
   summary?(): Line | undefined;
-  /** At most seven key hints for the footer. */
+  /** At most eight key hints for the footer menu. */
   hints(): readonly Hint[];
   /** Every key of the screen, for the `?` help. */
   keys?(): readonly Hint[];

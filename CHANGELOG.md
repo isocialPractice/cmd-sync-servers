@@ -50,6 +50,11 @@ Until the first stable release, versions use the pre-release form
 - When a saved password is not sent because the server's protocol, host,
   port or user changed, the question for the password says so.
 - An FTP welcome banner shows as its first line.
+- The terminal interface frames each screen with two solid rules, and marks
+  the top or bottom edge of the content with a dashed line while rows are
+  hidden past it. The menu reads `key = action` with a pipe between keys,
+  holds up to eight keys, and wraps onto more rows on a narrow terminal
+  instead of dropping keys. The message bar is the last row.
 
 ### Added
 
@@ -103,6 +108,8 @@ Until the first stable release, versions use the pre-release form
   members, `SecretRequest.note`, `SyncError.details`,
   `Capabilities.startingFolder`, `TransportContext.updateServer` and
   `TransportContext.expectedCertificate`.
+- `q` in the preview quits without transferring anything, as `Ctrl+C`
+  does; `sync`, `put` and `get` then exit with code 4.
 
 ### Fixed
 

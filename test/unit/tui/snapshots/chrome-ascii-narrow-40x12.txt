@@ -1,12 +1,12 @@
  Synchroni... Put newer files to remote
  Files: 1 will be updated, 3 will be ski
- --------------------------------------
+ ______________________________________
   [x] ^ Put      index.html
   [ ] ? Resolve  css/site.css   Changed
 
-
-
-
- --------------------------------------
+ ______________________________________
+  Space = Check/Uncheck  |  p = Put
+  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit
+  Enter = Synchronize
  css/site.css: Changed locally and on th
-  Space Check   p Put   g Get   s Skip

@@ -1,9 +1,9 @@
  Synchronize: My Site -> Production (SFTP)            Put newer files to remote
  Files: 1 will be updated, 3 will be skipped, 1 need a decision
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+
   [x] ^ Put      index.html
   [ ] ? Resolve  css/site.css   Changed locally and on the server since the last
-
 
 
 
@@ -18,7 +18,7 @@
 
 
 
-
- ------------------------------------------------------------------------------
+ ______________________________________________________________________________
+  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit  |  Enter = Synchronize
  ! 2 problems to fix before saving.
-  Space Check   p Put   g Get   s Skip   d Diff   a All   Enter Synchronize

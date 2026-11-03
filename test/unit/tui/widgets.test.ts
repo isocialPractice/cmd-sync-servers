@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { App, Hint, View, ViewBody } from '../../../src/tui/app.ts';
 import { isKey, key, type Key } from '../../../src/tui/keys.ts';
-import { span, type Line } from '../../../src/tui/style.ts';
-import { hintLine, progressBar } from '../../../src/tui/widgets/chrome.ts';
+import { plain, span, type Line } from '../../../src/tui/style.ts';
+import { hintLines, progressBar } from '../../../src/tui/widgets/chrome.ts';
 import { choiceDialog, confirmDialog, inputDialog, messageDialog, wrap } from '../../../src/tui/widgets/dialog.ts';
 import { folderPickerDialog } from '../../../src/tui/widgets/folder-picker.ts';
 import { field, Form } from '../../../src/tui/widgets/form.ts';
@@ -18,12 +18,12 @@ test('a list moves, pages and scrolls to keep the selection in view', () => {
   list.key(key('down'), 3);
   list.key(key('j'), 3);
   assert.equal(list.selected, 'cherry');
-  assert.deepEqual(list.window(2), { start: 1, items: ['banana', 'cherry'] });
+  assert.deepEqual(list.window(2), { start: 1, items: ['banana', 'cherry'], above: true, below: true });
   list.key(key('pagedown'), 3);
   assert.equal(list.selected, 'elderberry');
   list.key(key('end'), 3);
   assert.equal(list.selected, 'grape');
-  assert.deepEqual(list.window(3), { start: 4, items: ['elderberry', 'fig', 'grape'] });
+  assert.deepEqual(list.window(3), { start: 4, items: ['elderberry', 'fig', 'grape'], above: true, below: false });
   list.key(key('down'), 3);
   assert.equal(list.selected, 'grape');
   list.key(key('home'), 3);
@@ -209,14 +209,15 @@ class SampleView implements View {
   }
   hints(): readonly Hint[] {
     return [
-      { key: 'Space', label: 'Check' },
+      { key: 'Space', label: 'Check/Uncheck' },
       { key: 'p', label: 'Put' },
       { key: 'g', label: 'Get' },
       { key: 's', label: 'Skip' },
       { key: 'd', label: 'Diff' },
       { key: 'a', label: 'All' },
+      { key: 'q', label: 'Quit' },
       { key: 'Enter', label: 'Synchronize' },
-      { key: 'x', label: 'Never shown: an eighth hint' },
+      { key: 'x', label: 'Never shown: a ninth hint' },
     ];
   }
   status(): string {
@@ -274,7 +275,7 @@ test('the folder picker lists, scrolls, counts files, opens and goes up, and sho
   assert.equal(await broken, undefined);
 });
 
-test('the chrome lays out title, summary, rules, body, message bar and at most seven hints', () => {
+test('the chrome lays out title, summary, rules, body, menu and message bar, with at most eight hints', () => {
   const app = testApp(ASCII);
   app.push(new SampleView());
   matchSnapshot('chrome-ascii-80x24', screen(app));
@@ -282,7 +283,8 @@ test('the chrome lays out title, summary, rules, body, message bar and at most s
   unicode.push(new SampleView());
   matchSnapshot('chrome-unicode-80x24', screen(unicode));
   matchSnapshot('chrome-ascii-narrow-40x12', screen(app, 40, 12));
-  assert.equal(hintLine([{ key: 'q', label: 'Quit' }]).map((part) => part.text).join(''), '  q Quit');
+  assert.deepEqual(hintLines([{ key: 'q', label: 'Quit' }]).map(plain), ['  q = Quit']);
+  assert.deepEqual(hintLines([]), []);
   assert.equal(progressBar(1, 4, 8, ASCII), '##......');
   assert.equal(progressBar(0, 0, 4, UNICODE), '████');
 });
@@ -314,7 +316,7 @@ test('messages, the busy spinner and dialogs draw over the screen; ? opens every
   await press(app, '?');
   const help = screen(app);
   assert.match(help, /Keys: Synchronize: My Site/);
-  assert.match(help, /Never shown: an eighth hint/);
+  assert.match(help, /Never shown: a ninth hint/);
   await press(app, 'escape');
   assert.equal(app.topDialog, undefined);
 
@@ -344,4 +346,108 @@ test('quitting answers open dialogs with Esc and aborts the running task', async
   assert.ok(aborted);
   assert.equal(await app.dialog(choiceDialog('Late', 'Too late?', [{ label: 'Yes', value: 1 }], 0)), 0);
   await app.finished;
+});
+
+/** A long list that scrolls, like a preview of 60 files. */
+class ScrollingView implements View {
+  readonly list = new ListState(
+    Array.from({ length: 60 }, (_, index) => `page-${String(index + 1).padStart(2, '0')}.html`),
+    (item) => item,
+  );
+  #height = 10;
+  title(): string {
+    return 'Synchronize: My Site -> Production (FTPS)';
+  }
+  summary(): Line {
+    return [span('Files: 60 will be updated')];
+  }
+  hints(): readonly Hint[] {
+    return new SampleView().hints();
+  }
+  body(_width: number, height: number): ViewBody {
+    this.#height = height;
+    const { start, items, above, below } = this.list.window(height);
+    return { more: { above, below }, lines: items.map((item, offset) => [span(`${start + offset === this.list.index ? '>' : ' '} ${item}`)]) };
+  }
+  key(input: Key): void {
+    this.list.key(input, this.#height);
+  }
+}
+
+test('the frame draws solid rules, a dashed edge only while rows are hidden past it, then the wrapped menu and the message bar', async () => {
+  const app = testApp(ASCII);
+  app.push(new ScrollingView());
+  const rule = ` ${'_'.repeat(78)}`;
+  const dashes = /^ (- ){38}-$/;
+  let rows = screen(app).split('\n');
+  assert.equal(rows[2], rule);
+  assert.equal(rows[3], '', 'nothing is hidden above the first row');
+  assert.equal(rows[4], '> page-01.html');
+  assert.equal(rows[18], '  page-15.html', 'the body has 15 rows at 80 x 24');
+  assert.match(rows[19] ?? '', dashes);
+  assert.equal(rows[20], rule);
+  assert.equal(rows[21], '  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff');
+  assert.equal(rows[22], '  a = All  |  q = Quit  |  Enter = Synchronize');
+  assert.equal(rows[23], '', 'the message bar is the last row');
+
+  const frame = app.render(80, 24);
+  for (const row of [2, 19, 20]) {
+    assert.deepEqual(frame.lines[row]?.map((part) => part.tone), ['bold'], `row ${String(row)} is bold`);
+  }
+  assert.equal(frame.lines[21]?.find((part) => part.text === 'Space')?.tone, 'bold');
+
+  await press(app, ...Array.from({ length: 30 }, () => 'down'));
+  rows = screen(app).split('\n');
+  assert.match(rows[3] ?? '', dashes, 'rows are hidden above in the middle');
+  assert.match(rows[19] ?? '', dashes, 'and below');
+  await press(app, 'end');
+  rows = screen(app).split('\n');
+  assert.match(rows[3] ?? '', dashes);
+  assert.equal(rows[18], '> page-60.html');
+  assert.equal(rows[19], '', 'nothing is hidden below the last row');
+  await press(app, 'pageup', 'pageup');
+  assert.match(screen(app).split('\n')[19] ?? '', dashes, 'the lower dashes come back once the last row is out of view');
+
+  const unicode = testApp(UNICODE);
+  unicode.push(new ScrollingView());
+  rows = screen(unicode).split('\n');
+  assert.equal(rows[2], ` ${'━'.repeat(78)}`);
+  assert.match(rows[19] ?? '', /^ (━ ){38}━$/);
+});
+
+test('a narrow terminal wraps the menu without splitting a hint, and a short one gives up the edges before menu rows', () => {
+  const app = testApp(ASCII);
+  app.push(new ScrollingView());
+  const rows = screen(app, 40, 13).split('\n');
+  assert.deepEqual(rows.slice(8, 12), [
+    '  Space = Check/Uncheck  |  p = Put',
+    '  g = Get  |  s = Skip  |  d = Diff',
+    '  a = All  |  q = Quit',
+    '  Enter = Synchronize',
+  ]);
+  assert.equal(rows[3], '> page-01.html', 'no edge rows when they would leave the body fewer than three rows');
+  assert.equal(rows[6], '  page-04.html');
+  assert.equal(rows[7], ` ${'_'.repeat(38)}`);
+  for (const columns of [40, 60, 80, 120]) {
+    for (const line of hintLines(new SampleView().hints(), columns).map(plain)) {
+      assert.ok(line.length <= columns - 1, `${line} fits ${String(columns)} columns`);
+      assert.doesNotMatch(line, /^ {2}\||\| *$/, 'no row starts or ends with a separator');
+    }
+  }
+  const tiny = screen(app, 40, 9).split('\n');
+  assert.equal(tiny[3], '> page-01.html');
+  assert.equal(tiny[6], ` ${'_'.repeat(38)}`);
+  assert.deepEqual(tiny.slice(7, 8), ['  Space = Check/Uncheck  |  p = Put'], 'the menu keeps the rows that fit');
+});
+
+test('a dialog stays between the rules, over the edges and the body', async () => {
+  const app = testApp(ASCII);
+  app.push(new ScrollingView());
+  const answer = app.dialog(confirmDialog('Synchronize', 'Synchronize 60 file(s) now?', { yes: 'Synchronize', defaultYes: true }));
+  const rows = screen(app, 80, 12).split('\n');
+  assert.match(rows[3] ?? '', /^ +\+- Synchronize -+\+$/);
+  assert.equal(rows[8], ` ${'_'.repeat(78)}`);
+  assert.equal(rows[9], '  Space = Check/Uncheck  |  p = Put  |  g = Get  |  s = Skip  |  d = Diff');
+  await press(app, 'escape');
+  assert.equal(await answer, false);
 });

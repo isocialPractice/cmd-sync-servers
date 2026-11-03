@@ -1,0 +1,12 @@
+ Synchroni... Put newer files to remote
+ Files: 60 will be updated, 0 will be sk
+ ______________________________________
+  [x] ^ Put      page-01.html
+  [x] ^ Put      page-02.html
+  [x] ^ Put      page-03.html
+ ______________________________________
+  Space = Check/Uncheck  |  p = Put
+  g = Get  |  s = Skip  |  d = Diff
+  a = All  |  q = Quit
+  Enter = Synchronize
+ page-01.html
