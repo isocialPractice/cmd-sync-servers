@@ -1,4 +1,4 @@
-import { lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -6,9 +6,15 @@ import type { CliIo } from '../../src/cli/io.ts';
 import { runCli } from '../../src/cli/router.ts';
 import type { CredentialStore } from '../../src/credentials/types.ts';
 
-/** A temp folder removed by `cleanup()`. */
+/**
+ * A temp folder removed by `cleanup()`, named by its real path: the system
+ * temp folder can be reached through a link (`/var` on macOS) or through
+ * Windows 8.3 short names (`PROGRA~1` for `Program Files`), and the code
+ * under test reports real paths. `realpathSync.native` expands short names;
+ * the JavaScript `realpathSync` does not.
+ */
 export function tempDir(prefix = 'sync-servers-test-'): { dir: string; cleanup: () => void } {
-  const dir = mkdtempSync(path.join(tmpdir(), prefix));
+  const dir = realpathSync.native(mkdtempSync(path.join(tmpdir(), prefix)));
   return {
     dir,
     cleanup: () => {

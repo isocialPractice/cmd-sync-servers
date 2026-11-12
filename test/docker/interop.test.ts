@@ -42,10 +42,12 @@ async function waitForPort(port: number): Promise<void> {
   }
 }
 
-const servers: { name: string; port: number; make: () => Transport }[] = [
+/** Each real server, and whether it can set a file's time: vsftpd has no MFMT. */
+const servers: { name: string; port: number; canSetMtime: boolean; make: () => Transport }[] = [
   {
     name: 'OpenSSH (SFTP)',
     port: 2222,
+    canSetMtime: true,
     make: () =>
       new SftpTransport({
         host: '127.0.0.1',
@@ -61,6 +63,7 @@ const servers: { name: string; port: number; make: () => Transport }[] = [
   {
     name: 'vsftpd (FTPS, TLS session reuse required)',
     port: 2121,
+    canSetMtime: false,
     make: () =>
       new FtpTransport({
         protocol: 'ftps',
@@ -81,7 +84,8 @@ for (const server of servers) {
       await waitForPort(server.port);
       const transport = server.make();
       try {
-        await transport.connect();
+        const capabilities = await transport.connect();
+        assert.equal(capabilities.canSetMtime, server.canSetMtime);
         await transport.mkdir(toRemotePath('css'));
         const content = Buffer.concat([randomBytes(200_000), Buffer.from('\r\n')]);
         await transport.put(Readable.from([content]), toRemotePath('css/site.part'));
@@ -90,11 +94,12 @@ for (const server of servers) {
         const sink = collector();
         await transport.get(toRemotePath('css/site.css'), sink.stream);
         assert.deepEqual(sink.data(), content);
-        const when = Date.UTC(2026, 0, 15, 9, 30, 12);
-        await transport.setMtime?.(toRemotePath('css/site.css'), when);
-        const entry = await transport.stat(toRemotePath('css/site.css'));
-        assert.equal(entry?.size, content.length);
-        assert.equal(entry.mtimeMs, when);
+        assert.equal((await transport.stat(toRemotePath('css/site.css')))?.size, content.length);
+        if (capabilities.canSetMtime) {
+          const when = Date.UTC(2026, 0, 15, 9, 30, 12);
+          await transport.setMtime?.(toRemotePath('css/site.css'), when);
+          assert.equal((await transport.stat(toRemotePath('css/site.css')))?.mtimeMs, when);
+        }
         assert.deepEqual((await transport.list(toRemotePath('css'))).map((item) => item.name), ['site.css']);
         assert.ok((await transport.list(ROOT)).some((item) => item.name === 'css' && item.type === 'dir'));
         await transport.remove(toRemotePath('css/site.css'));

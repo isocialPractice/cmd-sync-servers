@@ -19,7 +19,6 @@ write_enable=YES
 local_umask=022
 chroot_local_user=YES
 allow_writeable_chroot=YES
-utf8_filesystem=YES
 pasv_enable=YES
 pasv_address=127.0.0.1
 pasv_min_port=21100
@@ -33,4 +32,6 @@ rsa_cert_file=/etc/sandbox-tls/cert.pem
 rsa_private_key_file=/etc/sandbox-tls/key.pem
 EOF
 
-exec /usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
+# vsftpd writes a startup error ("500 OOPS: ...") to its standard input,
+# which is /dev/null in a container; standard output puts it in the log.
+exec /usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf 0>&1
