@@ -628,9 +628,10 @@ or needs a person at a real terminal.
       nothing for that file. No test can show what Dreamweaver does there
 - [x] Start the agents-align round that Phase N4 hands over, with the
       command its report gives
-- [ ] When that round stops for the owner, push the engine and tag
-      `v2.0.0`, so `release.yml` publishes it to npm; then start the round
-      again for the extension's last phase
-- [ ] Push the extension and tag `v1.0.0-alpha.2.0.0`, so both are released
+- [x] Push the engine and tag `v2.0.0`, then publish the tarball the
+      release attaches with `npm publish`, since `release.yml` publishes
+      only when the repository variable `NPM_PUBLISH` is `true`; the
+      extension's last phase needs `2.0.0` on npm
+- [x] Push the extension and tag `v1.0.0-alpha.2.0.0`, so both are released
       together: an extension built on engine `1.0.0` cannot read a
       `sites.json` that engine `2.0.0` has written
