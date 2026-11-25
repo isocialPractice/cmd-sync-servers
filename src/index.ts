@@ -62,6 +62,7 @@ export {
   type Comparison,
   type ComparedSide,
   type PlanOptions,
+  type ResetOptions,
   type SingleTransfer,
   type StatusEntry,
   type StatusReport,
@@ -69,11 +70,13 @@ export {
 } from './sync/session.ts';
 export { SyncPlan, decide, type Decision, type PlanItem, type PlanSummary, type SavedPlan, type SilentUpdate } from './sync/plan.ts';
 export { resultLine, type ExecuteOptions, type ItemOutcome, type ItemResult, type SyncResult } from './sync/execute.ts';
-export { classify, copiesMatch, hasChanged, type CompareOptions, type SyncState } from './sync/classify.ts';
+export { classify, copiesMatch, hasChanged, withEntry, type CompareOptions, type EntryMatch, type SyncState } from './sync/classify.ts';
 export { STATUS, guardedStatus, unsafeNameStatus } from './sync/messages.ts';
 export { cloakPatternToGitignore, siteCloak, splitPatterns, type Cloak } from './sync/cloak.ts';
 export { DEFAULT_GUARD_PATTERNS, siteGuard, type Guard } from './sync/guard.ts';
-export { SyncRecords, recordsFile, type SyncRecord } from './sync/state.ts';
+export { SyncRecords, recordsFile, type RecordMirror, type SyncRecord } from './sync/state.ts';
+export { dreamweaverServerName, isDwsyncPath, parseDwsync, serializeDwsync, type DwsyncDocument, type DwsyncEntry } from './sync/dwsync.ts';
+export { findDreamweaverServers, hasDreamweaverRecords, type DreamweaverSearchOptions, type DreamweaverServerCount } from './sync/dreamweaver.ts';
 export { DIRECTION_TITLES, type Action, type Direction, type Observation, type ProblemKind, type ProgressEvent, type ScanProblem, type Scope } from './sync/types.ts';
 
 export {

@@ -185,6 +185,7 @@ async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
       throw new CancelledError('Nothing was changed.');
     }
     if (runnable(plan) === 0) {
+      await session.settle(plan);
       ctx.out(plan.summary.resolve > 0 ? `Nothing to synchronize until the ${String(plan.summary.resolve)} decision(s) are made.\n` : 'Nothing to synchronize.\n');
       return plan.summary.resolve > 0 ? ExitCode.incomplete : ExitCode.ok;
     }
@@ -202,6 +203,10 @@ async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
   }
   const waiting = plan.summary.resolve;
   if (flag(values, 'dry-run') || count === 0) {
+    if (!flag(values, 'dry-run')) {
+      // With nothing to run, what the plan found in sync is still saved, so the next plan does not work it out again.
+      await session.settle(plan);
+    }
     if (json) {
       ctx.json('sync', { plan: plan.toJSON(), result: null });
     } else if (count === 0) {

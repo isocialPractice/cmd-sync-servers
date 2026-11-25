@@ -8,6 +8,7 @@ import type { Logger } from '../log/logger.ts';
 import type { TransportPool } from '../transport/pool.ts';
 import { withRetry, type RetryOptions } from '../transport/retry.ts';
 import type { Capabilities, RemoteEntry, Transport } from '../transport/types.ts';
+import { removeLeftoverNotes } from './dreamweaver.ts';
 import { STATUS } from './messages.ts';
 import { cappedFile, partName, partPath } from './part.ts';
 import { parentPath, resolveLocalTarget, ROOT, toRemotePath, type LinkPolicy, type LocalTarget, type RemotePath } from './paths.ts';
@@ -79,6 +80,8 @@ export interface ExecuteContext {
   readonly remoteRootIsTop: boolean;
   /** How the site treats links in its local folder: Put reads, Get writes and a local delete removes through the links it follows. */
   readonly symlinks: LinkPolicy;
+  /** True when the site uses Dreamweaver's records: an emptied local folder may then lose the `_notes/dwsync.xml` left in it. */
+  readonly dreamweaver: boolean;
 }
 
 /** A row's turn at its local file: wait for `ready`, then call `release` when done. */
@@ -545,6 +548,10 @@ class Run {
           if (local.link !== undefined) {
             // A folder that is a link stays: removing it would remove the link, which the server never made.
             continue;
+          }
+          if (this.#context.dreamweaver) {
+            // Dreamweaver's records of a folder with no file left describe nothing, and would keep the folder.
+            await removeLeftoverNotes(local.file).catch(() => undefined);
           }
           await rmdir(local.file).catch((error: unknown) => {
             if (!(typeof error === 'object' && error !== null && 'code' in error && (error.code === 'ENOTEMPTY' || error.code === 'EEXIST' || error.code === 'ENOENT'))) {

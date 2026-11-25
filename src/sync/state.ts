@@ -15,6 +15,22 @@ export interface SyncRecord {
   readonly syncedAt: number;
 }
 
+/**
+ * A second copy of the records, kept in another program's format, such as
+ * the `_notes/dwsync.xml` files Dreamweaver reads. It is told of every
+ * record set or forgotten, and saved after the records are.
+ *
+ * @experimental
+ */
+export interface RecordMirror {
+  /** A path was recorded as synchronized. */
+  set(target: string, record: SyncRecord): void;
+  /** The record of a path was forgotten. */
+  delete(target: string): void;
+  /** Writes what changed since the last call. A failure is logged, never thrown. */
+  save(): Promise<void>;
+}
+
 const observationSchema = z.strictObject({
   size: z.number().int().min(0),
   mtimeMs: z.number().optional(),
@@ -43,7 +59,8 @@ export function recordsFile(stateDir: string, siteId: string, serverId: string):
  * changed on one side from one changed on both. Kept per machine in the state
  * folder, written atomically, and checkpointed during a run so an
  * interrupted sync keeps what it finished. Disabled records (`maintainInfo`
- * off) hold nothing and are never written.
+ * off) hold nothing and are never written. A mirror, when there is one,
+ * follows every change and is saved with the records.
  *
  * @experimental {@link SyncSession} keeps the records; programs rarely need them directly.
  */
@@ -53,12 +70,15 @@ export class SyncRecords {
   /** False when the site does not maintain synchronization information. */
   readonly enabled: boolean;
   readonly #records = new Map<string, SyncRecord>();
+  readonly #mirror: RecordMirror | undefined;
   #changes = 0;
   #savedAt = Date.now();
 
-  private constructor(file: string, enabled: boolean) {
+  private constructor(file: string, enabled: boolean, mirror: RecordMirror | undefined) {
     this.file = file;
     this.enabled = enabled;
+    // Without records there is nothing to copy.
+    this.#mirror = enabled ? mirror : undefined;
   }
 
   /**
@@ -66,8 +86,8 @@ export class SyncRecords {
    *
    * @throws {@link SyncError} `E_CONFIG_INVALID` when the file is damaged.
    */
-  static async load(stateDir: string, siteId: string, serverId: string, enabled: boolean): Promise<SyncRecords> {
-    const records = new SyncRecords(recordsFile(stateDir, siteId, serverId), enabled);
+  static async load(stateDir: string, siteId: string, serverId: string, enabled: boolean, mirror?: RecordMirror): Promise<SyncRecords> {
+    const records = new SyncRecords(recordsFile(stateDir, siteId, serverId), enabled, mirror);
     if (!enabled) {
       return records;
     }
@@ -130,12 +150,14 @@ export class SyncRecords {
     }
     this.#records.set(target, record);
     this.#changes += 1;
+    this.#mirror?.set(target, record);
   }
 
   /** Forgets the record of a path, as when it is gone on both sides. */
   delete(target: string): void {
     if (this.#records.delete(target)) {
       this.#changes += 1;
+      this.#mirror?.delete(target);
     }
   }
 
@@ -146,7 +168,7 @@ export class SyncRecords {
     }
   }
 
-  /** Writes the records atomically under a lock, when anything changed since the last save. */
+  /** Writes the records atomically under a lock, when anything changed since the last save, then saves the mirror. */
   async save(): Promise<void> {
     if (!this.enabled || this.#changes === 0) {
       return;
@@ -157,9 +179,10 @@ export class SyncRecords {
     const sorted = Object.fromEntries([...this.#records.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
     const text = `${JSON.stringify({ schemaVersion: 1, records: sorted })}\n`;
     await withFileLock(`${this.file}.lock`, () => writeFileAtomic(this.file, text));
+    await this.#mirror?.save();
   }
 
-  /** Forgets every record and removes the file. */
+  /** Forgets every record and removes the file. The mirror is left as it is. */
   async reset(): Promise<void> {
     this.#records.clear();
     this.#changes = 0;

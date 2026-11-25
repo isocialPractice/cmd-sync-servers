@@ -231,14 +231,17 @@ export class PreviewView implements View {
       return;
     }
     const item = this.#list.selected;
-    if (isKey(press, 'escape')) {
+    if (isKey(press, 'escape') || press.text === 'q') {
+      if (this.#plan.items.length === 0) {
+        // Every compared file is in sync: that is saved, so the next plan does not work it out again.
+        await this.#session.settle(this.#plan).catch(() => undefined);
+      }
       await this.#session.close();
-      app.pop();
-      return;
-    }
-    if (press.text === 'q') {
-      await this.#session.close();
-      app.quit();
+      if (press.text === 'q') {
+        app.quit();
+      } else {
+        app.pop();
+      }
       return;
     }
     if (isKey(press, 'tab') || isKey(press, 'shift+tab')) {

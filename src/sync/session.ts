@@ -12,6 +12,8 @@ import type { RetryOptions } from '../transport/retry.ts';
 import type { Capabilities } from '../transport/types.ts';
 import type { SyncState } from './classify.ts';
 import { siteCloak, type Cloak } from './cloak.ts';
+import { clockFile, DreamweaverNotes, removeDreamweaverEntries } from './dreamweaver.ts';
+import { dreamweaverServerName } from './dwsync.ts';
 import { executePlan, type ExecuteOptions, type SyncResult } from './execute.ts';
 import { siteGuard } from './guard.ts';
 import { cappedFile } from './part.ts';
@@ -43,6 +45,12 @@ export interface SyncSessionOptions {
   readonly expectedCertificate?: string | undefined;
   /** Waits before retries after transient failures. Default 1, 2 and 4 seconds. */
   readonly retryDelaysMs?: readonly number[] | undefined;
+  /**
+   * The minutes this computer's time zone is behind UTC at a time, as
+   * `Date.prototype.getTimezoneOffset` gives them, for the daylight state
+   * written to Dreamweaver's records. Default: the system's zone.
+   */
+  readonly zoneOffsetMinutes?: ((atMs: number) => number) | undefined;
 }
 
 /** Options of {@link SyncSession.plan}. */
@@ -75,6 +83,19 @@ export interface StatusReport {
   readonly conflicts: readonly StatusEntry[];
   readonly problems: readonly ScanProblem[];
   readonly inSync: number;
+  /**
+   * Present when the site uses Dreamweaver's synchronization records: how
+   * many files they showed to be in sync, and whether the way Dreamweaver
+   * reads the server's clock is known yet. Until it is, the records are not
+   * used.
+   */
+  readonly dreamweaver?: { readonly inSync: number; readonly clock: 'known' | 'unknown' } | undefined;
+}
+
+/** Options of {@link SyncSession.resetState}. */
+export interface ResetOptions {
+  /** Also removes this server's entries from every `_notes/dwsync.xml` of the site, so Dreamweaver's records of it are forgotten too. */
+  readonly dreamweaver?: boolean | undefined;
 }
 
 /** The outcome of a single-file Put or Get: run at once, or a plan that needs a preview first. */
@@ -139,19 +160,22 @@ export class SyncSession {
   readonly #host: HostAdapter;
   readonly #logger: Logger;
   readonly #records: SyncRecords;
+  /** Dreamweaver's records of this site and server, when the site uses them. */
+  readonly #notes: DreamweaverNotes | undefined;
   readonly #retry: RetryOptions;
   readonly #options: SyncSessionOptions;
   #pool: TransportPool | undefined;
   #caseSensitive: boolean | undefined;
   readonly #acceptedOnce = new Set<string>();
 
-  private constructor(options: SyncSessionOptions, site: Site, server: Server, records: SyncRecords) {
+  private constructor(options: SyncSessionOptions, site: Site, server: Server, records: SyncRecords, notes: DreamweaverNotes | undefined) {
     this.site = site;
     this.server = server;
     this.#registry = options.registry;
     this.#host = options.host;
     this.#logger = options.logger ?? options.host.logger ?? silentLogger;
     this.#records = records;
+    this.#notes = notes;
     this.#retry = options.retryDelaysMs === undefined ? {} : { delaysMs: options.retryDelaysMs };
     this.#options = options;
   }
@@ -176,8 +200,24 @@ export class SyncSession {
         options.serverId === undefined ? `Site "${site.name}" has no Remote server.` : `Site "${site.name}" has no server ${JSON.stringify(options.serverId)}.`,
       );
     }
-    const records = await SyncRecords.load(options.registry.paths.stateDir, site.id, server.id, site.sync.maintainInfo);
-    return new SyncSession(options, site, server, records);
+    const { stateDir } = options.registry.paths;
+    let caseInsensitive: Promise<boolean> | undefined;
+    // Dreamweaver's records are a second copy of the tool's own, so without those there is nothing to read or write.
+    const notes =
+      site.sync.maintainInfo && site.sync.dreamweaver.enabled
+        ? new DreamweaverNotes({
+            localRoot: site.localRoot,
+            symlinks: site.sync.symlinks,
+            server: dreamweaverServerName(server),
+            folderServer: server.protocol === 'local',
+            clockFile: clockFile(stateDir, site.id, server.id),
+            logger: options.logger ?? options.host.logger ?? silentLogger,
+            caseInsensitive: () => (caseInsensitive ??= site.local.caseSensitive === undefined ? isCaseSensitive(site.localRoot).then((sensitive) => !sensitive) : Promise.resolve(!site.local.caseSensitive)),
+            zoneOffsetMinutes: options.zoneOffsetMinutes,
+          })
+        : undefined;
+    const records = await SyncRecords.load(stateDir, site.id, server.id, site.sync.maintainInfo, notes);
+    return new SyncSession(options, site, server, records, notes);
   }
 
   /** The records of this site and server, for inspection. */
@@ -330,6 +370,8 @@ export class SyncSession {
   async #buildPlan(options: PlanOptions, explicit: boolean): Promise<SyncPlan> {
     const scope = options.scope ?? { kind: 'site' };
     const { local, remote, records, localRoot } = await this.#scan(scope, options.signal, options.onProgress);
+    const compare = { toleranceMs: this.site.sync.mtimeToleranceSeconds * 1000, checksum: this.site.sync.compare === 'checksum' };
+    const evidence = await this.#notes?.evidence({ local, remote, records, compare, wholeSite: scope.kind === 'site' });
     const plan = new SyncPlan({
       siteId: this.site.id,
       serverId: this.server.id,
@@ -339,7 +381,9 @@ export class SyncSession {
       local,
       remote,
       records,
-      compare: { toleranceMs: this.site.sync.mtimeToleranceSeconds * 1000, checksum: this.site.sync.compare === 'checksum' },
+      compare,
+      entries: evidence?.entries,
+      catchUp: evidence?.catchUp,
       guard: siteGuard(this.site),
       caseInsensitive: await this.#caseInsensitive(localRoot),
       explicit,
@@ -353,11 +397,38 @@ export class SyncSession {
     return this.#buildPlan(options, false);
   }
 
-  /** Runs the checked rows of `plan`. */
-  async execute(plan: SyncPlan, options: ExecuteOptions = {}): Promise<SyncResult> {
+  #own(plan: SyncPlan): void {
     if (plan.siteId !== this.site.id || plan.serverId !== this.server.id) {
       throw new SyncError('E_PLAN_INVALID', 'The plan belongs to another site or server.');
     }
+  }
+
+  /**
+   * Saves what `plan` found without a transfer: files both sides hold as
+   * the same copy are recorded, and records of files gone on both sides are
+   * dropped. A run does this itself; call it for a plan with nothing to
+   * run, so the next plan does not work the same out again. Returns how
+   * many records it set or dropped.
+   */
+  async settle(plan: SyncPlan): Promise<number> {
+    this.#own(plan);
+    await this.#notes?.commitClock();
+    for (const update of plan.silent) {
+      if (update.record === undefined) {
+        this.#records.delete(update.path);
+      } else {
+        this.#records.set(update.path, update.record);
+      }
+    }
+    await this.#records.save();
+    return plan.silent.length;
+  }
+
+  /** Runs the checked rows of `plan`. */
+  async execute(plan: SyncPlan, options: ExecuteOptions = {}): Promise<SyncResult> {
+    this.#own(plan);
+    // A clock the plan learned is kept before the first record is saved, so the entries of this run are written.
+    await this.#notes?.commitClock();
     const pool = this.#getPool();
     return executePlan(
       plan,
@@ -373,6 +444,7 @@ export class SyncSession {
         retry: this.#retry,
         remoteRootIsTop: this.#remoteRootIsTop(),
         symlinks: this.site.sync.symlinks,
+        dreamweaver: this.#notes !== undefined,
       },
       options,
     );
@@ -396,7 +468,15 @@ export class SyncSession {
         conflicts.push({ path: item.path, state: item.state });
       }
     }
-    return { lastSyncedAt: this.#records.lastSyncedAt(), local, remote, conflicts, problems, inSync: plan.unlisted };
+    return {
+      lastSyncedAt: this.#records.lastSyncedAt(),
+      local,
+      remote,
+      conflicts,
+      problems,
+      inSync: plan.unlisted,
+      ...(this.#notes === undefined ? {} : { dreamweaver: { inSync: plan.adopted, clock: this.#notes.clockKnown ? ('known' as const) : ('unknown' as const) } }),
+    };
   }
 
   async #single(direction: 'put' | 'get', paths: readonly string[], options: ExecuteOptions & Pick<PlanOptions, 'onProgress'>): Promise<SingleTransfer> {
@@ -466,10 +546,21 @@ export class SyncSession {
     return marked;
   }
 
-  /** Forgets every sync record of this site and server; the next sync is a first sync. */
-  async resetState(): Promise<void> {
+  /**
+   * Forgets every sync record of this site and server, and how Dreamweaver
+   * reads the server's clock; the next sync is a first sync. Dreamweaver's
+   * own records stay unless `dreamweaver` is set, so a site that uses them
+   * takes them over again.
+   */
+  async resetState(options: ResetOptions = {}): Promise<void> {
     await this.#records.reset();
-    await rm(path.join(this.#registry.paths.stateDir, 'sites', this.site.id, 'hashes.json'), { force: true });
+    const { stateDir } = this.#registry.paths;
+    await rm(path.join(stateDir, 'sites', this.site.id, 'hashes.json'), { force: true });
+    await rm(clockFile(stateDir, this.site.id, this.server.id), { force: true });
+    await this.#notes?.forgetClock();
+    if (options.dreamweaver === true) {
+      await removeDreamweaverEntries(this.site.localRoot, dreamweaverServerName(this.server));
+    }
   }
 
   /** Saves the sync records and closes every connection. Safe to call more than once. */

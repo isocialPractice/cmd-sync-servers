@@ -131,3 +131,42 @@ export function classify(
   }
   return remote === undefined ? undefined : 'remote-only';
 }
+
+/**
+ * Which sides of a file are as another program last synchronized them,
+ * from an entry of that program's records.
+ *
+ * @experimental
+ */
+export interface EntryMatch {
+  /** True when the local copy is the one the entry names. */
+  readonly local: boolean;
+  /** True when the server copy is the one the entry names. */
+  readonly remote: boolean;
+}
+
+/**
+ * The state of a file both sides have, given an entry of another program's
+ * records, such as Dreamweaver's. Both sides as the entry says: the copies
+ * are in sync and are recorded. Without a record of this tool's own, one
+ * side as the entry says means the other side changed. Anything else leaves
+ * `state` as it is, so an entry can never turn a file into a delete or
+ * override this tool's own record with half a match.
+ *
+ * @experimental
+ */
+export function withEntry(state: SyncState, hasRecord: boolean, match: EntryMatch): SyncState {
+  if (state === 'in-sync' || state === 'refresh-record') {
+    return state;
+  }
+  if (match.local && match.remote) {
+    return 'refresh-record';
+  }
+  if (hasRecord) {
+    return state;
+  }
+  if (match.local) {
+    return 'remote-changed';
+  }
+  return match.remote ? 'local-changed' : state;
+}

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { defaultPaths } from '../../src/config/paths.ts';
@@ -215,6 +216,20 @@ test('put and get from the site home preview only the newer files of one directi
     assert.match(screen(app), /Nothing is checked/);
     await press(app, 'escape');
     assert.match(screen(app), /^ Site: My Site/m);
+  });
+});
+
+test('leaving a preview with nothing to synchronize saves what it found in sync', async () => {
+  await withRig(async (rig) => {
+    rig.write('local', 'index.html', 'home');
+    rig.write('remote', 'index.html', 'home');
+    const records = path.join(rig.home, 'state', 'sites', rig.site.id, `${rig.site.servers[0]?.id ?? ''}.json`);
+    const app = testApp();
+    await PreviewView.plan(app, services(rig), rig.site, { direction: 'both', deleteOrphans: false });
+    assert.match(screen(app), /^ {2}Nothing to synchronize: every compared file is in sync\.$/m);
+    assert.equal(existsSync(records), false);
+    await press(app, 'escape');
+    assert.deepEqual(Object.keys((JSON.parse(readFileSync(records, 'utf8')) as { records: object }).records), ['index.html']);
   });
 });
 

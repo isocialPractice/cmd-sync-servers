@@ -248,6 +248,89 @@ test('the fingerprint changes when a link points elsewhere, and only then', () =
   assert.notEqual(plan({ local: through('one') }).fingerprint, plan({ local: scan(files) }).fingerprint);
 });
 
+test("an entry of another program's records takes a file as in sync, or says which side changed", () => {
+  const sides = {
+    local: scan({ 'same.html': obs(4), 'edited.html': obs(5, T + 90_000), 'server.html': obs(6), 'both.html': obs(7, T + 90_000), 'plain.html': obs(8) }),
+    remote: scan({ 'same.html': obs(4, T + 3_600_000), 'edited.html': obs(5, T + 3_600_000), 'server.html': obs(9, T + 7_200_000), 'both.html': obs(7, T + 7_200_000), 'plain.html': obs(8, T + 3_600_000) }),
+  };
+  const entries = new Map([
+    ['same.html', { local: true, remote: true }],
+    ['edited.html', { local: false, remote: true }],
+    ['server.html', { local: true, remote: false }],
+    ['both.html', { local: false, remote: false }],
+  ]);
+  const without = plan({ ...sides, direction: 'both' });
+  assert.equal(without.adopted, 0);
+  assert.deepEqual(without.items.map((item) => [item.path, item.state]), [
+    ['both.html', 'first-sync-remote-newer'],
+    ['edited.html', 'first-sync-remote-newer'],
+    ['plain.html', 'first-sync-remote-newer'],
+    ['same.html', 'first-sync-remote-newer'],
+    ['server.html', 'first-sync-remote-newer'],
+  ]);
+
+  const result = plan({ ...sides, direction: 'both', entries });
+  assert.equal(result.adopted, 1);
+  assert.deepEqual(result.items.map((item) => [item.path, item.state, item.action]), [
+    ['both.html', 'first-sync-remote-newer', 'get'],
+    ['edited.html', 'local-changed', 'put'],
+    ['plain.html', 'first-sync-remote-newer', 'get'],
+    ['server.html', 'remote-changed', 'get'],
+  ]);
+  assert.deepEqual(result.silent.map((update) => [update.path, update.record?.local.size, update.record?.remote.mtimeMs]), [['same.html', 4, T + 3_600_000]]);
+  assert.notEqual(result.fingerprint, without.fingerprint);
+  assert.equal(result.fingerprint, plan({ ...sides, direction: 'both', entries: new Map(entries) }).fingerprint);
+  assert.notEqual(result.fingerprint, plan({ ...sides, direction: 'both', entries: new Map([...entries, ['both.html', { local: true, remote: false }]]) }).fingerprint);
+  assert.equal(plan({ ...sides, direction: 'both', entries: new Map() }).fingerprint, without.fingerprint);
+});
+
+test('an entry never makes a delete, never lifts the guard, and never overrides half of a record', () => {
+  const entries = new Map([
+    ['local.html', { local: true, remote: true }],
+    ['server.html', { local: true, remote: true }],
+    ['.env', { local: false, remote: true }],
+    ['recorded.html', { local: true, remote: false }],
+  ]);
+  const result = plan({
+    direction: 'get',
+    deleteOrphans: true,
+    local: scan({ 'local.html': obs(1), '.env': obs(2, T + 90_000), 'recorded.html': obs(3, T + 90_000) }),
+    remote: scan({ 'server.html': obs(1), '.env': obs(2), 'recorded.html': obs(3) }),
+    records: new Map([['recorded.html', { local: obs(3), remote: obs(3), syncedAt: T }]]),
+    entries,
+  });
+  assert.equal(result.adopted, 0);
+  assert.deepEqual(result.item('local.html')?.state, 'local-only');
+  assert.deepEqual([result.item('local.html')?.action, result.item('local.html')?.checked], ['delete-local', false]);
+  assert.equal(result.item('server.html')?.state, 'remote-only');
+  assert.equal(result.item('recorded.html'), undefined, 'a local change is not listed by a Get, whatever the entry says');
+
+  const put = plan({
+    local: scan({ '.env': obs(2, T + 90_000) }),
+    remote: scan({ '.env': obs(2) }),
+    entries,
+  });
+  assert.deepEqual([put.item('.env')?.state, put.item('.env')?.checked, put.item('.env')?.guarded], ['local-changed', false, '.env']);
+});
+
+test('a file in sync by its record is saved again only when a mirror has to catch up', () => {
+  const same = obs(5);
+  const input = {
+    local: scan({ 'index.html': same, 'about.html': same, 'new.html': obs(3) }),
+    remote: scan({ 'index.html': same, 'about.html': same }),
+    records: new Map([
+      ['index.html', { local: same, remote: same, syncedAt: T - 1000 }],
+      ['about.html', { local: same, remote: same, syncedAt: T - 2000 }],
+    ]),
+  };
+  assert.deepEqual(plan(input).silent, []);
+  const result = plan({ ...input, catchUp: new Set(['index.html', 'new.html', 'gone.html']) });
+  assert.deepEqual(result.silent, [{ path: 'index.html', record: { local: same, remote: same, syncedAt: T - 1000 } }]);
+  assert.equal(result.adopted, 0);
+  assert.equal(result.unlisted, 2);
+  assert.equal(result.fingerprint, plan(input).fingerprint);
+});
+
 test('a saved plan round-trips through JSON and is refused once the scan changes', () => {
   const local = scan({ 'a.html': obs(1), 'b.html': obs(2) });
   const first = plan({ local });

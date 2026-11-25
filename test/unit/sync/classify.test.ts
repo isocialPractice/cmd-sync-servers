@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { classify, copiesMatch, hasChanged, type CompareOptions, type SyncState } from '../../../src/sync/classify.ts';
+import { classify, copiesMatch, hasChanged, withEntry, type CompareOptions, type SyncState } from '../../../src/sync/classify.ts';
 import { decide } from '../../../src/sync/plan.ts';
 import { STATUS } from '../../../src/sync/messages.ts';
 import type { SyncRecord } from '../../../src/sync/state.ts';
@@ -158,5 +158,45 @@ describe('decide', () => {
     assert.deepEqual(decide('local-changed', 'get', false, true), { action: 'resolve', checked: undefined, status: STATUS.localNewer });
     assert.equal(decide('first-sync-remote-newer', 'put', false, true)?.action, 'resolve');
     assert.equal(decide('first-sync-local-newer', 'get', false, true)?.action, 'resolve');
+  });
+});
+
+describe('withEntry', () => {
+  const both = { local: true, remote: true };
+  const localOnly = { local: true, remote: false };
+  const remoteOnly = { local: false, remote: true };
+  const neither = { local: false, remote: false };
+  const OPEN: readonly SyncState[] = ['first-sync-local-newer', 'first-sync-remote-newer', 'first-sync-conflict', 'both-changed', 'local-changed', 'remote-changed'];
+
+  test('a file already in sync, or about to be recorded, stays as it is', () => {
+    for (const state of ['in-sync', 'refresh-record'] as const) {
+      for (const match of [both, localOnly, remoteOnly, neither]) {
+        assert.equal(withEntry(state, true, match), state);
+        assert.equal(withEntry(state, false, match), state);
+      }
+    }
+  });
+
+  test('both sides as the entry says: in sync, with or without a record', () => {
+    for (const state of OPEN) {
+      assert.equal(withEntry(state, false, both), 'refresh-record', state);
+      assert.equal(withEntry(state, true, both), 'refresh-record', state);
+    }
+  });
+
+  test('without a record, one side as the entry says means the other side changed', () => {
+    for (const state of ['first-sync-local-newer', 'first-sync-remote-newer', 'first-sync-conflict'] as const) {
+      assert.equal(withEntry(state, false, localOnly), 'remote-changed', state);
+      assert.equal(withEntry(state, false, remoteOnly), 'local-changed', state);
+      assert.equal(withEntry(state, false, neither), state);
+    }
+  });
+
+  test('with a record, half a match or none changes nothing', () => {
+    for (const state of ['both-changed', 'local-changed', 'remote-changed'] as const) {
+      for (const match of [localOnly, remoteOnly, neither]) {
+        assert.equal(withEntry(state, true, match), state);
+      }
+    }
   });
 });

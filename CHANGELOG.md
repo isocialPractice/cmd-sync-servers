@@ -23,17 +23,57 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
   `sync.dreamweaver`, the options of the `Server` type gain
   `dreamweaverServer`, and `SCHEMA_VERSION` is `2`.
 
+- `sync` saves what a plan found in sync even when nothing is transferred,
+  and so does leaving a preview of the terminal interface that has nothing
+  to synchronize, so the next plan does not compare the same files from
+  scratch. `--dry-run` and `status` save nothing.
+- With `sync.dreamweaver.enabled` on, a local folder that the delete option
+  left holding only `_notes/dwsync.xml` is removed with it.
+
 ### Added
 
-- `sync.dreamweaver.enabled` and `options.dreamweaverServer` in
-  `sites.json`: the setting for Dreamweaver's synchronization records, off
-  by default, and the name Dreamweaver gives a server in them.
+- `sync.dreamweaver.enabled` in `sites.json`, off by default. A site with
+  it on reads and updates the synchronization records Dreamweaver keeps in
+  each folder as `_notes/dwsync.xml`:
+  - A file both sides have is in sync when both copies are as its entry
+    says. Without a record of this tool's own, one copy as the entry says
+    means the other side changed. A site Dreamweaver synchronized is
+    therefore in sync from its first plan, and a file Dreamweaver put
+    between two syncs is not a conflict.
+  - A file that is missing on one side is never judged by an entry, so its
+    delete stays unchecked.
+  - Each transfer writes the entry Dreamweaver would have written, with the
+    local time to the last digit, and a delete removes the entry. Entries of
+    other servers, attributes this tool does not know, and line ends stay as
+    they were. An entry that already says the same is not rewritten.
+  - Nothing is taken from the records or written to them until the way
+    Dreamweaver reads the server's clock is known. The first synchronization
+    of the whole site learns it from the entries, and keeps it in the state
+    folder as `sites/<site id>/<server id>.dwsync.json`.
+  - A site turned on later has its entries written once, from the tool's
+    own records. The tool's own records stay the source of truth.
+- `options.dreamweaverServer` in `sites.json`: the name Dreamweaver gives a
+  server in those records, for a server it knows by another host or folder
+  spelling. Unset, it is built from the host and the remote root.
+- In the library API: `SyncSession.settle`, `SyncPlan.adopted`, the
+  `dreamweaver` field of a status report, the `dreamweaver` option of
+  `SyncSession.resetState`, and the experimental exports `parseDwsync`,
+  `serializeDwsync`, `isDwsyncPath`, `dreamweaverServerName`,
+  `findDreamweaverServers`, `hasDreamweaverRecords`, `withEntry` and the
+  `RecordMirror` interface that `SyncRecords.load` takes.
 
 ### Security
 
 - `_notes/dwsync.xml` names a site's server, its folder there and the
   site's files. No synchronization transfers it, so it no longer reaches a
   web server through this tool.
+- A `dwsync.xml` is read as input that could come from anywhere. An entry
+  can mark a file both sides have as in sync or as changed on one side, and
+  nothing else: it never checks a delete, never lifts cloaking or the
+  sensitive-file guard, and never names a file to open. A file that is not
+  understood in full, or is over 8 MB, is neither used nor rewritten, and
+  records behind a link the site does not follow, or one that leads out of
+  the site, are left alone.
 
 ## [1.0.0] - 2026-11-03
 

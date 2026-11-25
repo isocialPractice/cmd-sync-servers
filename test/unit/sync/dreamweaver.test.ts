@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { siteCloak } from '../../../src/sync/cloak.ts';
-import { findDreamweaverServers, hasDreamweaverRecords, MAX_DWSYNC_BYTES, readDwsyncFile } from '../../../src/sync/dreamweaver.ts';
+import {
+  DreamweaverClock,
+  findDreamweaverServers,
+  hasDreamweaverRecords,
+  learnClock,
+  MAX_DWSYNC_BYTES,
+  readDwsyncFile,
+  removeDreamweaverEntries,
+  removeLeftoverNotes,
+} from '../../../src/sync/dreamweaver.ts';
+import { filetimeToMs } from '../../../src/sync/dwsync.ts';
 import { tempDir } from '../../helpers/cli.ts';
 import { dwsyncText, writeDwsync, type FixtureEntry } from '../../helpers/dwsync.ts';
 
@@ -108,5 +118,99 @@ describe('the Dreamweaver records of a local folder', () => {
     const text = dwsyncText([entry('index.html', FTP)], '\n');
     writeFileSync(big, text.replace('</dwsync>', `${' '.repeat(MAX_DWSYNC_BYTES)}</dwsync>`));
     assert.deepEqual(await readDwsyncFile(big), { state: 'damaged' });
+  });
+
+  test('removes the entries of one server from every folder and keeps the rest', async () => {
+    const copy = path.join(temp.dir, 'reset');
+    mkdirSync(path.join(copy, 'css'), { recursive: true });
+    mkdirSync(path.join(copy, 'img'), { recursive: true });
+    const root = writeDwsync(copy, [entry('index.html', FTP), entry('index.html', FOLDER), entry('about.html', FTP)], '\n');
+    const css = writeDwsync(path.join(copy, 'css'), [entry('site.css', '203.0.113.10//PUBLIC_HTML')]);
+    const img = writeDwsync(path.join(copy, 'img'), [entry('hero.svg', FOLDER)]);
+    const imgBefore = readFileSync(img, 'utf8');
+
+    assert.equal(await removeDreamweaverEntries(copy, FTP), 3);
+    assert.equal(readFileSync(root, 'utf8'), dwsyncText([entry('index.html', FOLDER)], '\n'));
+    assert.equal(existsSync(css), false);
+    assert.equal(existsSync(path.dirname(css)), false, 'a _notes folder left empty goes with its file');
+    assert.equal(readFileSync(img, 'utf8'), imgBefore);
+    assert.equal(await removeDreamweaverEntries(copy, FTP), 0);
+  });
+
+  test('an emptied folder loses the records left in it, and only then', async () => {
+    const emptied = path.join(temp.dir, 'emptied');
+    const kept = path.join(temp.dir, 'kept');
+    const extra = path.join(temp.dir, 'extra');
+    for (const folder of [emptied, kept, extra]) {
+      mkdirSync(folder);
+      writeDwsync(folder, [entry('index.html', FTP)]);
+    }
+    writeFileSync(path.join(kept, 'index.html'), '<h1>Home</h1>');
+    writeFileSync(path.join(extra, '_notes', 'index.html.mno'), '<info/>');
+
+    await removeLeftoverNotes(emptied);
+    assert.deepEqual(readdirSync(emptied), []);
+    await removeLeftoverNotes(kept);
+    assert.deepEqual(readdirSync(kept).sort(), ['_notes', 'index.html']);
+    await removeLeftoverNotes(extra);
+    assert.deepEqual(readdirSync(path.join(extra, '_notes')).sort(), ['dwsync.xml', 'index.html.mno']);
+  });
+});
+
+describe('the clock of a server as Dreamweaver reads it', () => {
+  const HOUR = 3600;
+
+  test('is the step most entries share, when at least three share it', () => {
+    assert.deepEqual(learnClock([-5 * HOUR, -5 * HOUR, -5 * HOUR, 7200, 90], 'minute', 5), new DreamweaverClock('minute', -5 * HOUR));
+    assert.equal(learnClock([-5 * HOUR, -5 * HOUR], 'minute', 2), undefined);
+    assert.equal(learnClock([], 'minute', 4), undefined);
+  });
+
+  test('is not known when another step ties with the winner, or the winner is beyond 16 hours', () => {
+    assert.equal(learnClock([60, 60, 60, 900, 900, 900], 'minute', 6), undefined);
+    assert.equal(learnClock([17 * HOUR, 17 * HOUR, 17 * HOUR], 'minute', 3), undefined);
+    assert.deepEqual(learnClock([16 * HOUR, 16 * HOUR, 16 * HOUR], 'minute', 3), new DreamweaverClock('minute', 16 * HOUR));
+  });
+
+  test('a step one hour from the winner does not unseat it, whichever has more', () => {
+    assert.deepEqual(learnClock([0, 0, 0, HOUR, HOUR, HOUR], 'second', 6), new DreamweaverClock('second', 0));
+    assert.deepEqual(learnClock([-HOUR, -HOUR, -HOUR, -HOUR, 0, 0, 0], 'second', 7), new DreamweaverClock('second', -HOUR));
+  });
+
+  test("is this tool's own when no entry names the server", () => {
+    assert.deepEqual(learnClock([], 'second', 0), new DreamweaverClock('second', 0));
+    assert.deepEqual(learnClock([], 'minute', 0), new DreamweaverClock('minute', 0));
+  });
+
+  test('matches a server time on its own clock, give or take the hour of daylight time', () => {
+    const server = Date.parse('2026-01-15T19:21:42.500Z');
+    const minute = new DreamweaverClock('minute', 5 * HOUR);
+    const recorded = minute.remoteFor(server, Date.now());
+    assert.equal(filetimeToMs(recorded), Date.parse('2026-01-15T14:21:00.000Z'));
+    assert.equal(minute.matches(server, recorded), true);
+    assert.equal(minute.matches(server + 17_000, recorded), true, 'within the same minute');
+    assert.equal(minute.matches(server + 60_000, recorded), false);
+    assert.equal(minute.matches(server + 3_600_000, recorded), true);
+    assert.equal(minute.matches(server - 3_600_000, recorded), true);
+    assert.equal(minute.matches(server + 7_200_000, recorded), false);
+
+    const second = new DreamweaverClock('second', 0);
+    const exact = second.remoteFor(server, Date.now());
+    assert.equal(filetimeToMs(exact), Date.parse('2026-01-15T19:21:42.000Z'));
+    assert.equal(second.matches(server, exact), true);
+    assert.equal(second.matches(server + 1000, exact), false);
+    assert.equal(DreamweaverClock.step('second', server, exact), 0);
+    assert.equal(DreamweaverClock.step('minute', server, recorded), 5 * HOUR);
+  });
+
+  test('moves the time of a folder server by the difference between the zone offset now and then', () => {
+    const winter = Date.parse('2025-12-02T18:05:41.118Z');
+    const summer = Date.parse('2026-07-10T09:00:00.000Z');
+    const zone = (atMs: number): number => (new Date(atMs).getUTCMonth() >= 3 && new Date(atMs).getUTCMonth() <= 9 ? 240 : 300);
+    const clock = new DreamweaverClock('second', 0);
+    assert.equal(clock.remoteFor(winter, summer, zone), 134091687410000000n);
+    assert.equal(filetimeToMs(clock.remoteFor(winter, winter, zone)), Date.parse('2025-12-02T18:05:41.000Z'));
+    assert.equal(filetimeToMs(clock.remoteFor(summer, winter, zone)), summer + 3_600_000);
+    assert.equal(clock.matches(winter, clock.remoteFor(winter, summer, zone)), true);
   });
 });

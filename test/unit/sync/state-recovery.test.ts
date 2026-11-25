@@ -58,6 +58,34 @@ test('records that are switched off hold nothing and write nothing', async () =>
   assert.equal(readdirSync(temp.dir).length, 0);
 });
 
+test('a mirror follows every change and is saved after the records; reset leaves it alone', async () => {
+  const seen: string[] = [];
+  const mirror = {
+    set: (target: string) => void seen.push(`set ${target}`),
+    delete: (target: string) => void seen.push(`delete ${target}`),
+    save: () => {
+      seen.push(existsSync(recordsFile(temp.dir, 'site-1', 'server-1')) ? 'save after the records' : 'save before the records');
+      return Promise.resolve();
+    },
+  };
+  const records = await SyncRecords.load(temp.dir, 'site-1', 'server-1', true, mirror);
+  records.set('a.html', record);
+  records.delete('missing.html');
+  records.delete('a.html');
+  records.set('b.html', record);
+  await records.save();
+  await records.save();
+  assert.deepEqual(seen, ['set a.html', 'delete a.html', 'set b.html', 'save after the records']);
+  await records.reset();
+  assert.equal(seen.length, 4);
+
+  const off = await SyncRecords.load(temp.dir, 'site-1', 'server-2', false, mirror);
+  off.set('a.html', record);
+  off.delete('a.html');
+  await off.save();
+  assert.equal(seen.length, 4, 'records that are switched off pass nothing on');
+});
+
 test('a broken records file is reported with the way out', async () => {
   const file = recordsFile(temp.dir, 'site-1', 'server-1');
   mkdirSync(path.dirname(file), { recursive: true });

@@ -33,6 +33,8 @@ export interface SessionOptions {
   readonly confirmHostKey?: (info: HostKeyInfo) => Promise<HostKeyDecision>;
   readonly confirmCertificate?: (info: CertificateInfo) => Promise<CertificateDecision>;
   readonly expectedHostKey?: string;
+  /** The time zone the session takes this computer to be in, as minutes behind UTC at a time. */
+  readonly zoneOffsetMinutes?: (atMs: number) => number;
 }
 
 export interface SiteRig {
@@ -121,7 +123,15 @@ export async function startSiteRig(kind: Kind, options: SiteRigOptions = {}): Pr
         ...(sessionOptions.confirmCertificate === undefined ? {} : { confirmCertificate: sessionOptions.confirmCertificate }),
         promptSecret: () => Promise.resolve(undefined),
       };
-      return SyncSession.open({ registry, siteId: site.id, host, logger, retryDelaysMs: [10, 10, 10], expectedHostKey: sessionOptions.expectedHostKey });
+      return SyncSession.open({
+        registry,
+        siteId: site.id,
+        host,
+        logger,
+        retryDelaysMs: [10, 10, 10],
+        expectedHostKey: sessionOptions.expectedHostKey,
+        zoneOffsetMinutes: sessionOptions.zoneOffsetMinutes,
+      });
     },
     write: (side, relative, content, mtimeMs = BASE_TIME) => {
       const file = sidePath(side, relative);

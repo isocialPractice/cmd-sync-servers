@@ -183,8 +183,25 @@ const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.from
     <tr><td><code>put(paths)</code>, <code>get(paths)</code></td><td>Moves single files or folders at once; returns a plan instead when a decision is needed.</td></tr>
     <tr><td><code>compare(path, signal)</code></td><td>Both copies of a file for a diff; the server copy is a private temporary file removed by <code>dispose()</code>.</td></tr>
     <tr><td><code>markSynchronized(paths, signal)</code></td><td>Records files as in sync without moving them.</td></tr>
-    <tr><td><code>resetState()</code></td><td>Forgets the sync records of the site and server.</td></tr>
+    <tr><td><code>settle(plan)</code></td><td>Saves what a plan found without a transfer: files both sides hold as the same copy are recorded, and records of files gone on both sides are dropped. <code>execute</code> does this itself; call it for a plan with nothing to run.</td></tr>
+    <tr><td><code>resetState(options)</code></td><td>Forgets the sync records of the site and server. With <code>{ dreamweaver: true }</code> it also removes the server's entries from every <code>_notes/dwsync.xml</code> of the site.</td></tr>
     <tr><td><code>close()</code></td><td>Saves the records and closes every connection.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="dreamweaver">Dreamweaver's records</h2>
+<p>A site with <code>sync.dreamweaver.enabled</code> on reads and updates the synchronization records Dreamweaver keeps in each folder as <code>_notes/dwsync.xml</code>. The session does that by itself: <code>plan.adopted</code> counts the files a plan took as in sync on the word of those records, and <code>status()</code> reports the same count with whether the way Dreamweaver reads the server's clock is known yet. These exports are for a program that sets a site up or looks at the files itself; all are experimental.</p>
+<table>
+  <caption>Exports for Dreamweaver's records</caption>
+  <thead><tr><th scope="col">Export</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>hasDreamweaverRecords(localRoot, options)</code></td><td>True when a local folder, or a folder below it, holds a readable <code>_notes/dwsync.xml</code>.</td></tr>
+    <tr><td><code>findDreamweaverServers(localRoot, options)</code></td><td>The servers Dreamweaver synchronized the folder with, as it names them, each with the number of entries that carry the name.</td></tr>
+    <tr><td><code>dreamweaverServerName(server)</code></td><td>The name Dreamweaver gives a server: the one its <code>options.dreamweaverServer</code> sets, or the host, <code>/</code>, and the remote root ending in <code>/</code>.</td></tr>
+    <tr><td><code>parseDwsync(text)</code>, <code>serializeDwsync(document)</code></td><td>Read and write the text of a <code>dwsync.xml</code>. A text that is not understood in full parses to <code>undefined</code>.</td></tr>
+    <tr><td><code>isDwsyncPath(path, caseInsensitive)</code></td><td>True for <code>_notes/dwsync.xml</code> in any folder of a site: the file no synchronization lists.</td></tr>
+    <tr><td><code>withEntry(state, hasRecord, match)</code></td><td>The state of a file both sides have, given which sides are as an entry of another program's records says.</td></tr>
+    <tr><td><code>RecordMirror</code></td><td>The interface of a second copy of the sync records, which <code>SyncRecords.load</code> takes as its last argument.</td></tr>
   </tbody>
 </table>
 

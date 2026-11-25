@@ -4,7 +4,7 @@ import * as z from 'zod';
 import { formatIssues } from '../config/schema.ts';
 import { SyncError } from '../errors.ts';
 import type { Guard } from './guard.ts';
-import { classify, type CompareOptions, type SyncState } from './classify.ts';
+import { classify, withEntry, type CompareOptions, type EntryMatch, type SyncState } from './classify.ts';
 import { guardedStatus, STATUS } from './messages.ts';
 import { checkPath, type RemotePath } from './paths.ts';
 import type { LinkedFile, ScanResult } from './scan-local.ts';
@@ -77,6 +77,10 @@ export interface PlanInput {
   readonly caseInsensitive: boolean;
   /** Single-file Put or Get: paths changed on the other side are offered as decisions instead of left out. */
   readonly explicit?: boolean;
+  /** What another program's records, such as Dreamweaver's, say about files both sides have. */
+  readonly entries?: ReadonlyMap<string, EntryMatch> | undefined;
+  /** Files in sync by the records whose record is saved again, so a mirror of the records catches up. */
+  readonly catchUp?: ReadonlySet<string> | undefined;
   readonly now?: number;
 }
 
@@ -183,7 +187,7 @@ function compareText(a: string, b: string): number {
 }
 
 /** A digest of everything a plan was built from, so a saved plan can be checked against a fresh scan. */
-function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 'scope' | 'local' | 'remote' | 'records'>): string {
+function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 'scope' | 'local' | 'remote' | 'records' | 'entries'>): string {
   const side = (scan: ScanResult): unknown[] =>
     [...scan.files.entries()].sort(([a], [b]) => compareText(a, b)).map(([key, value]) => [key, value.size, value.mtimeMs ?? null, value.sha256 ?? null]);
   const problems = [...input.local.problems, ...input.remote.problems].map((problem) => `${problem.side}:${problem.kind}:${problem.path}`).sort(compareText);
@@ -192,6 +196,8 @@ function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 
     .map(([key, value]) => [key, value.local.size, value.local.mtimeMs ?? null, value.remote.size, value.remote.mtimeMs ?? null]);
   // Where each link leads, so a saved plan is refused once a link points elsewhere. A site without links digests as before.
   const linked = [...input.local.linked.entries()].sort(([a], [b]) => compareText(a, b)).map(([key, value]) => [key, value.real]);
+  // What another program's records say, so a saved plan is refused once they say something else. A site without them digests as before.
+  const entries = [...(input.entries ?? [])].sort(([a], [b]) => compareText(a, b)).map(([key, value]) => [key, value.local, value.remote]);
   const canonical = JSON.stringify({
     direction: input.direction,
     deleteOrphans: input.deleteOrphans,
@@ -201,6 +207,7 @@ function scanFingerprint(input: Pick<PlanInput, 'direction' | 'deleteOrphans' | 
     problems,
     records,
     ...(linked.length === 0 ? {} : { linked }),
+    ...(entries.length === 0 ? {} : { entries }),
   });
   return createHash('sha256').update(canonical).digest('hex');
 }
@@ -259,6 +266,8 @@ export class SyncPlan {
   readonly silent: readonly SilentUpdate[];
   /** Files compared but not listed: in sync, or not part of this direction. */
   readonly unlisted: number;
+  /** Files taken as in sync on the word of another program's records, such as Dreamweaver's; each is among the silent updates. */
+  readonly adopted: number;
   /** How many local files the scan found. */
   readonly localFiles: number;
   /** How many remote files the scan found. */
@@ -338,6 +347,7 @@ export class SyncPlan {
     const rows: Omit<MutableItem, 'id'>[] = [];
     const silent: SilentUpdate[] = [];
     let unlisted = 0;
+    let adopted = 0;
     for (const target of [...paths].sort(compareText)) {
       if (blocked.has(target)) {
         continue;
@@ -353,9 +363,18 @@ export class SyncPlan {
         continue;
       }
       const record = input.records.get(target);
-      const state = classify(local, remote, record, input.compare);
-      if (state === undefined) {
+      const ownState = classify(local, remote, record, input.compare);
+      if (ownState === undefined) {
         continue;
+      }
+      // An entry of another program's records speaks only for a file both sides have, so it never makes a delete.
+      const match = local !== undefined && remote !== undefined ? input.entries?.get(target) : undefined;
+      const state = match === undefined ? ownState : withEntry(ownState, record !== undefined, match);
+      if (state === 'refresh-record' && ownState !== 'refresh-record') {
+        adopted += 1;
+      }
+      if (state === 'in-sync' && record !== undefined && input.catchUp?.has(target) === true) {
+        silent.push({ path: checked.path, record });
       }
       if (state === 'refresh-record' && local !== undefined && remote !== undefined) {
         silent.push({ path: checked.path, record: { local, remote, syncedAt: input.now ?? Date.now() } });
@@ -389,6 +408,7 @@ export class SyncPlan {
     }
     this.silent = silent;
     this.unlisted = unlisted;
+    this.adopted = adopted;
     this.#items = [...rows, ...problems.sort((a, b) => compareText(a.path, b.path))].map((item, index) => ({ ...item, id: index + 1 }));
   }
 

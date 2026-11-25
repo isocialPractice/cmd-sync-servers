@@ -378,6 +378,34 @@ the step of the plan that specifies it.
 - [x] Documents, changelog, checks and commit for N1
   - **Goal**: Resolve to [Phase N1, step 6](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
   - From: Dreamweaver Sync Files
+- [x] `withEntry` and `EntryMatch`: an entry of Dreamweaver's records as
+      evidence for a file both sides have, with every branch tested
+  - **Goal**: Resolve to [Phase N2, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
+- [x] The clock of a server as Dreamweaver reads it: learning it, its file
+      in the state folder, and `DreamweaverClock`
+  - **Goal**: Resolve to [Phase N2, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
+- [x] `DreamweaverNotes`: reading the records, writing them as a second
+      copy of the tool's own, and catching up, with `RecordMirror` in
+      `SyncRecords`
+  - **Goal**: Resolve to [Phase N2, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
+- [x] The plan: the entry matches, the count of files taken over, and the
+      fingerprint
+  - **Goal**: Resolve to [Phase N2, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
+- [x] The session and the run: `settle`, `resetState`, emptied folders,
+      and saving what a plan found in sync when nothing is transferred
+  - **Goal**: Resolve to [Phase N2, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
+- [x] The Dreamweaver scenarios over `local`, `sftp` and `ftps`, and the
+      library exports
+  - **Goal**: Resolve to [Phase N2, step 6](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
+- [x] Documents, changelog, checks and commit for N2
+  - **Goal**: Resolve to [Phase N2, step 7](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+  - From: Dreamweaver Sync Files
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -476,29 +504,8 @@ Next version: major. Phases N1 to N3 together make `2.0.0`: N1 sets the
 version, and N2 and N3 add to it. Phase N4 hands the extension its plan
 through agents-align. Phase N5 moves no version.
 
-The items of Phase N1 are in Current.
+The items of Phases N1 and N2 are in Current.
 
-- [ ] `withEntry` and `EntryMatch`: an entry of Dreamweaver's records as
-      evidence for a file both sides have, with every branch tested
-  - **Goal**: Resolve to [Phase N2, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
-- [ ] The clock of a server as Dreamweaver reads it: learning it, its file
-      in the state folder, and `DreamweaverClock`
-  - **Goal**: Resolve to [Phase N2, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
-- [ ] `DreamweaverNotes`: reading the records, writing them as a second
-      copy of the tool's own, and catching up, with `RecordMirror` in
-      `SyncRecords`
-  - **Goal**: Resolve to [Phase N2, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
-- [ ] The plan: the entry matches, the count of files taken over, and the
-      fingerprint
-  - **Goal**: Resolve to [Phase N2, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
-- [ ] The session and the run: `settle`, `resetState`, emptied folders,
-      and saving what a plan found in sync when nothing is transferred
-  - **Goal**: Resolve to [Phase N2, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
-- [ ] The Dreamweaver scenarios over `local`, `sftp` and `ftps`, and the
-      library exports
-  - **Goal**: Resolve to [Phase N2, step 6](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
-- [ ] Documents, changelog, checks and commit for N2
-  - **Goal**: Resolve to [Phase N2, step 7](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
 - [ ] `site add` in a folder with Dreamweaver's records,
       `--dreamweaver-server`, `site edit --dreamweaver`, and the Dreamweaver
       lines of `site show`, `status` and `state reset`, with their tests

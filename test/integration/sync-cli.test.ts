@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { cli, filesContaining } from '../helpers/cli.ts';
@@ -44,6 +44,23 @@ test('sync without --yes previews and transfers nothing; with --yes it synchroni
 
     const again = await run('sync', '--both', '--yes');
     assert.match(again.stdout, /^Nothing to synchronize\.$/m);
+  });
+});
+
+test('a sync with nothing to transfer saves what it found in sync; a dry run and status save nothing', async () => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'index.html', 'home');
+    rig.write('remote', 'index.html', 'home');
+    const records = path.join(rig.home, 'state', 'sites', rig.site.id, `${rig.site.servers[0]?.id ?? ''}.json`);
+    const dry = await run('sync', '--both', '--dry-run');
+    assert.match(dry.stdout, /^Nothing to synchronize\.$/m);
+    assert.equal((await run('status')).code, 0);
+    assert.equal(existsSync(records), false);
+
+    const done = await run('sync', '--both');
+    assert.equal(done.code, 0, done.stderr);
+    assert.match(done.stdout, /^Nothing to synchronize\.$/m);
+    assert.deepEqual(Object.keys(json<{ records: object }>(readFileSync(records, 'utf8')).records), ['index.html']);
   });
 });
 
