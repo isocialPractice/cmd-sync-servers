@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { defaultPaths } from '../../src/config/paths.ts';
@@ -7,6 +7,7 @@ import { SiteRegistry } from '../../src/config/registry.ts';
 import { openSecret } from '../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../src/credentials/memory.ts';
 import { cli, filesContaining, makeFolder, tempDir } from '../helpers/cli.ts';
+import { entryFor, writeDwsync } from '../helpers/dwsync.ts';
 import { certificateAuthority, testCertificate } from '../sandbox/cert.ts';
 import type { FtpSandbox } from '../sandbox/ftp-server.ts';
 import { startRig, type Rig } from '../sandbox/rig.ts';
@@ -143,6 +144,47 @@ test('site add sets up a site and its server in one command: connects, decides o
   }
 });
 
+test("site add in a folder Dreamweaver synchronized asks to use its records, asks which server this one is, and takes them over without asking twice", async () => {
+  const f = await fixture();
+  try {
+    const account = path.dirname(f.rig.siteDir);
+    const name = '203.0.113.10//public_html/';
+    const files = ['index.html', 'about.html', 'contact.html'];
+    const start = Date.UTC(2026, 9, 1, 12);
+    files.forEach((file, index) => {
+      for (const [folder, at] of [[f.root, start + index * 60_000], [account, start + 3_600_000 + index * 420_000]] as const) {
+        writeFileSync(path.join(folder, file), `<h1>${file}</h1>`);
+        utimesSync(path.join(folder, file), new Date(at), new Date(at));
+      }
+    });
+    // Dreamweaver knew the server by its address, and read its clock five hours behind.
+    writeDwsync(f.root, files.map((file) => entryFor(path.join(f.root, file), statSync(path.join(account, file)).mtimeMs, name, { seconds: 5 * 3600 })));
+
+    // The password is not saved, so the take-over has only the one the server just accepted.
+    const result = await siteAdd(f, [...siteAddAnswers(f, f.rig.password).slice(0, -1), 'n', '', '1']);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stderr, /This folder holds Dreamweaver synchronization records \(_notes\/dwsync\.xml\)\.\nUse them, and keep them up to date for Dreamweaver\? \(Y\/n\)/);
+    assert.match(result.stderr, /Dreamweaver synchronized this folder with these servers\. Which one is localhost\?\n {2}1\. 203\.0\.113\.10\/\/public_html\/ \(3 files\)\n {2}2\. None of these\nChoose a number \[2\]: /);
+    assert.equal(result.stderr.split('Password: ').length - 1, 1, 'the password is asked for once');
+    assert.match(result.stdout, /^Added site "My Site" with the server localhost \(FTPS\)\. It is the Remote server\.\nTook 3 files as in sync from Dreamweaver's records\.\nNext: /m);
+    assert.equal(await saved(f), undefined);
+
+    const stored = json<{ sites: { sync: { dreamweaver: { enabled: boolean } }; servers: { options: { dreamweaverServer?: string } }[] }[] }>(readFileSync(path.join(f.home, 'sites.json'), 'utf8')).sites[0];
+    assert.deepEqual(stored?.sync.dreamweaver, { enabled: true });
+    assert.equal(stored.servers[0]?.options.dreamweaverServer, name);
+
+    const preview = await cli({ home: f.home, cwd: f.root, env: { SYNC_SERVERS_PASSWORD: f.rig.password }, credentialStore: f.store }, 'sync', '--both', '--dry-run');
+    assert.equal(preview.code, 0, preview.stderr);
+    assert.match(preview.stdout, /^Files: 0 will be updated, 3 will be skipped$/m);
+    for (const output of [result.stdout, result.stderr, preview.stdout, preview.stderr]) {
+      assert.ok(!output.includes(f.rig.password));
+    }
+    assert.deepEqual(filesContaining(f.home, f.rig.password), []);
+  } finally {
+    await f.close();
+  }
+});
+
 test('site add lists every folder of a crowded account, dot-folders last, and opens the last one by number', async () => {
   const f = await fixture();
   try {
@@ -253,6 +295,36 @@ test('server edit in a terminal asks again with the current values, and changes 
     assert.equal(servers(f.home)[0]?.username, f.rig.user);
     assert.equal(servers(f.home)[0]?.remoteRoot, '/site');
     assert.equal(await saved(f), f.rig.password);
+  } finally {
+    await f.close();
+  }
+});
+
+test("server edit in a terminal asks the name Dreamweaver gives the server, only for a site that uses Dreamweaver's records", async () => {
+  const f = await fixture({ mismatch: false });
+  try {
+    await savedServer(f);
+    const name = (): string | undefined =>
+      json<{ sites: { servers: { options: { dreamweaverServer?: string } }[] }[] }>(readFileSync(path.join(f.home, 'sites.json'), 'utf8')).sites[0]?.servers[0]?.options.dreamweaverServer;
+    const edit = (input: string): ReturnType<typeof cli> => cli({ home: f.home, tty: true, input, credentialStore: f.store }, 'server', 'edit', 'Production');
+
+    const without = await edit('\n\n\n\n\n');
+    assert.equal(without.code, 0, without.stderr);
+    assert.doesNotMatch(without.stderr, /Dreamweaver/);
+
+    assert.equal((await cli({ home: f.home }, 'site', 'edit', '--dreamweaver')).code, 0);
+    const named = await edit('\n\n\n\n\n203.0.113.10//public_html/\n');
+    assert.equal(named.code, 0, named.stderr);
+    assert.match(named.stderr, /Dreamweaver server name \[127\.0\.0\.1\/\/site\/\]: /);
+    assert.equal(name(), '203.0.113.10//public_html/');
+
+    const kept = await edit('\n\n\n\n\n\n');
+    assert.match(kept.stderr, /Dreamweaver server name \[203\.0\.113\.10\/\/public_html\/\]: /);
+    assert.equal(name(), '203.0.113.10//public_html/');
+
+    const built = await edit('\n\n\n\n\n127.0.0.1//SITE\n');
+    assert.equal(built.code, 0, built.stderr);
+    assert.equal(name(), undefined, 'the name built from the host and the root is not stored');
   } finally {
     await f.close();
   }

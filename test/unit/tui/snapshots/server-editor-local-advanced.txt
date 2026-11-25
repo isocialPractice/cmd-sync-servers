@@ -3,10 +3,10 @@
 
    Basic    Advanced    Local/Network
 
-  Web URL               ▏
-  Allow deletes at "/"  [ ]
-  Upload on save        [ ]
-
+  Web URL                  ▏
+  Allow deletes at "/"     [ ]
+  Upload on save           [ ]
+  Dreamweaver server name
 
 
 

@@ -55,12 +55,36 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
 - `options.dreamweaverServer` in `sites.json`: the name Dreamweaver gives a
   server in those records, for a server it knows by another host or folder
   spelling. Unset, it is built from the host and the remote root.
+- `site add` in a folder that holds Dreamweaver's records turns the setting
+  on. In a terminal it asks first, asks which of the servers Dreamweaver
+  synchronized the folder with this one is when its host and root do not
+  say, and takes the records over at once, without asking for the password
+  again. `--dreamweaver` and `--no-dreamweaver` decide without the folder.
+- `site edit --dreamweaver` and `--no-dreamweaver`; a Dreamweaver line in
+  `site show`, which also says when a site that leaves the records alone
+  holds some; `--dreamweaver-server <name>` on `site add`, `server add` and
+  `server edit`, with `auto` for the built name; and the same question in
+  `server edit` in a terminal, for a site that uses the records.
+- `status` says how many files Dreamweaver's records showed in sync, or
+  that the records are not used yet and why, and carries both in its JSON
+  as `dreamweaver`.
+- `state reset --dreamweaver`, which also removes the server's entries from
+  every `_notes/dwsync.xml` of the site.
+- In the terminal interface: Dreamweaver sync files in Site Setup's
+  Synchronization category, Dreamweaver server name in the server editor's
+  Advanced tab, and the same questions and take-over in the new-site form.
+- A Dreamweaver synchronization files section on the configuration page,
+  Dreamweaver records on the troubleshooting page, an example of taking a
+  site over, and the steps on the getting started page.
 - In the library API: `SyncSession.settle`, `SyncPlan.adopted`, the
   `dreamweaver` field of a status report, the `dreamweaver` option of
   `SyncSession.resetState`, and the experimental exports `parseDwsync`,
   `serializeDwsync`, `isDwsyncPath`, `dreamweaverServerName`,
   `findDreamweaverServers`, `hasDreamweaverRecords`, `withEntry` and the
-  `RecordMirror` interface that `SyncRecords.load` takes.
+  `RecordMirror` interface that `SyncRecords.load` takes. `DREAMWEAVER_TEXT`,
+  `dreamweaverInSync` and `dreamweaverTakeOver` hold the sentences every
+  front end shows, and `SyncSession.dreamweaverClock` says whether the
+  records are in use yet.
 
 ### Security
 

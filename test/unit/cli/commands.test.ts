@@ -8,6 +8,7 @@ import { SiteRegistry } from '../../../src/config/registry.ts';
 import { openSecret } from '../../../src/credentials/binding.ts';
 import { MemoryCredentialStore } from '../../../src/credentials/memory.ts';
 import { cli, filesContaining, makeFolder, tempDir } from '../../helpers/cli.ts';
+import { writeDwsync } from '../../helpers/dwsync.ts';
 
 let temp: ReturnType<typeof tempDir>;
 let home: string;
@@ -182,6 +183,89 @@ test('site edit sets how a site follows symbolic links, and site show names it',
   const refused = await cli({ home }, 'site', 'edit', 'My Site', '--symlinks', 'always');
   assert.equal(refused.code, 2);
   assert.match(refused.stderr, /--symlinks must be one of: skip, follow-inside-root, follow\./);
+});
+
+const DW_FTP = '203.0.113.10//public_html/';
+const DW_FOLDER = 'D:/Sites/my-site-testing/';
+
+/** Leaves Dreamweaver's records in the site folder: two files on an FTP server, one of them on a folder server too. */
+function dreamweaverRecords(folder = root): void {
+  const entry = (name: string, server: string) => ({ name, server, local: 134129604153427891n, remote: 134129604600000000n });
+  writeDwsync(folder, [entry('index.html', DW_FTP), entry('index.html', DW_FOLDER), entry('about.html', DW_FTP)]);
+}
+
+test("site add turns Dreamweaver's records on when the folder holds some, and says which names it found", async () => {
+  dreamweaverRecords();
+  const added = await cli(
+    { home },
+    'site', 'add', '--name', 'My Site', '--local-root', root, '--host', 'server1.hosting.example.net', '--user', 'demo-user', '--remote-root', '/public_html',
+  );
+  assert.equal(added.code, 0, added.stderr);
+  assert.match(added.stdout, /^It uses Dreamweaver's synchronization records: the first sync of the whole site takes them over\.$/m);
+  assert.match(
+    added.stderr,
+    /^Dreamweaver synchronized this folder with: 203\.0\.113\.10\/\/public_html\/, D:\/Sites\/my-site-testing\/\. None is server1\.hosting\.example\.net\/\/public_html\/, the name built for "server1\.hosting\.example\.net"\. Say which one it is with "sync-servers server edit --dreamweaver-server <name>"\.$/m,
+  );
+  assert.match((await cli({ home }, 'site', 'show')).stdout, /^Dreamweaver +on$/m);
+
+  const named = await cli({ home }, 'server', 'edit', 'server1.hosting.example.net', '--dreamweaver-server', DW_FTP, '--json');
+  assert.equal(named.code, 0, named.stderr);
+  const stored = (): string | undefined =>
+    json<{ sites: { servers: { options: { dreamweaverServer?: string } }[] }[] }>(readFileSync(path.join(home, 'sites.json'), 'utf8')).sites[0]?.servers[0]?.options.dreamweaverServer;
+  assert.equal(stored(), DW_FTP);
+  assert.equal((await cli({ home }, 'server', 'edit', 'server1.hosting.example.net', '--dreamweaver-server', 'auto')).code, 0);
+  assert.equal(stored(), undefined);
+  const empty = await cli({ home }, 'server', 'edit', 'server1.hosting.example.net', '--dreamweaver-server', ' ');
+  assert.equal(empty.code, 2);
+  assert.match(empty.stderr, /--dreamweaver-server takes the name Dreamweaver gives the server/);
+});
+
+test('site add leaves the records alone with --no-dreamweaver, uses them without any with --dreamweaver, and a matching server needs no name', async () => {
+  dreamweaverRecords();
+  const off = await cli({ home }, 'site', 'add', '--name', 'My Site', '--local-root', root, '--no-dreamweaver');
+  assert.equal(off.code, 0, off.stderr);
+  assert.doesNotMatch(off.stdout, /Dreamweaver/);
+  assert.match((await cli({ home }, 'site', 'show')).stdout, /^Dreamweaver +off \(records found in this folder\)$/m);
+
+  const plain = makeFolder(temp.dir, 'sites', 'sample-app');
+  const on = await cli({ home }, 'site', 'add', '--name', 'Sample App', '--local-root', plain, '--dreamweaver');
+  assert.equal(on.code, 0, on.stderr);
+  assert.match((await cli({ home }, 'site', 'show', 'Sample App')).stdout, /^Dreamweaver +on$/m);
+  const none = makeFolder(temp.dir, 'sites', 'demo-tool');
+  assert.equal((await cli({ home }, 'site', 'add', '--name', 'Demo Tool', '--local-root', none)).code, 0);
+  assert.match((await cli({ home }, 'site', 'show', 'Demo Tool')).stdout, /^Dreamweaver +off$/m);
+
+  const matching = makeFolder(temp.dir, 'sites', 'matching');
+  dreamweaverRecords(matching);
+  const same = await cli({ home }, 'site', 'add', '--name', 'Matching', '--local-root', matching, '--protocol', 'ftps', '--host', '203.0.113.10', '--user', 'demo-user', '--remote-root', '/public_html');
+  assert.equal(same.code, 0, same.stderr);
+  assert.match(same.stdout, /It uses Dreamweaver's synchronization records/);
+  assert.doesNotMatch(same.stderr, /Dreamweaver synchronized this folder with/);
+});
+
+test("site edit turns Dreamweaver's records on and off, which needs sync records", async () => {
+  dreamweaverRecords();
+  const siteId = await addSite();
+  await addProduction();
+  assert.match((await cli({ home }, 'site', 'show')).stdout, /^Dreamweaver +on$/m);
+  assert.equal((await cli({ home }, 'site', 'edit', '--no-dreamweaver')).code, 0);
+  assert.match((await cli({ home }, 'site', 'show')).stdout, /^Dreamweaver +off \(records found in this folder\)$/m);
+
+  const on = await cli({ home }, 'site', 'edit', '--dreamweaver');
+  assert.equal(on.code, 0, on.stderr);
+  assert.match(on.stdout, /^Updated site "My Site"\.\nThe next sync of the whole site takes Dreamweaver's records over\.$/m);
+  assert.match(on.stderr, /None is sftp\.example\.com\/\/var\/www\/my-site\/, the name built for "Production"\./);
+  const again = await cli({ home }, 'site', 'edit', '--dreamweaver');
+  assert.doesNotMatch(again.stdout, /takes Dreamweaver's records over/, 'a site that already uses them is told nothing new');
+
+  const registry = await SiteRegistry.open({ paths: defaultPaths({}, { platform: process.platform, env: { SYNC_SERVERS_HOME: home }, homedir: home, cwd: home }) });
+  await registry.update(siteId, (draft) => {
+    draft.sync.maintainInfo = false;
+    draft.sync.dreamweaver.enabled = false;
+  });
+  const refused = await cli({ home }, 'site', 'edit', '--dreamweaver');
+  assert.equal(refused.code, 2);
+  assert.match(refused.stderr, /--dreamweaver needs sync records, and "My Site" keeps none: sync\.maintainInfo is off\./);
 });
 
 test('cloak sorts paths from patterns, and uncloak removes them', async () => {

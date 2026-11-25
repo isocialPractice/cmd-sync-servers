@@ -7,6 +7,7 @@ import { PASSWORD_ENV } from '../credentials/env.ts';
 import type { SecretKind } from '../credentials/types.ts';
 import { isSyncError } from '../errors.ts';
 import type { CertificateDecision, HostAdapter, HostKeyDecision } from '../host.ts';
+import { dreamweaverServerName, sameServerName } from '../sync/dwsync.ts';
 import { remoteRootIsTop } from '../sync/session.ts';
 import { safeLine } from '../terminal-text.ts';
 import { ServerProbe } from '../transport/probe.ts';
@@ -40,6 +41,11 @@ export const SERVER_FIELD_OPTIONS: OptionSpecs = {
   'tls-min-version': { type: 'string', value: '<version>', description: 'FTPS: TLSv1.2 (default) or TLSv1.3' },
   'file-mode': { type: 'string', value: '<mode>', description: 'Permissions for uploaded files, such as 644' },
   'dir-mode': { type: 'string', value: '<mode>', description: 'Permissions for created folders, such as 755' },
+  'dreamweaver-server': {
+    type: 'string',
+    value: '<name>',
+    description: 'The name Dreamweaver gives this server in _notes/dwsync.xml, such as 203.0.113.10//public_html/; "auto" builds it from the host and the remote root',
+  },
 };
 
 export type AuthMethod = 'password' | 'key' | 'agent';
@@ -65,6 +71,7 @@ export interface ServerDraft {
     uploadOnSave?: boolean;
     remoteFileMode?: string;
     remoteDirMode?: string;
+    dreamweaverServer?: string;
   };
 }
 
@@ -236,6 +243,15 @@ export function applyServerOptions(draft: ServerDraft, values: OptionValues, ctx
   if (dirMode !== undefined) {
     options.remoteDirMode = dirMode;
   }
+  const dreamweaverServer = text('dreamweaver-server')?.trim();
+  if (dreamweaverServer === '') {
+    throw new UsageError('--dreamweaver-server takes the name Dreamweaver gives the server, such as 203.0.113.10//public_html/, or "auto".');
+  }
+  if (dreamweaverServer === 'auto') {
+    delete options.dreamweaverServer;
+  } else if (dreamweaverServer !== undefined) {
+    options.dreamweaverServer = dreamweaverServer;
+  }
   if (draft.port !== undefined && draft.protocol !== undefined && draft.protocol !== 'local' && draft.port === defaultPort(draft.protocol)) {
     delete draft.port;
   }
@@ -292,6 +308,8 @@ export interface GuidedSetup {
   readonly serverId: string;
   /** The server options given on the command line. */
   readonly values: OptionValues;
+  /** True when the site uses Dreamweaver's records: an edit then also asks the name Dreamweaver gives the server. */
+  readonly dreamweaver?: boolean | undefined;
 }
 
 /** What a guided setup produced. */
@@ -301,6 +319,8 @@ export interface GuidedResult {
   readonly connection: 'tested' | 'untested' | 'unchanged';
   /** A secret the person typed, the server accepted, and the person chose to save. */
   readonly save?: { readonly kind: SecretKind; readonly secret: string } | undefined;
+  /** A secret the person typed and the server accepted, saved or not, so the same command can connect once more without asking again. Never stored or shown. */
+  readonly accepted?: { readonly kind: SecretKind; readonly secret: string } | undefined;
 }
 
 const NOTHING_SAVED = 'Nothing was saved.';
@@ -425,9 +445,19 @@ export async function guidedServer(ctx: CommandContext, setup: GuidedSetup): Pro
   }
 
   // `site add` names the server once the setup is done, after the host it ends up connecting to.
-  const finish = (connection: GuidedResult['connection'], save?: GuidedResult['save']): GuidedResult => {
+  const finish = async (connection: GuidedResult['connection'], save?: GuidedResult['save'], accepted?: GuidedResult['accepted']): Promise<GuidedResult> => {
     draft.name ??= defaultServerName(draft);
-    return { server: draftServer(draft, existing?.id ?? setup.serverId), connection, save };
+    if (editing && setup.dreamweaver === true && draft.protocol !== undefined && draft.remoteRoot !== undefined) {
+      // The name Dreamweaver knows the server by; the one built from the host and the root is not stored.
+      const built = dreamweaverServerName({ protocol: draft.protocol, host: draft.host, remoteRoot: draft.remoteRoot, options: {} });
+      const answer = (await ask.ask('Dreamweaver server name', draft.options.dreamweaverServer ?? built)).trim();
+      if (answer === '' || sameServerName(answer, built)) {
+        delete draft.options.dreamweaverServer;
+      } else {
+        draft.options.dreamweaverServer = answer;
+      }
+    }
+    return { server: draftServer(draft, existing?.id ?? setup.serverId), connection, save, accepted };
   };
   const askName = async (fallback: string): Promise<void> => {
     if (setup.mode === 'site-add') {
@@ -686,7 +716,7 @@ export async function guidedServer(ctx: CommandContext, setup: GuidedSetup): Pro
       save = { kind, secret };
     }
   }
-  return finish('tested', save);
+  return finish('tested', save, secret === undefined || method === 'agent' ? undefined : { kind, secret });
 }
 
 /** Asks once whether deletes are allowed when the root is the top of what the account sees, unless an option said. */

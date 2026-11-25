@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createTwoFilesPatch } from 'diff';
 import type { Server, Site } from '../../config/schema.ts';
 import { resultLine, type SyncResult } from '../../sync/execute.ts';
+import { DREAMWEAVER_TEXT, dreamweaverInSync } from '../../sync/messages.ts';
 import { isInside, ROOT, toRemotePath } from '../../sync/paths.ts';
 import { safeLine, safeText } from '../../terminal-text.ts';
 import { SyncPlan, type PlanItem, type SavedPlan } from '../../sync/plan.ts';
@@ -387,6 +388,11 @@ export const statusCommand: CommandSpec = {
         }
       }
       ctx.out(`\nIn sync: ${String(report.inSync)} file(s).\n`);
+      if (report.dreamweaver?.clock === 'unknown') {
+        ctx.out(`${scope === undefined ? DREAMWEAVER_TEXT.clockUnknown : DREAMWEAVER_TEXT.clockNotLearned}\n`);
+      } else if (report.dreamweaver !== undefined && report.dreamweaver.inSync > 0) {
+        ctx.out(`${dreamweaverInSync(report.dreamweaver.inSync)}\n`);
+      }
       return undefined;
     } finally {
       await session.close();
@@ -420,22 +426,36 @@ export const markSyncedCommand: CommandSpec = {
 export const stateResetCommand: CommandSpec = {
   path: ['state', 'reset'],
   summary: 'Forget the sync records of a site and server; the next sync starts from scratch',
-  options: YES_OPTION,
-  examples: ['sync-servers state reset', 'sync-servers state reset --site "My Site" --yes'],
+  options: {
+    ...YES_OPTION,
+    dreamweaver: {
+      type: 'boolean',
+      description: "Also remove this server's entries from Dreamweaver's _notes/dwsync.xml; without it, a site that uses those records takes them over again at its next sync",
+    },
+  },
+  examples: ['sync-servers state reset', 'sync-servers state reset --site "My Site" --yes', 'sync-servers state reset --dreamweaver'],
   async run(ctx, { values }) {
     const session = await openSession(ctx, values);
     try {
       const target = `"${session.site.name}: ${session.server.name}"`;
+      const dreamweaver = flag(values, 'dreamweaver');
       if (!flag(values, 'yes')) {
         if (!ctx.interactive) {
           throw new UsageError('Pass --yes to reset the sync records without a terminal.');
         }
-        if (!(await ctx.prompter.confirm(`Forget the sync records of ${target}?`, false))) {
+        const question = dreamweaver ? `Forget the sync records of ${target}, and remove its entries from Dreamweaver's records?` : `Forget the sync records of ${target}?`;
+        if (!(await ctx.prompter.confirm(question, false))) {
           throw new CancelledError('Nothing was changed.');
         }
       }
-      await session.resetState();
-      ctx.out(`Forgot the sync records of ${target}. The next sync compares both sides from scratch.\n`);
+      await session.resetState({ dreamweaver });
+      if (dreamweaver) {
+        ctx.out(`Forgot the sync records of ${target}, and removed its entries from Dreamweaver's records. The next sync compares both sides from scratch.\n`);
+      } else if (session.dreamweaverClock !== undefined) {
+        ctx.out(`Forgot the sync records of ${target}. Dreamweaver's records are as they were, so the next sync of the whole site takes them over again; pass --dreamweaver to remove this server's entries too.\n`);
+      } else {
+        ctx.out(`Forgot the sync records of ${target}. The next sync compares both sides from scratch.\n`);
+      }
       return undefined;
     } finally {
       await session.close();

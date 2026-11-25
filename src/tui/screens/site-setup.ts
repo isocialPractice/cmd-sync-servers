@@ -178,6 +178,12 @@ export class SiteSetupView implements View {
         'sync',
         new Form([
           field.toggle('maintainInfo', 'Maintain sync information', sync?.maintainInfo ?? true, 'Keeps sync records, so changes on both sides are detected.'),
+          field.toggle(
+            'dreamweaver',
+            'Dreamweaver sync files',
+            sync?.dreamweaver.enabled ?? false,
+            'Reads and updates _notes/dwsync.xml, so Dreamweaver and sync-servers agree on what is in sync.',
+          ),
           field.choice('compare', 'Compare files by', [
             { label: 'Size and time', value: 'metadata' },
             { label: 'Checksum', value: 'checksum' },
@@ -438,6 +444,9 @@ export class SiteSetupView implements View {
         problems.push(['sync', id, value]);
       }
     }
+    if (syncForm.toggle('dreamweaver') && !syncForm.toggle('maintainInfo')) {
+      problems.push(['sync', 'dreamweaver', 'Dreamweaver sync files need Maintain sync information.']);
+    }
     if (problems.length > 0) {
       for (const [category, id, message] of problems) {
         get(category).setError(id, message);
@@ -470,6 +479,7 @@ export class SiteSetupView implements View {
       },
       sync: {
         maintainInfo: syncForm.toggle('maintainInfo'),
+        dreamweaver: { enabled: syncForm.toggle('dreamweaver') },
         compare: syncForm.choice('compare') as 'metadata' | 'checksum',
         mtimeToleranceSeconds: numbers.tolerance as number,
         symlinks: syncForm.choice('symlinks') as LinkPolicy,
@@ -486,10 +496,7 @@ export class SiteSetupView implements View {
         this.#siteId = added.id;
       } else {
         await registry.update(this.#siteId, (draft) => {
-          // A setting no field here shows stays as it is.
-          const { dreamweaver } = draft.sync;
           Object.assign(draft, settings);
-          draft.sync.dreamweaver = dreamweaver;
         });
       }
     } catch (error) {

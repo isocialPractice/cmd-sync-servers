@@ -42,6 +42,7 @@ const ISSUE_FIELDS: Readonly<Record<string, string>> = {
   'options.tls.servername': 'servername',
   'options.remoteFileMode': 'fileMode',
   'options.remoteDirMode': 'dirMode',
+  'options.dreamweaverServer': 'dreamweaverServer',
 };
 
 function sameName(a: string, b: string): boolean {
@@ -181,6 +182,9 @@ export class ServerEditorView implements View {
       field.text('dirMode', 'Folder permissions', options?.remoteDirMode ?? '', { help: 'An octal mode such as 755 for new folders. Empty leaves the server default.' }),
       field.toggle('allowRootDeletes', 'Allow deletes at "/"', options?.allowRootDeletes ?? false, 'Deletes are refused when the root directory is "/" or a drive, unless this is on.'),
       field.toggle('uploadOnSave', 'Upload on save', options?.uploadOnSave ?? false, 'Used by the VS Code extension: puts a file when it is saved.'),
+      field.text('dreamweaverServer', 'Dreamweaver server name', options?.dreamweaverServer ?? '', {
+        help: 'The name Dreamweaver gives this server in _notes/dwsync.xml, such as 203.0.113.10//public_html/. Empty builds it from the host and the root directory.',
+      }),
       field.note('hostKey', 'Host key', ''),
       field.action('forgetHostKey', 'Forget host key', 'The next connection asks to trust the host key again.'),
       field.note('certificate', 'Certificate', ''),
@@ -238,6 +242,7 @@ export class ServerEditorView implements View {
         remote && 'dirMode',
         'allowRootDeletes',
         'uploadOnSave',
+        'dreamweaverServer',
         sftp && 'hostKey',
         sftp && 'forgetHostKey',
         tls && 'certificate',
@@ -631,8 +636,7 @@ export class ServerEditorView implements View {
     const options: Record<string, unknown> = {
       allowRootDeletes: this.#toggle('allowRootDeletes') || undefined,
       uploadOnSave: this.#toggle('uploadOnSave'),
-      // A setting no field here shows stays as it is.
-      dreamweaverServer: this.#server?.options.dreamweaverServer,
+      dreamweaverServer: this.#text('dreamweaverServer').trim() || undefined,
     };
     if (protocol === 'local') {
       draft.remoteRoot = this.#text('folder') === '' ? '' : typedPath(this.#services, this.#text('folder'));

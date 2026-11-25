@@ -202,6 +202,8 @@ const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.from
     <tr><td><code>isDwsyncPath(path, caseInsensitive)</code></td><td>True for <code>_notes/dwsync.xml</code> in any folder of a site: the file no synchronization lists.</td></tr>
     <tr><td><code>withEntry(state, hasRecord, match)</code></td><td>The state of a file both sides have, given which sides are as an entry of another program's records says.</td></tr>
     <tr><td><code>RecordMirror</code></td><td>The interface of a second copy of the sync records, which <code>SyncRecords.load</code> takes as its last argument.</td></tr>
+    <tr><td><code>session.dreamweaverClock</code></td><td><code>'known'</code> or <code>'unknown'</code> after a plan, and <code>undefined</code> for a site that does not use the records. Until the clock is known, the records are not used.</td></tr>
+    <tr><td><code>DREAMWEAVER_TEXT</code>, <code>dreamweaverInSync(count)</code>, <code>dreamweaverTakeOver(adopted, clock)</code></td><td>The sentences every front end shows: the question setup asks, why the records are not used yet, and what a plan took from them.</td></tr>
   </tbody>
 </table>
 

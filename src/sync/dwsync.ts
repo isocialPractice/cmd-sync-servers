@@ -212,7 +212,7 @@ export function daylightState(atMs: number, zoneOffsetMinutes: (atMs: number) =>
  *
  * @experimental
  */
-export function dreamweaverServerName(server: Pick<Server, 'protocol' | 'host' | 'remoteRoot' | 'options'>): string {
+export function dreamweaverServerName(server: Pick<Server, 'protocol' | 'host' | 'remoteRoot'> & { readonly options: Pick<Server['options'], 'dreamweaverServer'> }): string {
   if (server.options.dreamweaverServer !== undefined) {
     return server.options.dreamweaverServer;
   }

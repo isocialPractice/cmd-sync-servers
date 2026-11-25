@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { defaultPaths } from '../../src/config/paths.ts';
@@ -14,11 +14,12 @@ import { SiteSetupView } from '../../src/tui/screens/site-setup.ts';
 import { SitesView } from '../../src/tui/screens/sites.ts';
 import type { TuiServices } from '../../src/tui/services.ts';
 import { makeFolder, tempDir } from '../helpers/cli.ts';
+import { entryFor, writeDwsync } from '../helpers/dwsync.ts';
 import { matchSnapshot, press, screen, testApp, type, UNICODE } from '../helpers/tui.ts';
 import { testCertificate, type TestCertificate } from '../sandbox/cert.ts';
 import type { FtpSandbox } from '../sandbox/ftp-server.ts';
 import { startRig, type Rig } from '../sandbox/rig.ts';
-import { startSiteRig, type SiteRig } from '../sandbox/site-rig.ts';
+import { BASE_TIME, startSiteRig, type SiteRig } from '../sandbox/site-rig.ts';
 
 function services(rig: SiteRig, store = new MemoryCredentialStore()): TuiServices {
   return {
@@ -305,7 +306,7 @@ test('site setup adds a site, a server and cloaking, and checks each field befor
     await press(app, 'ctrl+s');
     assert.deepEqual(rig.registry.list().find((site) => site.name === 'Second Site')?.cloaking.patterns, ['.psd', 'node_modules/']);
 
-    await press(app, 'tab', 'down', 'tab', 'down', 'down');
+    await press(app, 'tab', 'down', 'tab', 'down', 'down', 'down');
     await type(app, 'x');
     await press(app, 'ctrl+s');
     assert.match(screen(app), /^ ! The tolerance must be a whole number from 0 to 3600\.$/m);
@@ -588,7 +589,7 @@ test('Site Setup sets how the site follows symbolic links', async () => {
     await press(app, 'e', 'down', 'down', 'down', 'down');
     assert.match(screen(app), /^> {3}Synchronization/m);
     assert.match(screen(app), /Symbolic links +< Skip them >/);
-    await press(app, 'tab', 'down', 'down', 'down', 'right');
+    await press(app, 'tab', 'down', 'down', 'down', 'down', 'right');
     assert.match(screen(app), /Symbolic links +< Follow inside site >/);
     assert.match(screen(app), /A followed link is put and got as the file or folder it points to\./);
     await press(app, 'right', 'ctrl+s');
@@ -597,30 +598,78 @@ test('Site Setup sets how the site follows symbolic links', async () => {
   });
 });
 
-test('Site Setup and the server editor keep the Dreamweaver settings they do not show', async () => {
+test('Site Setup turns Dreamweaver sync files on, which needs sync information, and the server editor names the server as Dreamweaver does', async () => {
   await withRig(async (rig) => {
     const serverId = rig.site.servers[0]?.id ?? '';
-    await rig.registry.update(rig.site.id, (draft) => {
-      draft.sync.dreamweaver.enabled = true;
-    });
-    await rig.registry.updateServer(rig.site.id, serverId, (draft) => {
-      draft.options.dreamweaverServer = 'D:/Sites/my-site-testing/';
-    });
     const svc = services(rig);
 
     const setup = testApp();
     await open(setup, new SitesView(svc));
-    await press(setup, 'e', 'down', 'down', 'down', 'down', 'tab', 'down', 'down', 'down', 'right', 'ctrl+s');
-    assert.equal(rig.registry.get(rig.site.id)?.sync.symlinks, 'follow-inside-root');
+    await press(setup, 'e', 'down', 'down', 'down', 'down', 'tab', 'down');
+    assert.match(screen(setup), /Dreamweaver sync files +\[ \]/);
+    assert.match(screen(setup, 160), /Reads and updates _notes\/dwsync\.xml, so Dreamweaver and sync-servers agree on what is in sync\./);
+    await press(setup, 'space', 'up', 'space', 'ctrl+s');
+    assert.match(screen(setup), /Dreamweaver sync files need Maintain sync information\./);
+    assert.deepEqual(rig.registry.get(rig.site.id)?.sync.dreamweaver, { enabled: false });
+    await press(setup, 'up', 'space', 'ctrl+s');
+    assert.match(screen(setup), /Dreamweaver sync files +\[x\]/);
     assert.deepEqual(rig.registry.get(rig.site.id)?.sync.dreamweaver, { enabled: true });
+    assert.equal(rig.registry.get(rig.site.id)?.sync.maintainInfo, true);
 
     const editor = testApp();
     await open(editor, new SitesView(svc), new ServerEditorView(svc, rig.site.id, serverId));
-    await type(editor, ' 2');
+    await press(editor, 'tab', 'down', 'down', 'down');
+    assert.match(screen(editor), /^ {2}Dreamweaver server name +▏$/m);
+    assert.match(screen(editor), /The name Dreamweaver gives this server in _notes\/dwsync\.xml/);
+    await type(editor, 'D:/Sites/my-site-testing/');
     await press(editor, 'ctrl+s');
-    const saved = rig.registry.get(rig.site.id)?.servers[0];
-    assert.match(saved?.name ?? '', / 2$/);
-    assert.equal(saved?.options.dreamweaverServer, 'D:/Sites/my-site-testing/');
+    assert.equal(rig.registry.get(rig.site.id)?.servers[0]?.options.dreamweaverServer, 'D:/Sites/my-site-testing/');
+    await press(editor, 'ctrl+u', 'ctrl+s');
+    assert.equal(rig.registry.get(rig.site.id)?.servers[0]?.options.dreamweaverServer, undefined);
+    // The setting Site Setup saved is still there after the server was saved twice.
+    assert.deepEqual(rig.registry.get(rig.site.id)?.sync.dreamweaver, { enabled: true });
+  });
+});
+
+test("quick setup in a folder Dreamweaver synchronized asks to use its records, asks which server this one is, and takes them over", async () => {
+  await withRig(async (rig) => {
+    const name = 'D:/Sites/my-site-testing/';
+    const files = ['index.html', 'about.html', 'contact.html'];
+    files.forEach((file, index) => {
+      rig.write('local', file, `<h1>${file}</h1>`, BASE_TIME + index * 60_000);
+      rig.write('remote', file, `<h1>${file}</h1>`, BASE_TIME + 3_600_000 + index * 60_000 + 13_000);
+    });
+    writeDwsync(
+      rig.localDir,
+      files.map((file) => entryFor(path.join(rig.localDir, file), statSync(path.join(rig.remoteDir, file)).mtimeMs, name, { unit: 'second', dst: 0 })),
+    );
+    const app = testApp();
+    await open(app, new SitesView(services(rig)));
+    await press(app, 'n');
+    await type(app, 'Second Site');
+    await press(app, 'down', 'down', 'right', 'right', 'right', 'right', 'down');
+    await type(app, rig.remoteDir);
+    await press(app, 'ctrl+s');
+    const question = screen(app).replace(/\s+/g, ' ');
+    assert.match(question, /Dreamweaver's records/);
+    assert.match(question, /This folder holds Dreamweaver synchronization records/);
+    assert.match(question, /Use them/);
+    assert.equal(rig.registry.list().length, 1, 'nothing is saved before the question is answered');
+    await press(app, 'enter');
+    assert.match(screen(app).replace(/\s+/g, ' '), /Dreamweaver synchronized this folder with these servers\./);
+    assert.match(screen(app), /D:\/Sites\/my-site-testing\/ \(3 files\)/);
+    assert.match(screen(app), /> None of these/);
+    await press(app, 'up', 'enter');
+    await app.idle();
+
+    assert.match(screen(app, 160), /Added "Second Site" with the server Folder\. Took 3 files as in sync from Dreamweaver's records\./);
+    const site = rig.registry.list().find((item) => item.name === 'Second Site');
+    assert.deepEqual(site?.sync.dreamweaver, { enabled: true });
+    const server = site.servers[0];
+    assert.ok(server !== undefined);
+    assert.equal(server.options.dreamweaverServer, name);
+    const records = path.join(rig.home, 'state', 'sites', site.id, `${server.id}.json`);
+    assert.deepEqual(Object.keys((JSON.parse(readFileSync(records, 'utf8')) as { records: object }).records).sort(), [...files].sort());
   });
 });
 

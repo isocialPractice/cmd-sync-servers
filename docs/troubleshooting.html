@@ -118,6 +118,24 @@
   <dd>The site is set to <code>follow</code>, and the file is reached through a link out of the site's folder. A Get or a delete of that row changes the file where it is, outside the site. Uncheck the row to leave it alone.</dd>
 </dl>
 
+<h2 id="dreamweaver">Dreamweaver records</h2>
+<dl>
+  <dt>Every file is listed, although Dreamweaver had the site in sync</dt>
+  <dd>Dreamweaver does not set a file's time on the server, so every server copy looks newer than its local copy to a tool that has no records of its own. Turn on the site's <a href="configuration.html#dreamweaver"><code>sync.dreamweaver.enabled</code></a> with <code>sync-servers site edit --dreamweaver</code>, and <code>sync-servers site show</code> says <code>Dreamweaver on</code>. If the files are still listed, Dreamweaver knew the server by another name: <code>site edit --dreamweaver</code> lists the names it found, and <code>sync-servers server edit Production --dreamweaver-server 203.0.113.10//public_html/</code> says which one the server is.</dd>
+  <dt>"Dreamweaver's records are not used yet: too few files match them"</dt>
+  <dd>sync-servers learns how Dreamweaver reads the server's clock from at least three files whose local copy is the one Dreamweaver recorded and whose server times agree. A site with fewer such files, or one whose local files were all saved again since, is compared without the records. Nothing is lost: the preview lists what differs, and <code>sync-servers mark-synced</code> records copies you know to be the same.</dd>
+  <dt>"Dreamweaver's records are not used yet: a sync of the whole site first learns..."</dt>
+  <dd>A Put, a Get or a status of some paths reads the records only once the clock is known. Run <code>sync-servers sync --both</code> for the whole site once; with nothing to transfer it still saves what it learned.</dd>
+  <dt>Dreamweaver lists files that sync-servers transferred</dt>
+  <dd>The setting was off when they were transferred, so their entries are out of date, or the server is one Dreamweaver never synchronized the folder with, so the entries were written on sync-servers' own reading of the clock. Let Dreamweaver synchronize those files once, or mark them as synchronized there.</dd>
+  <dt>A <code>dwsync.xml</code> "could not be read as Dreamweaver synchronization records"</dt>
+  <dd>The file is damaged or holds something sync-servers does not understand, so it is left as it is and the files of its folder are compared without it. Delete that <code>dwsync.xml</code>; Dreamweaver and sync-servers both write it again as files are transferred.</dd>
+  <dt>"Version 2 was written by a newer sync-servers. Update sync-servers to read it."</dt>
+  <dd><code>sites.json</code> was written by sync-servers 2 and is being read by a version 1 build, or by a VS Code extension built on one. Update that program. The file as it was before is kept beside it as <code>sites.json.bak</code>.</dd>
+  <dt><code>_notes/dwsync.xml</code> is on the web server</dt>
+  <dd>sync-servers never puts that file, so the copy came another way. It names the server and lists the site's files; remove it with the hosting panel's file manager or another client, in every folder of the site. See <a href="security.html#local-data">What stays on your computer</a>.</dd>
+</dl>
+
 <h2 id="other">Other problems</h2>
 <dl>
   <dt>The settings file is locked (<code>E_LOCKED</code>)</dt>

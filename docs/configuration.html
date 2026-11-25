@@ -52,6 +52,7 @@
   <thead><tr><th scope="col">Path</th><th scope="col">Holds</th></tr></thead>
   <tbody>
     <tr><td><code>sites/&lt;site id&gt;/&lt;server id&gt;.json</code></td><td>The sync records: both sides of every file as they were at its last synchronization.</td></tr>
+    <tr><td><code>sites/&lt;site id&gt;/&lt;server id&gt;.dwsync.json</code></td><td>How Dreamweaver reads that server's clock, once it is known; see <a href="#dreamweaver-clock">The server's clock</a>.</td></tr>
     <tr><td><code>sites/&lt;site id&gt;/hashes.json</code></td><td>The scan cache of file hashes, used in checksum mode.</td></tr>
     <tr><td><code>recovery/&lt;site id&gt;/&lt;run&gt;/</code></td><td>Local files a run deleted or overwrote, kept 14 days by default.</td></tr>
     <tr><td><code>logs/run-*.jsonl</code></td><td>One log per run, the newest 30 kept, with every secret removed.</td></tr>
@@ -107,7 +108,7 @@
     <tr><td><code>cloaking.patterns</code></td><td><code>[]</code></td><td>Cloaking patterns; see <a href="#cloaking">Cloaking</a>.</td></tr>
     <tr><td><code>cloaking.paths</code></td><td><code>[]</code></td><td>Site-relative files and folders cloaked one by one.</td></tr>
     <tr><td><code>sync.maintainInfo</code></td><td><code>true</code></td><td>Keep sync records, so a change on both sides is detected.</td></tr>
-    <tr><td><code>sync.dreamweaver.enabled</code></td><td><code>false</code></td><td>The switch for the synchronization records Dreamweaver keeps in each folder of a site as <code>_notes/dwsync.xml</code>. Needs <code>sync.maintainInfo</code>.</td></tr>
+    <tr><td><code>sync.dreamweaver.enabled</code></td><td><code>false</code></td><td>Read and update the synchronization records Dreamweaver keeps in each folder of a site as <code>_notes/dwsync.xml</code>; see <a href="#dreamweaver">Dreamweaver synchronization files</a>. Needs <code>sync.maintainInfo</code>.</td></tr>
     <tr><td><code>sync.compare</code></td><td><code>metadata</code></td><td><code>metadata</code> compares size and time; <code>checksum</code> also compares SHA-256 hashes where both are known.</td></tr>
     <tr><td><code>sync.mtimeToleranceSeconds</code></td><td><code>2</code></td><td>Times this close count as equal, for servers that round them.</td></tr>
     <tr><td><code>sync.symlinks</code></td><td><code>skip</code></td><td>Which symbolic links in the local folder are followed: none (<code>skip</code>), those inside the site (<code>follow-inside-root</code>) or all (<code>follow</code>); see <a href="#links">Symbolic links</a>.</td></tr>
@@ -150,7 +151,7 @@
     <tr><td><code>options.tls.trustedCertificate</code></td><td></td><td>FTPS: a certificate you chose to trust after it failed verification: <code>sha256</code> (colon-separated hex), <code>validTo</code> and <code>pinnedAt</code>. Normal verification runs first; an expired certificate is never trusted. Set when you trust a certificate in a terminal; removed with <code>--forget-certificate</code>. See <a href="security.html#certificates">Certificates</a>.</td></tr>
     <tr><td><code>options.hostKey</code></td><td></td><td>SFTP: the pinned host key, set when you trust it on first connection.</td></tr>
     <tr><td><code>options.uploadOnSave</code></td><td><code>false</code></td><td>Used by the VS Code extension: put a file when it is saved.</td></tr>
-    <tr><td><code>options.dreamweaverServer</code></td><td>built</td><td>The name Dreamweaver gives this server in <code>_notes/dwsync.xml</code>, such as <code>203.0.113.10//public_html/</code>. Unset: the host, <code>/</code>, and the remote root ending in <code>/</code>, such as <code>sftp.example.com//var/www/my-site/</code>; for <code>local</code>, the folder with <code>/</code> between its parts and at its end.</td></tr>
+    <tr><td><code>options.dreamweaverServer</code></td><td>built</td><td>The name Dreamweaver gives this server in <code>_notes/dwsync.xml</code>, such as <code>203.0.113.10//public_html/</code>. Unset: the host, <code>/</code>, and the remote root ending in <code>/</code>, such as <code>sftp.example.com//var/www/my-site/</code>; for <code>local</code>, the folder with <code>/</code> between its parts and at its end. See <a href="#dreamweaver-server">The name Dreamweaver gives a server</a>.</td></tr>
     <tr><td><code>options.remoteFileMode</code></td><td>server default</td><td>An octal mode such as <code>644</code> for uploaded files.</td></tr>
     <tr><td><code>options.remoteDirMode</code></td><td>server default</td><td>An octal mode such as <code>755</code> for new folders.</td></tr>
   </tbody>
@@ -218,6 +219,47 @@ mklink css\theme.css C:\Users\&lt;user&gt;\Shared\theme\theme.css</code></pre>
 <p>On macOS and Linux:</p>
 <pre><code>ln -s ~/shared/fonts fonts
 ln -s ~/shared/theme/theme.css css/theme.css</code></pre>
+
+<h2 id="dreamweaver">Dreamweaver synchronization files</h2>
+<p>Dreamweaver keeps its synchronization records beside the files they describe. Every folder of a site holds a <code>_notes</code> folder with a <code>dwsync.xml</code> in it, and that file has one entry for each file of the folder and each server, with the time of the local copy and of the server copy at their last transfer:</p>
+<pre><code>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;dwsync&gt;
+&lt;file name="index.html" server="203.0.113.10//public_html/" local="134129604153427891" remote="134129604600000000" Dst="1" /&gt;
+&lt;file name="index.html" server="D:/Sites/my-site-testing/" local="134129604153427891" remote="134129604150000000" Dst="1" /&gt;
+&lt;file name="about.html" server="203.0.113.10//public_html/" local="133966144428615532" remote="133966144800000000" Dst="2" /&gt;
+&lt;/dwsync&gt;</code></pre>
+<p><code>sync.dreamweaver.enabled</code> makes a site read and update those files, so a site that was synchronized with Dreamweaver is in sync from its first preview, and both programs go on agreeing. It is off unless it is turned on. <code>sync-servers site add</code> turns it on when the folder holds such records, after asking in a terminal. For a site added earlier, use <code>sync-servers site edit --dreamweaver</code>, the Synchronization category of Site Setup, or <code>sync-servers config edit</code>. <code>sync-servers site show</code> says whether it is on, and whether a site that has it off holds records.</p>
+<p>With the setting on:</p>
+<ul>
+  <li>An entry is evidence for a file both sides have. Both copies as the entry says: the file is in sync. One copy as the entry says, and no record of sync-servers itself: the other side changed.</li>
+  <li>After each transfer the file's entry is written the way Dreamweaver writes it, and a delete removes it. Entries of other servers, and anything in an entry sync-servers does not know, stay as they were.</li>
+  <li>A site turned on later has its entries written once, from the records sync-servers already keeps.</li>
+</ul>
+<p>It never does these:</p>
+<ul>
+  <li>Transfer <code>_notes/dwsync.xml</code>. No synchronization lists that file, on either side, with the setting on or off.</li>
+  <li>Check a delete. A file that is missing on one side is never judged by an entry.</li>
+  <li>Delete the files when the setting is turned off. They stay as they are, and go out of date.</li>
+  <li>Use or rewrite a file it does not understand in full, or one behind a link the site does not follow.</li>
+</ul>
+<p>The setting needs <code>sync.maintainInfo</code>. The records of sync-servers itself stay in the state folder and stay the ones it trusts, so removing a <code>_notes</code> folder loses nothing here.</p>
+
+<h3 id="dreamweaver-server">The name Dreamweaver gives a server</h3>
+<p>Each entry names its server the way Dreamweaver does: the host as it was typed there, a <code>/</code>, and the folder on the server ending in <code>/</code>; for a local or network folder, the folder itself. sync-servers builds the same name from a server's host and remote root:</p>
+<table>
+  <caption>Names built for a server</caption>
+  <thead><tr><th scope="col">Server</th><th scope="col">Name</th></tr></thead>
+  <tbody>
+    <tr><td><code>sftp.example.com</code> with the remote root <code>/var/www/my-site</code></td><td><code>sftp.example.com//var/www/my-site/</code></td></tr>
+    <tr><td>A <code>local</code> server at <code>D:\Sites\my-site-testing</code></td><td><code>D:/Sites/my-site-testing/</code></td></tr>
+  </tbody>
+</table>
+<p>Dreamweaver may have known the server by another address or another spelling of the folder, such as an IP address where sync-servers has the host name a certificate covers. Then set the name it used in <code>options.dreamweaverServer</code>: with <code>sync-servers server edit Production --dreamweaver-server 203.0.113.10//public_html/</code>, or in the Advanced tab of the server editor. <code>--dreamweaver-server auto</code> goes back to the built name. Setup lists the names found in the folder and asks which one the server is when the built one matches none. Names are compared without regard to case or a final <code>/</code>.</p>
+
+<h3 id="dreamweaver-clock">The server's clock</h3>
+<p>Dreamweaver reads a server's clock its own way: to the minute for FTP, and often some hours from what the server reports to sync-servers. The difference is the same for every file of one server, so sync-servers learns it from the entries, during the first synchronization of the whole site. It needs at least three files whose local copy is the one Dreamweaver recorded and whose server times agree. It then keeps the difference in the state folder, and accepts one hour either way for daylight time.</p>
+<p>Until the clock is known, the records of that server are neither used nor written, and <code>sync-servers status</code> says so. <code>sync-servers state reset</code> forgets it together with the sync records; with <code>--dreamweaver</code> it also removes that server's entries from every <code>dwsync.xml</code> of the site.</p>
+<p>For a server Dreamweaver never synchronized the folder with, there is nothing to learn from. sync-servers then writes the entries on its own reading of the clock, and Dreamweaver may list those files as changed once.</p>
 
 <h2 id="secrets">Secrets</h2>
 <p>Passwords and key passphrases are never written to a file. When a connection needs one, it is looked for in this order:</p>

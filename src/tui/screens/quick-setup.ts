@@ -4,12 +4,17 @@ import { parseServerAddress } from '../../config/address.ts';
 import { defaultPort, serverSchema, type Protocol, type Server } from '../../config/schema.ts';
 import { sealSecret } from '../../credentials/binding.ts';
 import { isSyncError } from '../../errors.ts';
-import { remoteRootIsTop } from '../../sync/session.ts';
+import { siteCloak } from '../../sync/cloak.ts';
+import { findDreamweaverServers } from '../../sync/dreamweaver.ts';
+import { dreamweaverServerName, sameServerName } from '../../sync/dwsync.ts';
+import { DREAMWEAVER_TEXT, dreamweaverTakeOver } from '../../sync/messages.ts';
+import { remoteRootIsTop, SyncSession } from '../../sync/session.ts';
+import { safeLine } from '../../terminal-text.ts';
 import type { App, Hint, View, ViewBody } from '../app.ts';
 import { isKey, type Key } from '../keys.ts';
-import { probeUnsaved, typedPath, type TuiServices } from '../services.ts';
+import { probeUnsaved, tuiHost, typedPath, type TuiServices } from '../services.ts';
 import { span, type Theme } from '../style.ts';
-import { confirmDialog } from '../widgets/dialog.ts';
+import { choiceDialog, confirmDialog } from '../widgets/dialog.ts';
 import { field, Form, type FormField } from '../widgets/form.ts';
 import { folderPickerDialog } from '../widgets/folder-picker.ts';
 import { protocolName } from './common.ts';
@@ -328,20 +333,65 @@ export class QuickSetupView implements View {
     const accepted = typed;
     const save = accepted !== undefined && store !== undefined && this.#toggle('savePassword');
     const name = server.protocol === 'local' ? 'Folder' : (server.host ?? 'Server');
+
+    // A folder Dreamweaver synchronized holds its records: the site can use them, once it is said which server this one is.
+    const cloak = siteCloak({ cloaking: { enabled: true, patterns: [], paths: [] } }, this.#services.platform, registry.globalCloaking.patterns);
+    const names = await findDreamweaverServers(draft.localRoot, { cloak });
+    const dreamweaver =
+      names.length > 0 &&
+      (await app.dialog(confirmDialog("Dreamweaver's records", DREAMWEAVER_TEXT.question.replace('\n', ' '), { yes: 'Use them', no: 'Leave them', defaultYes: true })));
+    if (dreamweaver && !names.some((found) => sameServerName(found.server, dreamweaverServerName(server)))) {
+      const chosen = await app.dialog(
+        choiceDialog<string | undefined>(
+          'Dreamweaver server',
+          `Dreamweaver synchronized this folder with these servers. Which one is ${name}?`,
+          [
+            ...names.map((found) => ({ label: `${safeLine(found.server)} (${String(found.files)} ${found.files === 1 ? 'file' : 'files'})`, value: found.server })),
+            { label: 'None of these', value: undefined },
+          ],
+          undefined,
+          names.length,
+        ),
+      );
+      if (chosen !== undefined) {
+        server = { ...server, options: { ...server.options, dreamweaverServer: chosen } };
+      }
+    }
+
     const site = await registry.add({
       id: siteId,
       name: draft.name,
       localRoot: draft.localRoot,
       servers: [{ ...server, name, ...(server.auth === undefined ? {} : { auth: { ...server.auth, savePassword: save } }) }],
+      ...(dreamweaver ? { sync: { dreamweaver: { enabled: true } } } : {}),
     });
     const saved = site.servers[0];
     if (save && saved !== undefined) {
       await store.set({ siteId: site.id, serverId: saved.id, kind: accepted.kind }, sealSecret(accepted.secret, saved));
       this.#services.logger.info('Secret saved', { siteId: site.id, serverId: saved.id, kind: accepted.kind, store: store.name });
     }
+    // The connection works, so the records are taken over now, and the first preview lists only real differences.
+    const taken =
+      dreamweaver && saved !== undefined
+        ? await app.task("Reading Dreamweaver's records", async (signal) => {
+            const base = await tuiHost(app, this.#services);
+            // The password the server just accepted answers the question, so nothing is asked twice.
+            const host = accepted === undefined ? base : { ...base, secretAccepted: undefined, promptSecret: () => Promise.resolve(accepted.secret) };
+            const session = await SyncSession.open({ registry, siteId: site.id, serverId: saved.id, host, logger: this.#services.logger, env: this.#services.env });
+            try {
+              const plan = await session.plan({ direction: 'both', signal });
+              await session.settle(plan);
+              return dreamweaverTakeOver(plan.adopted, session.dreamweaverClock ?? 'unknown');
+            } finally {
+              await session.close();
+            }
+          })
+        : undefined;
     this.#dirty = false;
     app.pop();
-    app.message(`Added "${site.name}" with the server ${saved?.name ?? name}.${save ? ` The password is saved in the ${store.name}.` : ''}`);
+    app.message(
+      [`Added "${site.name}" with the server ${saved?.name ?? name}.`, ...(save ? [`The password is saved in the ${store.name}.`] : []), ...(taken === undefined ? [] : [taken])].join(' '),
+    );
   }
 
   #toggle(id: string): boolean {

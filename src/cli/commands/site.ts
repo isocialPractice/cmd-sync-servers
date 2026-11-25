@@ -3,10 +3,12 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { NewServer } from '../../config/registry.ts';
 import { formatIssues, siteSchema, type Site } from '../../config/schema.ts';
-import { cloakingSummary } from '../../sync/cloak.ts';
+import { cloakingSummary, siteCloak } from '../../sync/cloak.ts';
+import { findDreamweaverServers, hasDreamweaverRecords } from '../../sync/dreamweaver.ts';
 import type { LinkPolicy } from '../../sync/paths.ts';
 import { flag, booleanOption, choiceOption, stringOption, type CommandSpec, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
+import { askDreamweaverName, chooseDreamweaver, DREAMWEAVER_OPTION, nameUnmatched, takeOverRecords, unmatchedNote } from '../dreamweaver.ts';
 import { editJsonUntilValid } from '../editor.ts';
 import { CancelledError, UsageError } from '../errors.ts';
 import { formatPairs, formatTable } from '../output.ts';
@@ -65,11 +67,16 @@ export const siteAddCommand: CommandSpec = {
     'local-root': { type: 'string', value: '<folder>', description: 'The local site folder, which must exist' },
     'server-name': { type: 'string', value: '<name>', description: 'The name of the first server (default: its host)' },
     ...SERVER_OPTIONS_FOR_SITE,
+    dreamweaver: {
+      type: 'boolean',
+      description: 'Read and update the synchronization records Dreamweaver keeps as _notes/dwsync.xml (default: when the folder holds some; --no-dreamweaver to leave them alone)',
+    },
   },
   examples: [
     'sync-servers site add',
     'sync-servers site add --name "My Site" --local-root {root} --protocol ftps --host 203.0.113.10 --user demo-user@example.com',
     'sync-servers site add --name "My Site" --local-root {root} --host sftp.example.com --user demo-user --remote-root /var/www/my-site',
+    'sync-servers site add --name "My Site" --local-root {root} --host server1.hosting.example.net --user demo-user --remote-root /public_html --dreamweaver-server 203.0.113.10//public_html/',
   ],
   async run(ctx, { values }) {
     let name = stringOption(values, 'name');
@@ -86,7 +93,13 @@ export const siteAddCommand: CommandSpec = {
         throw new UsageError(problem);
       }
       const server = withServer ? unattendedServer(ctx, { name, servers: [] }, serverValues) : undefined;
-      const site = await (await ctx.registry()).add({ name, localRoot: root, ...(server === undefined ? {} : { servers: [server as NewServer] }) });
+      const dreamweaver = await chooseDreamweaver(ctx, root, values, false);
+      const site = await (await ctx.registry()).add({
+        name,
+        localRoot: root,
+        ...(server === undefined ? {} : { servers: [server as NewServer] }),
+        ...(dreamweaver.enabled ? { sync: { dreamweaver: { enabled: true } } } : {}),
+      });
       if (ctx.flags.json) {
         ctx.json('site', { site });
         return undefined;
@@ -97,6 +110,12 @@ export const siteAddCommand: CommandSpec = {
           ? `Added site "${site.name}" at ${site.localRoot}. Add a server with "sync-servers server add".\n`
           : `Added site "${site.name}" with the server ${describeServer(first)}. It is the Remote server. The connection was not tested.\n`,
       );
+      if (dreamweaver.enabled) {
+        ctx.out("It uses Dreamweaver's synchronization records: the first sync of the whole site takes them over.\n");
+        if (first !== undefined && nameUnmatched(first, dreamweaver.names)) {
+          ctx.err(`${unmatchedNote(first, dreamweaver.names)}\n`);
+        }
+      }
       return undefined;
     }
     const sites = (await ctx.registry()).list();
@@ -117,12 +136,29 @@ export const siteAddCommand: CommandSpec = {
     }
     const siteId = randomUUID();
     const result = await guidedServer(ctx, { mode: 'site-add', site: { id: siteId, name }, servers: [], serverId: randomUUID(), values: serverValues });
-    const site = await (await ctx.registry()).add({ id: siteId, name, localRoot: root, servers: [result.server] });
+    const dreamweaver = await chooseDreamweaver(ctx, root, values, true);
+    if (dreamweaver.enabled && result.server.options.dreamweaverServer === undefined && nameUnmatched(result.server, dreamweaver.names)) {
+      const chosen = await askDreamweaverName(ctx, result.server, dreamweaver.names);
+      if (chosen !== undefined) {
+        result.server.options.dreamweaverServer = chosen;
+      }
+    }
+    const site = await (await ctx.registry()).add({
+      id: siteId,
+      name,
+      localRoot: root,
+      servers: [result.server],
+      ...(dreamweaver.enabled ? { sync: { dreamweaver: { enabled: true } } } : {}),
+    });
     const server = site.servers[0] ?? result.server;
     await storeTypedSecret(ctx, site.id, server, result.save);
+    // With a connection that works, the records are taken over at once, so the first preview lists only real differences.
+    const taken = dreamweaver.enabled && dreamweaver.names.length > 0 && result.connection === 'tested' ? await takeOverRecords(ctx, site, server, result.accepted) : undefined;
     ctx.out(
       [
         `Added site "${site.name}" with the server ${server.name} (${protocolLabel(server.protocol)}). It is the Remote server.${connectionNote(result.connection)}`,
+        ...(taken === undefined ? [] : [taken]),
+        ...(dreamweaver.enabled && taken === undefined ? ["It uses Dreamweaver's synchronization records: the first sync of the whole site takes them over."] : []),
         `Next: cd "${site.localRoot}", then "sync-servers sync --put" to preview what would be put.`,
         '',
       ].join('\n'),
@@ -131,7 +167,7 @@ export const siteAddCommand: CommandSpec = {
   },
 };
 
-const SITE_EDIT_OPTIONS = ['name', 'local-root', 'web-url', 'case-sensitive', 'cache', 'symlinks'] as const;
+const SITE_EDIT_OPTIONS = ['name', 'local-root', 'web-url', 'case-sensitive', 'cache', 'symlinks', 'dreamweaver'] as const;
 
 const LINK_POLICIES: readonly LinkPolicy[] = ['skip', 'follow-inside-root', 'follow'];
 
@@ -158,12 +194,14 @@ export const siteEditCommand: CommandSpec = {
       value: '<policy>',
       description: 'Symbolic links in the local folder: skip them (skip), follow those inside the site (follow-inside-root), or follow all (follow)',
     },
+    ...DREAMWEAVER_OPTION,
     editor: { type: 'boolean', description: 'Edit the whole site as JSON in your editor' },
   },
   examples: [
     'sync-servers site edit "My Site" --name "Sample App"',
     'sync-servers site edit --local-root {root}',
     'sync-servers site edit --symlinks follow-inside-root',
+    'sync-servers site edit --dreamweaver',
     'sync-servers site edit --editor',
   ],
   async run(ctx, { values, args }) {
@@ -187,7 +225,16 @@ export const siteEditCommand: CommandSpec = {
     const caseSensitive = booleanOption(values, 'case-sensitive');
     const cache = booleanOption(values, 'cache');
     const symlinks = choiceOption(values, 'symlinks', LINK_POLICIES);
+    const dreamweaver = booleanOption(values, 'dreamweaver');
+    if (dreamweaver === true && !site.sync.maintainInfo) {
+      throw new UsageError(
+        `--dreamweaver needs sync records, and "${site.name}" keeps none: sync.maintainInfo is off. Turn it on with "sync-servers site edit --editor", then pass --dreamweaver again.`,
+      );
+    }
     const updated = await (await ctx.registry()).update(site.id, (draft) => {
+      if (dreamweaver !== undefined) {
+        draft.sync.dreamweaver.enabled = dreamweaver;
+      }
       if (name !== undefined) {
         draft.name = name;
       }
@@ -211,6 +258,15 @@ export const siteEditCommand: CommandSpec = {
       ctx.json('site', { site: updated });
     } else {
       ctx.out(`Updated site "${updated.name}".\n`);
+      if (dreamweaver === true && !site.sync.dreamweaver.enabled) {
+        // The server synchronization uses may go by another name in Dreamweaver's records than its host and root give.
+        const remote = updated.servers.find((server) => server.id === updated.remoteServerId);
+        const names = await findDreamweaverServers(updated.localRoot, { cloak: siteCloak(updated, process.platform, (await ctx.registry()).globalCloaking.patterns), signal: ctx.io.signal });
+        ctx.out("The next sync of the whole site takes Dreamweaver's records over.\n");
+        if (remote !== undefined && nameUnmatched(remote, names)) {
+          ctx.err(`${unmatchedNote(remote, names)}\n`);
+        }
+      }
     }
     return undefined;
   },
@@ -267,6 +323,8 @@ export const siteShowCommand: CommandSpec = {
     const remote = site.servers.find((server) => server.id === site.remoteServerId);
     const testing = site.servers.find((server) => server.id === site.testingServerId);
     const globalPatterns = (await ctx.registry()).globalCloaking.patterns;
+    // A site that leaves Dreamweaver's records alone says when its folder holds some.
+    const records = !site.sync.dreamweaver.enabled && (await hasDreamweaverRecords(site.localRoot, { cloak: siteCloak(site, process.platform, globalPatterns), signal: ctx.io.signal }));
     ctx.out(
       formatPairs([
         ['Name', site.name],
@@ -278,6 +336,7 @@ export const siteShowCommand: CommandSpec = {
         ['Cloaking', cloakingSummary(site.cloaking, globalPatterns)],
         ['Guard', site.sync.guard.enabled ? 'on' : 'off'],
         ['Links', LINK_POLICY_NAMES[site.sync.symlinks]],
+        ['Dreamweaver', site.sync.dreamweaver.enabled ? 'on' : records ? 'off (records found in this folder)' : 'off'],
       ]),
     );
     if (site.servers.length > 0) {

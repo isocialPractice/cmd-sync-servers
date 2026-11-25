@@ -136,11 +136,14 @@ sync-servers sites --json</code></pre>
       <tr><td><code>--tls-min-version &lt;version&gt;</code></td><td>FTPS: TLSv1.2 (default) or TLSv1.3</td></tr>
       <tr><td><code>--file-mode &lt;mode&gt;</code></td><td>Permissions for uploaded files, such as 644</td></tr>
       <tr><td><code>--dir-mode &lt;mode&gt;</code></td><td>Permissions for created folders, such as 755</td></tr>
+      <tr><td><code>--dreamweaver-server &lt;name&gt;</code></td><td>The name Dreamweaver gives this server in _notes/dwsync.xml, such as 203.0.113.10//public_html/; &quot;auto&quot; builds it from the host and the remote root</td></tr>
+      <tr><td><code>--dreamweaver</code></td><td>Read and update the synchronization records Dreamweaver keeps as _notes/dwsync.xml (default: when the folder holds some; --no-dreamweaver to leave them alone)</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers site add
 sync-servers site add --name &quot;My Site&quot; --local-root ~/sites/my-site --protocol ftps --host 203.0.113.10 --user demo-user@example.com
-sync-servers site add --name &quot;My Site&quot; --local-root ~/sites/my-site --host sftp.example.com --user demo-user --remote-root /var/www/my-site</code></pre>
+sync-servers site add --name &quot;My Site&quot; --local-root ~/sites/my-site --host sftp.example.com --user demo-user --remote-root /var/www/my-site
+sync-servers site add --name &quot;My Site&quot; --local-root ~/sites/my-site --host server1.hosting.example.net --user demo-user --remote-root /public_html --dreamweaver-server 203.0.113.10//public_html/</code></pre>
 </section>
 <section class="command" id="command-site-edit">
   <h3><code>sync-servers site edit [&lt;site&gt;]</code></h3>
@@ -155,12 +158,14 @@ sync-servers site add --name &quot;My Site&quot; --local-root ~/sites/my-site --
       <tr><td><code>--case-sensitive</code></td><td>Treat file names as case-sensitive (--no-case-sensitive to turn off)</td></tr>
       <tr><td><code>--cache</code></td><td>Cache local scans between runs (--no-cache to turn off)</td></tr>
       <tr><td><code>--symlinks &lt;policy&gt;</code></td><td>Symbolic links in the local folder: skip them (skip), follow those inside the site (follow-inside-root), or follow all (follow)</td></tr>
+      <tr><td><code>--dreamweaver</code></td><td>Read and update the synchronization records Dreamweaver keeps as _notes/dwsync.xml (--no-dreamweaver to leave them alone)</td></tr>
       <tr><td><code>--editor</code></td><td>Edit the whole site as JSON in your editor</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers site edit &quot;My Site&quot; --name &quot;Sample App&quot;
 sync-servers site edit --local-root ~/sites/my-site
 sync-servers site edit --symlinks follow-inside-root
+sync-servers site edit --dreamweaver
 sync-servers site edit --editor</code></pre>
 </section>
 <section class="command" id="command-site-show">
@@ -222,6 +227,7 @@ sync-servers server list --site &quot;My Site&quot; --json</code></pre>
       <tr><td><code>--tls-min-version &lt;version&gt;</code></td><td>FTPS: TLSv1.2 (default) or TLSv1.3</td></tr>
       <tr><td><code>--file-mode &lt;mode&gt;</code></td><td>Permissions for uploaded files, such as 644</td></tr>
       <tr><td><code>--dir-mode &lt;mode&gt;</code></td><td>Permissions for created folders, such as 755</td></tr>
+      <tr><td><code>--dreamweaver-server &lt;name&gt;</code></td><td>The name Dreamweaver gives this server in _notes/dwsync.xml, such as 203.0.113.10//public_html/; &quot;auto&quot; builds it from the host and the remote root</td></tr>
       <tr><td><code>--remote</code></td><td>Make it the site's Remote server, used to synchronize</td></tr>
       <tr><td><code>--testing</code></td><td>Make it the site's Testing server</td></tr>
     </tbody>
@@ -258,6 +264,7 @@ sync-servers server add --name Staging --host ftpes://ftp.example.org --user dem
       <tr><td><code>--tls-min-version &lt;version&gt;</code></td><td>FTPS: TLSv1.2 (default) or TLSv1.3</td></tr>
       <tr><td><code>--file-mode &lt;mode&gt;</code></td><td>Permissions for uploaded files, such as 644</td></tr>
       <tr><td><code>--dir-mode &lt;mode&gt;</code></td><td>Permissions for created folders, such as 755</td></tr>
+      <tr><td><code>--dreamweaver-server &lt;name&gt;</code></td><td>The name Dreamweaver gives this server in _notes/dwsync.xml, such as 203.0.113.10//public_html/; &quot;auto&quot; builds it from the host and the remote root</td></tr>
       <tr><td><code>--forget-host-key</code></td><td>Remove the pinned SSH host key, after checking the new one with the host</td></tr>
       <tr><td><code>--forget-certificate</code></td><td>Remove the trusted TLS certificate; the next connection verifies it again</td></tr>
       <tr><td><code>--editor</code></td><td>Edit the whole server as JSON in your editor</td></tr>
@@ -488,10 +495,12 @@ sync-servers mark-synced .</code></pre>
     <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
     <tbody>
       <tr><td><code>-y, --yes</code></td><td>Run without asking for confirmation</td></tr>
+      <tr><td><code>--dreamweaver</code></td><td>Also remove this server's entries from Dreamweaver's _notes/dwsync.xml; without it, a site that uses those records takes them over again at its next sync</td></tr>
     </tbody>
   </table>
   <pre><code>sync-servers state reset
-sync-servers state reset --site &quot;My Site&quot; --yes</code></pre>
+sync-servers state reset --site &quot;My Site&quot; --yes
+sync-servers state reset --dreamweaver</code></pre>
 </section>
 <section class="command" id="command-config-path">
   <h3><code>sync-servers config path</code></h3>
@@ -570,11 +579,11 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
   <tbody>
     <tr><td>Sites</td><td><kbd>n</kbd> new site in one form, <kbd>Shift</kbd>+<kbd>N</kbd> new site in Site Setup, <kbd>e</kbd> edit, <kbd>Enter</kbd> open, <kbd>d</kbd> remove (the folder and server files are not touched), <kbd>c</kbd> the global cloaking patterns</td></tr>
     <tr><td>Global Cloaking</td><td>The cloaking patterns every site uses before its own, one per line; <kbd>Ctrl</kbd>+<kbd>S</kbd> saves them, <kbd>Esc</kbd> asks before dropping unsaved changes</td></tr>
-    <tr><td>New site</td><td>Site name, Local folder, Protocol, Host, User, Password and Save password, then <kbd>Ctrl</kbd>+<kbd>S</kbd> or the Connect button: signs in, asks about a new host key or certificate, opens the folder picker, and saves the site and its server together. A refused sign-in shows under User. <kbd>Esc</kbd> asks before dropping what you typed</td></tr>
+    <tr><td>New site</td><td>Site name, Local folder, Protocol, Host, User, Password and Save password, then <kbd>Ctrl</kbd>+<kbd>S</kbd> or the Connect button: signs in, asks about a new host key or certificate, opens the folder picker, and saves the site and its server together. A refused sign-in shows under User. In a folder that holds Dreamweaver's synchronization records, it asks whether to use them and, when the server's host and folder do not say, which of Dreamweaver's servers this one is; then it takes the records over. <kbd>Esc</kbd> asks before dropping what you typed</td></tr>
     <tr><td>Folder picker</td><td>The folders of the server, starting where the account opens, with the folder shown in the title: <kbd>Enter</kbd> opens a folder, <kbd>Backspace</kbd> goes up, <kbd>s</kbd> or Use this folder accepts, <kbd>Esc</kbd> cancels</td></tr>
     <tr><td>Site home</td><td><kbd>s</kbd> Synchronize, <kbd>r</kbd> check for changes, <kbd>e</kbd> site settings; Put and Get newer files from the list</td></tr>
-    <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing. In Cloaking: Use global patterns turns the global patterns on or off for the site, which lists them, and Edit global patterns... opens them</td></tr>
-    <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the host key and the trusted certificate, with Forget buttons</td></tr>
+    <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing. In Cloaking: Use global patterns turns the global patterns on or off for the site, which lists them, and Edit global patterns... opens them. In Synchronization: Dreamweaver sync files reads and updates the records Dreamweaver keeps in <code>_notes/dwsync.xml</code>, and needs Maintain sync information</td></tr>
+    <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the name Dreamweaver gives the server, the host key and the trusted certificate, with Forget buttons</td></tr>
     <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview</td></tr>
     <tr><td>Preview</td><td><kbd>Space</kbd> check or uncheck every row (all unchecked when most are checked, else all checked), <kbd>c</kbd> check or uncheck the focused row, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, or uncheck all when all are checked, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize, <kbd>q</kbd> quit without transferring anything, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
     <tr><td>Progress</td><td><kbd>Esc</kbd> cancels cleanly between files</td></tr>

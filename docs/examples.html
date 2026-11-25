@@ -139,6 +139,17 @@ sync-servers cloak --list</code></pre>
 sync-servers sync --put --dry-run               # the preview marks rows reached through a link out of the site</code></pre>
 <p>See <a href="configuration.html#links">Symbolic links</a>.</p>
 
+<h2 id="dreamweaver">Take over a site from Dreamweaver</h2>
+<p>A folder that Dreamweaver synchronized holds its records, and a site set up there uses them: the files Dreamweaver last transferred are in sync from the first preview, and each transfer keeps Dreamweaver's records up to date.</p>
+<pre><code>cd ~/sites/my-site
+sync-servers site add                           # asks whether to use the records, and which server this one is
+sync-servers sync --both --dry-run              # lists only what changed since Dreamweaver's last transfer</code></pre>
+<p>For a site that was added before, or without a terminal:</p>
+<pre><code>sync-servers site edit --dreamweaver
+sync-servers server edit Production --dreamweaver-server 203.0.113.10//public_html/
+sync-servers sync --both                        # the first sync of the whole site takes the records over</code></pre>
+<p>See <a href="configuration.html#dreamweaver">Dreamweaver synchronization files</a>.</p>
+
 <h2 id="mark-synced">Record files as in sync</h2>
 <p>When both copies are already the same, for example after a site was copied to the server another way, record them as in sync so the next sync starts from there.</p>
 <pre><code>sync-servers mark-synced .</code></pre>
@@ -153,7 +164,8 @@ sync-servers sync --put --dry-run               # the preview marks rows reached
 
 <h2 id="start-over">Start over with one server</h2>
 <p>Forget what the last sync recorded for the site and its server, so the next sync compares both sides as if for the first time.</p>
-<pre><code>sync-servers state reset --site "My Site"</code></pre>
+<pre><code>sync-servers state reset --site "My Site"
+sync-servers state reset --site "My Site" --dreamweaver   # also forgets what Dreamweaver's records say of this server</code></pre>
 <p>See <a href="cli.html#command-state-reset"><code>state reset</code></a>.</p>
 </main>
 <footer class="site-footer">

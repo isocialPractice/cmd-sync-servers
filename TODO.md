@@ -406,6 +406,21 @@ the step of the plan that specifies it.
 - [x] Documents, changelog, checks and commit for N2
   - **Goal**: Resolve to [Phase N2, step 7](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
   - From: Dreamweaver Sync Files
+- [x] `site add` in a folder with Dreamweaver's records,
+      `--dreamweaver-server`, `site edit --dreamweaver`, and the Dreamweaver
+      lines of `site show`, `status` and `state reset`, with their tests
+  - **Goal**: Resolve to [Phase N3, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Dreamweaver Sync Files
+- [x] Site Setup's toggle, the server editor's name field and quick
+      setup's question, with their tests
+  - **Goal**: Resolve to [Phase N3, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Dreamweaver Sync Files
+- [x] `npm run docs:cli` and the documentation of Dreamweaver's records
+  - **Goal**: Resolve to [Phase N3, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Dreamweaver Sync Files
+- [x] Changelog, checks and commit for N3
+  - **Goal**: Resolve to [Phase N3, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Dreamweaver Sync Files
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -504,19 +519,8 @@ Next version: major. Phases N1 to N3 together make `2.0.0`: N1 sets the
 version, and N2 and N3 add to it. Phase N4 hands the extension its plan
 through agents-align. Phase N5 moves no version.
 
-The items of Phases N1 and N2 are in Current.
+The items of Phases N1 to N3 are in Current.
 
-- [ ] `site add` in a folder with Dreamweaver's records,
-      `--dreamweaver-server`, `site edit --dreamweaver`, and the Dreamweaver
-      lines of `site show`, `status` and `state reset`, with their tests
-  - **Goal**: Resolve to [Phase N3, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] Site Setup's toggle, the server editor's name field and quick
-      setup's question, with their tests
-  - **Goal**: Resolve to [Phase N3, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] `npm run docs:cli` and the documentation of Dreamweaver's records
-  - **Goal**: Resolve to [Phase N3, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] Changelog, checks and commit for N3
-  - **Goal**: Resolve to [Phase N3, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
 - [ ] Build and pack the engine for the extension
   - **Goal**: Resolve to [Phase N4, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
 - [ ] Open the agents-align room: the workspaces, `align.md`, the

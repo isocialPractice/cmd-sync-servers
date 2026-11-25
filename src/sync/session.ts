@@ -220,6 +220,18 @@ export class SyncSession {
     return new SyncSession(options, site, server, records, notes);
   }
 
+  /**
+   * Whether the way Dreamweaver reads the server's clock is known, as of
+   * the last plan: until it is, its records are not used. `undefined` when
+   * the site does not use Dreamweaver's records.
+   */
+  get dreamweaverClock(): 'known' | 'unknown' | undefined {
+    if (this.#notes === undefined) {
+      return undefined;
+    }
+    return this.#notes.clockKnown ? 'known' : 'unknown';
+  }
+
   /** The records of this site and server, for inspection. */
   record(target: string): SyncRecord | undefined {
     return this.#records.get(target);
@@ -475,7 +487,7 @@ export class SyncSession {
       conflicts,
       problems,
       inSync: plan.unlisted,
-      ...(this.#notes === undefined ? {} : { dreamweaver: { inSync: plan.adopted, clock: this.#notes.clockKnown ? ('known' as const) : ('unknown' as const) } }),
+      ...(this.dreamweaverClock === undefined ? {} : { dreamweaver: { inSync: plan.adopted, clock: this.dreamweaverClock } }),
     };
   }
 

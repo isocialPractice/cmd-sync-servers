@@ -71,7 +71,7 @@ export {
 export { SyncPlan, decide, type Decision, type PlanItem, type PlanSummary, type SavedPlan, type SilentUpdate } from './sync/plan.ts';
 export { resultLine, type ExecuteOptions, type ItemOutcome, type ItemResult, type SyncResult } from './sync/execute.ts';
 export { classify, copiesMatch, hasChanged, withEntry, type CompareOptions, type EntryMatch, type SyncState } from './sync/classify.ts';
-export { STATUS, guardedStatus, unsafeNameStatus } from './sync/messages.ts';
+export { DREAMWEAVER_TEXT, STATUS, dreamweaverInSync, dreamweaverTakeOver, guardedStatus, unsafeNameStatus } from './sync/messages.ts';
 export { cloakPatternToGitignore, siteCloak, splitPatterns, type Cloak } from './sync/cloak.ts';
 export { DEFAULT_GUARD_PATTERNS, siteGuard, type Guard } from './sync/guard.ts';
 export { SyncRecords, recordsFile, type RecordMirror, type SyncRecord } from './sync/state.ts';

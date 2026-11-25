@@ -38,3 +38,38 @@ export function guardedStatus(pattern: string): string {
 export function unsafeNameStatus(reason: string): string {
   return `Name is not valid on this system: ${reason}.`;
 }
+
+/**
+ * The sentences every front end uses for the synchronization records
+ * Dreamweaver keeps in `_notes/dwsync.xml`.
+ */
+export const DREAMWEAVER_TEXT = {
+  /** Asked when a site is set up in a folder that holds the records. */
+  question: 'This folder holds Dreamweaver synchronization records (_notes/dwsync.xml).\nUse them, and keep them up to date for Dreamweaver?',
+  /** After a look at the whole site that could not tell how Dreamweaver reads the server's clock. */
+  clockUnknown: "Dreamweaver's records are not used yet: too few files match them to tell how Dreamweaver reads this server's clock.",
+  /** After a look at some paths only, before any sync of the whole site. */
+  clockNotLearned: "Dreamweaver's records are not used yet: a sync of the whole site first learns how Dreamweaver reads this server's clock.",
+  /** After setup, when the records show nothing in sync. */
+  nothingTaken: "Dreamweaver's records show no file in sync with this server.",
+} as const;
+
+function files(count: number): string {
+  return `${String(count)} ${count === 1 ? 'file' : 'files'}`;
+}
+
+/** `Dreamweaver's records: 204 files in sync.`, for a status. */
+export function dreamweaverInSync(count: number): string {
+  return `Dreamweaver's records: ${files(count)} in sync.`;
+}
+
+/**
+ * What setting a site up did with Dreamweaver's records: how many files it
+ * took as in sync, or why none.
+ */
+export function dreamweaverTakeOver(adopted: number, clock: 'known' | 'unknown'): string {
+  if (clock === 'unknown') {
+    return DREAMWEAVER_TEXT.clockUnknown;
+  }
+  return adopted === 0 ? DREAMWEAVER_TEXT.nothingTaken : `Took ${files(adopted)} as in sync from Dreamweaver's records.`;
+}

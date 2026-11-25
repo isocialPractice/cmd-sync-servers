@@ -72,6 +72,20 @@ Connecting to 203.0.113.10:21...</code></pre>
 </table>
 <p>To sign in with a key instead of a password: <code>--auth key --key-path ~/.ssh/id_ed25519</code>. The key file is read when connecting and never copied.</p>
 
+<h3 id="dreamweaver">A folder Dreamweaver synchronized</h3>
+<p>Dreamweaver leaves its synchronization records in the site's folders, as <code>_notes/dwsync.xml</code> files. When the local folder holds some, <code>site add</code> asks whether to use them, once the server is set up:</p>
+<pre><code>This folder holds Dreamweaver synchronization records (_notes/dwsync.xml).
+Use them, and keep them up to date for Dreamweaver? (Y/n):
+Dreamweaver synchronized this folder with these servers. Which one is server1.hosting.example.net?
+  1. 203.0.113.10//public_html/ (212 files)
+  2. D:/Sites/my-site-testing/ (198 files)
+  3. None of these
+Choose a number [3]: 1
+Reading Dreamweaver's records...
+Added site "My Site" with the server server1.hosting.example.net (FTPS). It is the Remote server.
+Took 204 files as in sync from Dreamweaver's records.</code></pre>
+<p>The second question comes only when Dreamweaver knew the server by another name than its host and folder give here. With a yes, the files Dreamweaver last synchronized are in sync from the first preview, and every transfer keeps Dreamweaver's records up to date, so you can go on using both. Without a terminal, the site uses the records when the folder holds some; <code>--no-dreamweaver</code> leaves them alone, and <code>--dreamweaver-server</code> names the server. For a site added earlier, run <code>sync-servers site edit --dreamweaver</code>. <a href="configuration.html#dreamweaver">Dreamweaver synchronization files</a> has the details.</p>
+
 <h2 id="first-connection">2. What the first connection asks</h2>
 <p>Setup connects before it saves anything, and asks only what a person has to decide:</p>
 <ul>

@@ -30,6 +30,10 @@ at hand.
   optionally deleting what the other side lost. Only files that differ are
   listed, each with a checkbox, and a file changed on both sides waits for
   your decision.
+- **At home beside Dreamweaver.** A site synchronized with Dreamweaver is
+  in sync from its first preview: its `_notes/dwsync.xml` records are read,
+  and each transfer keeps them up to date, so both programs go on agreeing.
+  Those files are never transferred.
 - **Safe by default.** Pinned SSH host keys, verified TLS certificates,
   passwords in the operating system's credential store and never in a file,
   a guard that holds back `.env` files and private keys, and local files

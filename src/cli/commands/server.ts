@@ -3,6 +3,7 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { NewServer } from '../../config/registry.ts';
 import { formatIssues, serverSchema, type Server, type Site } from '../../config/schema.ts';
+import { clockFile } from '../../sync/dreamweaver.ts';
 import { booleanOption, flag, stringOption, type CommandSpec, type OptionSpecs, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
 import { editJsonUntilValid } from '../editor.ts';
@@ -214,7 +215,15 @@ export const serverEditCommand: CommandSpec = {
 
 /** `server edit` in a terminal with no options: the setup questions again, with the current values as defaults. */
 async function editServerByQuestions(ctx: CommandContext, site: Site, server: Server): Promise<undefined> {
-  const result = await guidedServer(ctx, { mode: 'server-edit', site, servers: site.servers, existing: server, serverId: server.id, values: {} });
+  const result = await guidedServer(ctx, {
+    mode: 'server-edit',
+    site,
+    servers: site.servers,
+    existing: server,
+    serverId: server.id,
+    values: {},
+    dreamweaver: site.sync.maintainInfo && site.sync.dreamweaver.enabled,
+  });
   const updated = await (await ctx.registry()).replaceServer(site.id, server.id, result.server);
   await storeTypedSecret(ctx, site.id, updated, result.save);
   ctx.out(`Updated server ${describeServer(updated)}.${connectionNote(result.connection)}\n`);
@@ -277,6 +286,7 @@ export const serverRemoveCommand: CommandSpec = {
     await (await ctx.registry()).removeServer(site.id, server.id);
     await forgetSecrets(ctx, site.id, [server]);
     await rm(path.join(ctx.paths.stateDir, 'sites', site.id, `${server.id}.json`), { force: true });
+    await rm(clockFile(ctx.paths.stateDir, site.id, server.id), { force: true });
     if (ctx.flags.json) {
       ctx.json('server-removed', { siteId: site.id, serverId: server.id, name: server.name });
     } else {

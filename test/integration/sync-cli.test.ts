@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
+import { dreamweaverServerName } from '../../src/sync/dwsync.ts';
 import { cli, filesContaining } from '../helpers/cli.ts';
+import { entryFor, writeDwsync } from '../helpers/dwsync.ts';
 import type { Kind } from '../sandbox/rig.ts';
 import { BASE_TIME, startSiteRig, type SiteRig } from '../sandbox/site-rig.ts';
 
@@ -62,6 +64,50 @@ test('a sync with nothing to transfer saves what it found in sync; a dry run and
     assert.match(done.stdout, /^Nothing to synchronize\.$/m);
     assert.deepEqual(Object.keys(json<{ records: object }>(readFileSync(records, 'utf8')).records), ['index.html']);
   });
+});
+
+test("status says what Dreamweaver's records gave, and state reset forgets them only when told to", async () => {
+  const rig = await startSiteRig('local', { site: { sync: { dreamweaver: { enabled: true } } } });
+  try {
+    const run = (...args: string[]): ReturnType<typeof cli> => cli({ home: rig.home, cwd: rig.localDir }, '--ascii', ...args);
+    const server = rig.site.servers[0];
+    assert.ok(server !== undefined);
+    const name = dreamweaverServerName(server);
+    const files = ['index.html', 'about.html', 'contact.html'];
+    files.forEach((file, index) => {
+      rig.write('local', file, `<h1>${file}</h1>`, BASE_TIME + index * 60_000);
+      rig.write('remote', file, `<h1>${file}</h1>`, BASE_TIME + 3_600_000 + index * 60_000 + 13_000);
+    });
+    const entries = files.map((file) => entryFor(path.join(rig.localDir, file), statSync(path.join(rig.remoteDir, file)).mtimeMs, name, { unit: 'second', dst: 0 }));
+    const notes = writeDwsync(rig.localDir, [...entries, { ...entries[0], name: 'index.html', server: 'D:/Sites/my-site-testing/', local: 1n, remote: 2n }]);
+
+    const status = await run('status');
+    assert.equal(status.code, 0, status.stderr);
+    assert.match(status.stdout, /^In sync: 3 file\(s\)\.\nDreamweaver's records: 3 files in sync\.$/m);
+    const asJson = json<{ dreamweaver: unknown }>((await run('status', '--json')).stdout);
+    assert.deepEqual(asJson.dreamweaver, { inSync: 3, clock: 'known' });
+    assert.match((await run('status', 'index.html')).stdout, /^Dreamweaver's records are not used yet: a sync of the whole site first learns how Dreamweaver reads this server's clock\.$/m);
+
+    assert.match((await run('sync', '--both')).stdout, /^Nothing to synchronize\.$/m);
+    assert.doesNotMatch((await run('status')).stdout, /Dreamweaver/, 'files in sync by the records of sync-servers itself are not counted again');
+
+    const kept = await run('state', 'reset', '--yes');
+    assert.match(kept.stdout, /^Forgot the sync records of "My Site: Folder"\. Dreamweaver's records are as they were, so the next sync of the whole site takes them over again; pass --dreamweaver to remove this server's entries too\.$/m);
+    assert.match((await run('status')).stdout, /^Dreamweaver's records: 3 files in sync\.$/m);
+
+    const removed = await run('state', 'reset', '--dreamweaver', '--yes');
+    assert.match(removed.stdout, /^Forgot the sync records of "My Site: Folder", and removed its entries from Dreamweaver's records\. The next sync compares both sides from scratch\.$/m);
+    const left = readFileSync(notes, 'utf8');
+    assert.ok(left.includes('D:/Sites/my-site-testing/') && !left.includes(name), "only the other server's entry is left");
+    const after = await run('status');
+    assert.match(after.stdout, /^Server changes \(3\)$/m);
+    assert.doesNotMatch(after.stdout, /Dreamweaver/);
+
+    writeDwsync(rig.localDir, entries.slice(0, 2));
+    assert.match((await run('status')).stdout, /^Dreamweaver's records are not used yet: too few files match them to tell how Dreamweaver reads this server's clock\.$/m);
+  } finally {
+    await rig.close();
+  }
 });
 
 test('sync needs a direction without a terminal, and asks for one in a terminal', async () => {

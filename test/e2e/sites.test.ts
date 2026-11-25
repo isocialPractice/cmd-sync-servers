@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync, realpathSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { parseDwsync, toFiletime } from '../../src/sync/dwsync.ts';
 import { filesContaining, makeFolder, tempDir, testEnv } from '../helpers/cli.ts';
+import { entryFor, writeDwsync } from '../helpers/dwsync.ts';
 
 // A site with two servers is created, edited, resolved from a subfolder and
 // removed, all through the built CLI, with a generated password in the
@@ -84,5 +86,39 @@ test('the built CLI synchronizes with a folder server and reports through its ex
   assert.equal(synced.status, 0, synced.stderr);
   assert.equal((JSON.parse(synced.stdout) as { result: { done: number } }).result.done, 1);
   assert.equal(readFileSync(path.join(share, 'index.html'), 'utf8'), 'home');
+  assert.deepEqual(filesContaining(home, secret), []);
+});
+
+test("the built CLI takes over a folder Dreamweaver synchronized, and keeps Dreamweaver's records up to date", () => {
+  const site = realpathSync(makeFolder(temp.dir, 'dreamweaver', 'local'));
+  const share = realpathSync(makeFolder(temp.dir, 'dreamweaver', 'share'));
+  const name = `${share.split(path.sep).join('/')}/`;
+  const files = ['index.html', 'about.html', 'contact.html'];
+  const start = Date.UTC(2026, 9, 1, 12);
+  files.forEach((file, index) => {
+    for (const [folder, at] of [[site, start + index * 60_000], [share, start + 3_600_000 + index * 60_000 + 13_000]] as const) {
+      writeFileSync(path.join(folder, file), `<h1>${file}</h1>`);
+      utimesSync(path.join(folder, file), new Date(at), new Date(at));
+    }
+  });
+  const notes = writeDwsync(site, files.map((file) => entryFor(path.join(site, file), statSync(path.join(share, file)).mtimeMs, name, { unit: 'second', dst: 0 })));
+
+  const added = run(temp.dir, 'site', 'add', '--name', 'Demo Tool', '--local-root', site, '--protocol', 'local', '--remote-root', share);
+  assert.equal(added.status, 0, added.stderr);
+  assert.match(added.stdout, /It uses Dreamweaver's synchronization records: the first sync of the whole site takes them over\./);
+  assert.match(run(site, 'site', 'show').stdout, /^Dreamweaver +on$/m);
+  assert.match(run(site, 'status').stdout, /^Dreamweaver's records: 3 files in sync\.$/m);
+
+  const synced = run(site, 'sync', '--both', '--yes');
+  assert.equal(synced.status, 0, synced.stderr);
+  assert.match(synced.stdout, /^Nothing to synchronize\.$/m);
+  assert.deepEqual(readdirSync(share).sort(), [...files].sort(), "Dreamweaver's records are never put");
+
+  writeFileSync(path.join(site, 'index.html'), '<h1>index.html, edited</h1>');
+  const put = run(site, 'put', 'index.html');
+  assert.equal(put.status, 0, put.stderr);
+  assert.equal(readFileSync(path.join(share, 'index.html'), 'utf8'), '<h1>index.html, edited</h1>');
+  const entry = parseDwsync(readFileSync(notes, 'utf8'))?.entries.find((item) => item.name === 'index.html');
+  assert.equal(entry?.local, toFiletime(lstatSync(path.join(site, 'index.html'), { bigint: true }).mtimeNs));
   assert.deepEqual(filesContaining(home, secret), []);
 });
