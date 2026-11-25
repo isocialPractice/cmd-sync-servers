@@ -486,7 +486,10 @@ export class SiteSetupView implements View {
         this.#siteId = added.id;
       } else {
         await registry.update(this.#siteId, (draft) => {
+          // A setting no field here shows stays as it is.
+          const { dreamweaver } = draft.sync;
           Object.assign(draft, settings);
+          draft.sync.dreamweaver = dreamweaver;
         });
       }
     } catch (error) {

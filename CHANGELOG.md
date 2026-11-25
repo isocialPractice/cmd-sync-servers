@@ -7,6 +7,34 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
 `1.0.0`, versions used the pre-release form `1.0.0-alpha.x.y.z`, where
 `x.y.z` counted alpha iterations toward `1.0.0`.
 
+## [2.0.0] - 2026-11-24
+
+### Changed
+
+- **Breaking:** `sites.json` is written as schema version 2. A `1.x` build,
+  and a VS Code extension built on one, refuses the file with a message to
+  update. A version 1 file is read, written back as version 2, and kept as
+  `sites.json.bak`.
+- **Breaking:** `_notes/dwsync.xml`, the file in which Dreamweaver keeps a
+  folder's synchronization records, is never put, got or deleted, on
+  either side and whatever the case of its name. A site that transferred
+  those files no longer lists them, and a copy on a server stays there.
+- **Breaking:** In the library API, the `Site` type gains
+  `sync.dreamweaver`, the options of the `Server` type gain
+  `dreamweaverServer`, and `SCHEMA_VERSION` is `2`.
+
+### Added
+
+- `sync.dreamweaver.enabled` and `options.dreamweaverServer` in
+  `sites.json`: the setting for Dreamweaver's synchronization records, off
+  by default, and the name Dreamweaver gives a server in them.
+
+### Security
+
+- `_notes/dwsync.xml` names a site's server, its folder there and the
+  site's files. No synchronization transfers it, so it no longer reaches a
+  web server through this tool.
+
 ## [1.0.0] - 2026-11-03
 
 The first stable release. From this version on, a breaking change to the
@@ -442,4 +470,5 @@ marked experimental in the API reference are outside that promise.
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
+[2.0.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/isocialPractice/cmd-sync-servers/releases/tag/v1.0.0

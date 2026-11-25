@@ -353,6 +353,31 @@ the step of the plan that specifies it.
 - [x] Report what was checked and any owner step that remains
   - **Goal**: Resolve to [Phase L5, step 5](.claude/prompts/symlinks-work.prompt.md#phase-l5-close-the-plan)
   - From: Symbolic Links
+- [x] The version at `2.0.0` in `package.json`, `package-lock.json` and
+      `src/version.ts`, the `[2.0.0]` changelog section with its link, the
+      supported line of `SECURITY.md`, and the `Dreamweaver Sync Files`
+      section here
+  - **Goal**: Resolve to [Phase N1, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
+  - From: Dreamweaver Sync Files
+- [x] `sites.json` at schema version 2 with its migration,
+      `sync.dreamweaver.enabled`, `options.dreamweaverServer`, and the
+      generated schema
+  - **Goal**: Resolve to [Phase N1, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
+  - From: Dreamweaver Sync Files
+- [x] `src/sync/dwsync.ts`: reading and writing a `dwsync.xml`, its times
+      and its server names, with every branch tested
+  - **Goal**: Resolve to [Phase N1, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
+  - From: Dreamweaver Sync Files
+- [x] Both scans leave `_notes/dwsync.xml` out
+  - **Goal**: Resolve to [Phase N1, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
+  - From: Dreamweaver Sync Files
+- [x] The Dreamweaver name of a server, and the search for Dreamweaver's
+      records in a local folder
+  - **Goal**: Resolve to [Phase N1, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
+  - From: Dreamweaver Sync Files
+- [x] Documents, changelog, checks and commit for N1
+  - **Goal**: Resolve to [Phase N1, step 6](.claude/prompts/use-dwsync-file.prompt.md#phase-n1-the-format-the-setting-and-what-is-never-synchronized)
+  - From: Dreamweaver Sync Files
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -445,6 +470,70 @@ extension's `TODO.md`. Phase L5 moves no version.
 
 All items moved to Current and done.
 
+## Dreamweaver Sync Files
+
+Next version: major. Phases N1 to N3 together make `2.0.0`: N1 sets the
+version, and N2 and N3 add to it. Phase N4 hands the extension its plan
+through agents-align. Phase N5 moves no version.
+
+The items of Phase N1 are in Current.
+
+- [ ] `withEntry` and `EntryMatch`: an entry of Dreamweaver's records as
+      evidence for a file both sides have, with every branch tested
+  - **Goal**: Resolve to [Phase N2, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] The clock of a server as Dreamweaver reads it: learning it, its file
+      in the state folder, and `DreamweaverClock`
+  - **Goal**: Resolve to [Phase N2, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] `DreamweaverNotes`: reading the records, writing them as a second
+      copy of the tool's own, and catching up, with `RecordMirror` in
+      `SyncRecords`
+  - **Goal**: Resolve to [Phase N2, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] The plan: the entry matches, the count of files taken over, and the
+      fingerprint
+  - **Goal**: Resolve to [Phase N2, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] The session and the run: `settle`, `resetState`, emptied folders,
+      and saving what a plan found in sync when nothing is transferred
+  - **Goal**: Resolve to [Phase N2, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] The Dreamweaver scenarios over `local`, `sftp` and `ftps`, and the
+      library exports
+  - **Goal**: Resolve to [Phase N2, step 6](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] Documents, changelog, checks and commit for N2
+  - **Goal**: Resolve to [Phase N2, step 7](.claude/prompts/use-dwsync-file.prompt.md#phase-n2-reading-and-writing-the-records)
+- [ ] `site add` in a folder with Dreamweaver's records,
+      `--dreamweaver-server`, `site edit --dreamweaver`, and the Dreamweaver
+      lines of `site show`, `status` and `state reset`, with their tests
+  - **Goal**: Resolve to [Phase N3, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+- [ ] Site Setup's toggle, the server editor's name field and quick
+      setup's question, with their tests
+  - **Goal**: Resolve to [Phase N3, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+- [ ] `npm run docs:cli` and the documentation of Dreamweaver's records
+  - **Goal**: Resolve to [Phase N3, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+- [ ] Changelog, checks and commit for N3
+  - **Goal**: Resolve to [Phase N3, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
+- [ ] Build and pack the engine for the extension
+  - **Goal**: Resolve to [Phase N4, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+- [ ] Open the agents-align room: the workspaces, `align.md`, the
+      extension's plan and both proxy agents
+  - **Goal**: Resolve to [Phase N4, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+- [ ] Check these items and commit
+  - **Goal**: Resolve to [Phase N4, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+- [ ] Give the owner the command for the round, what it allows and where
+      it stops
+  - **Goal**: Resolve to [Phase N4, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+- [ ] Run the engine's checks once more from a clean build and read the
+      extension's result from the room
+  - **Goal**: Resolve to [Phase N5, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+- [ ] Bring the plan files up to date; a headless run cannot write under
+      `.claude/`
+  - **Goal**: Resolve to [Phase N5, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+- [ ] Write `.support/complete-dwsync.md`, the paste-ready prompt that
+      makes the same updates
+  - **Goal**: Resolve to [Phase N5, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+- [ ] Check these items and commit
+  - **Goal**: Resolve to [Phase N5, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+- [ ] Report what was checked and any owner step that remains
+  - **Goal**: Resolve to [Phase N5, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+
 ## Later Roadmap - paused
 
 Waits until both alphas are public; each item then becomes its own section.
@@ -482,17 +571,17 @@ or needs a person at a real terminal.
       `save-exact=true` and `fund=false`, one per line, then commit it. The
       loop's permission rules treat `.npmrc` as a sensitive file, so a run
       cannot write it
-- [ ] Create the public repository `isocialPractice/cmd-sync-servers` and push
+- [x] Create the public repository `isocialPractice/cmd-sync-servers` and push
       `main` once Phase E0 is committed
-- [ ] After the first push, check that the CI job "Interop with OpenSSH and
+- [x] After the first push, check that the CI job "Interop with OpenSSH and
       vsftpd (Docker)" passes; it cannot run on the development machine
 - [x] Try the full-screen interface by hand at 80 x 24 in Windows Terminal,
       the classic Windows console, macOS Terminal and a Linux terminal; the
       tests drive it through a simulated terminal only
-- [ ] Apply the repository and account settings of plan section 11.7
-- [ ] Select "GitHub Actions" as the Pages source if the first `pages.yml`
+- [x] Apply the repository and account settings of plan section 11.7
+- [x] Select "GitHub Actions" as the Pages source if the first `pages.yml`
       run cannot enable Pages itself
-- [ ] Create the `isocialpractice` npm organization, the trusted publisher
+- [x] Create the `isocialpractice` npm organization, the trusted publisher
       (workflow `release.yml`, and require the environment `npm` there so no
       other job can publish) and the GitHub `npm` environment with yourself as
       required reviewer, then set the repository variable `NPM_PUBLISH` to
@@ -500,11 +589,11 @@ or needs a person at a real terminal.
       first alpha from your machine with 2FA
 - [x] Delete `test/unit/zz-probe.test.ts`, an empty file a loop run could not
       remove
-- [ ] Approve and create the first public pre-release: tag
+- [x] Approve and create the first public pre-release: tag
       `v1.0.0-alpha.1.0.0` and publish a GitHub pre-release for it;
       `release.yml` builds, attests and attaches the files. Then check
       `gh attestation verify` on the attached tarball
-- [ ] For Scorecard, outside the repository's files: enable branch and tag
+- [x] For Scorecard, outside the repository's files: enable branch and tag
       rulesets (section 11.7) and register for the OpenSSF Best Practices
       badge; fuzzing is not set up
 - [x] Fill the git-ignored `.claude/leak-denylist.txt` with personal names,
@@ -512,3 +601,17 @@ or needs a person at a real terminal.
       account name, domains and IP address of the server first set up by
       hand, and copy it to `vscode-sync-servers/.claude/leak-denylist.txt`,
       where the extension's leak scan looks
+- [ ] After Phase N3 of the Dreamweaver plan, on a site Dreamweaver
+      synchronizes: turn the setting on with
+      `sync-servers site edit --dreamweaver`, run `sync-servers status` and
+      check that it lists only real differences; then Put one file with
+      sync-servers, run Dreamweaver's Synchronize, and check that it lists
+      nothing for that file. No test can show what Dreamweaver does there
+- [ ] Start the agents-align round that Phase N4 hands over, with the
+      command its report gives
+- [ ] When that round stops for the owner, push the engine and tag
+      `v2.0.0`, so `release.yml` publishes it to npm; then start the round
+      again for the extension's last phase
+- [ ] Push the extension and tag `v1.0.0-alpha.2.0.0`, so both are released
+      together: an extension built on engine `1.0.0` cannot read a
+      `sites.json` that engine `2.0.0` has written

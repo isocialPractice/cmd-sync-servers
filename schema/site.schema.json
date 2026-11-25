@@ -10,7 +10,7 @@
     },
     "schemaVersion": {
       "type": "number",
-      "const": 1
+      "const": 2
     },
     "cloaking": {
       "description": "Cloaking for every site. Written only while it holds a pattern.",
@@ -252,6 +252,11 @@
                       "default": false,
                       "type": "boolean"
                     },
+                    "dreamweaverServer": {
+                      "description": "The name Dreamweaver gives this server in _notes/dwsync.xml, such as \"203.0.113.10//public_html/\". Unset: built from the host and the remote root.",
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "remoteFileMode": {
                       "type": "string",
                       "pattern": "^[0-7]{3,4}$",
@@ -349,6 +354,18 @@
                 "default": true,
                 "description": "Keep sync records, so changes on both sides are detected.",
                 "type": "boolean"
+              },
+              "dreamweaver": {
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "default": false,
+                    "description": "Read and update the synchronization records Dreamweaver keeps in each folder as _notes/dwsync.xml. Needs maintainInfo.",
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
               },
               "compare": {
                 "default": "metadata",

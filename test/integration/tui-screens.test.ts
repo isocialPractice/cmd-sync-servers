@@ -582,6 +582,33 @@ test('Site Setup sets how the site follows symbolic links', async () => {
   });
 });
 
+test('Site Setup and the server editor keep the Dreamweaver settings they do not show', async () => {
+  await withRig(async (rig) => {
+    const serverId = rig.site.servers[0]?.id ?? '';
+    await rig.registry.update(rig.site.id, (draft) => {
+      draft.sync.dreamweaver.enabled = true;
+    });
+    await rig.registry.updateServer(rig.site.id, serverId, (draft) => {
+      draft.options.dreamweaverServer = 'D:/Sites/my-site-testing/';
+    });
+    const svc = services(rig);
+
+    const setup = testApp();
+    await open(setup, new SitesView(svc));
+    await press(setup, 'e', 'down', 'down', 'down', 'down', 'tab', 'down', 'down', 'down', 'right', 'ctrl+s');
+    assert.equal(rig.registry.get(rig.site.id)?.sync.symlinks, 'follow-inside-root');
+    assert.deepEqual(rig.registry.get(rig.site.id)?.sync.dreamweaver, { enabled: true });
+
+    const editor = testApp();
+    await open(editor, new SitesView(svc), new ServerEditorView(svc, rig.site.id, serverId));
+    await type(editor, ' 2');
+    await press(editor, 'ctrl+s');
+    const saved = rig.registry.get(rig.site.id)?.servers[0];
+    assert.match(saved?.name ?? '', / 2$/);
+    assert.equal(saved?.options.dreamweaverServer, 'D:/Sites/my-site-testing/');
+  });
+});
+
 test('global cloaking is edited from the Sites screen and from Site Setup, where one site can stop using it', async () => {
   await withRig(async (rig) => {
     const app = testApp();

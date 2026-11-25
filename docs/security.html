@@ -132,6 +132,7 @@
   <li>Settings, sync records, the scan cache, the recovery folder and the logs are created private to you (<code>0700</code> folders and <code>0600</code> files on Linux and macOS).</li>
   <li>Logs record what happened and never file contents. The newest 30 run logs are kept.</li>
   <li>The temporary files of a diff and of editor mode live in a private temporary folder and are removed when done.</li>
+  <li>Dreamweaver keeps the synchronization records of each folder in a file there, <code>_notes/dwsync.xml</code>, which names the server, its folder and the files of the site. sync-servers never puts, gets or deletes that file, in any folder and whatever the case of its name, so it does not reach a web server through this tool. A copy that reached a server another way stays there and is never listed: remove it with the hosting panel's file manager or another client, and look in every folder of the site, since each has its own <code>_notes</code>.</li>
   <li>Nothing is sent anywhere but to your servers: no analytics, no update checks.</li>
 </ul>
 

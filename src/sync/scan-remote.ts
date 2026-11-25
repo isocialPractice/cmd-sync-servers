@@ -3,6 +3,7 @@ import type { TransportPool } from '../transport/pool.ts';
 import type { RetryOptions } from '../transport/retry.ts';
 import type { RemoteEntry } from '../transport/types.ts';
 import type { Cloak } from './cloak.ts';
+import { isDwsyncPath } from './dwsync.ts';
 import { STATUS, unsafeNameStatus } from './messages.ts';
 import { isPartName } from './part.ts';
 import { ROOT, type RemotePath } from './paths.ts';
@@ -27,7 +28,8 @@ export interface RemoteScanOptions {
 /**
  * Lists the files under the server's remote root. Cloaked folders are never
  * listed; symbolic links are reported and never followed; names that are not
- * safe on this system are reported, never used. Servers whose listings carry
+ * safe on this system are reported, never used; a `_notes/dwsync.xml` is
+ * never listed, whatever the case of its name. Servers whose listings carry
  * no times are asked file by file (FTP MDTM).
  */
 export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult> {
@@ -46,6 +48,10 @@ export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult
     }
     if (isPartName(entry.name)) {
       // A partial copy left by an interrupted transfer is never synchronized as a file.
+      return;
+    }
+    if (entry.path !== undefined && isDwsyncPath(entry.path, true)) {
+      // A copy of Dreamweaver's synchronization records on the server is never got or deleted.
       return;
     }
     if (entry.path === undefined) {

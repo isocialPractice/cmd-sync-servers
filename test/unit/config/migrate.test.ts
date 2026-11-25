@@ -4,15 +4,20 @@ import { migrateSitesFile } from '../../../src/config/migrate.ts';
 import { isSyncError } from '../../../src/errors.ts';
 
 test('a current file passes through unchanged', () => {
-  const file = { schemaVersion: 1, sites: [] };
-  assert.deepEqual(migrateSitesFile(file, 'sites.json'), { file, fromVersion: 1, migrated: false });
+  const file = { schemaVersion: 2, sites: [] };
+  assert.deepEqual(migrateSitesFile(file, 'sites.json'), { file, fromVersion: 2, migrated: false });
 });
 
 test('a file from a newer release is refused, never rewritten', () => {
   assert.throws(
-    () => migrateSitesFile({ schemaVersion: 2, sites: [] }, 'sites.json'),
+    () => migrateSitesFile({ schemaVersion: 3, sites: [] }, 'sites.json'),
     (error) => isSyncError(error, 'E_CONFIG_INVALID') && error.message.includes('newer sync-servers'),
   );
+});
+
+test('a version 1 file becomes version 2 with nothing else changed', () => {
+  const sites = [{ name: 'My Site', sync: { maintainInfo: true } }];
+  assert.deepEqual(migrateSitesFile({ schemaVersion: 1, sites }, 'sites.json'), { file: { schemaVersion: 2, sites }, fromVersion: 1, migrated: true });
 });
 
 test('a missing or broken schemaVersion is refused', () => {

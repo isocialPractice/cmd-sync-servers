@@ -62,7 +62,7 @@
 <p><code>sites.json</code> is plain JSON, described by a <a href="schema/site.schema.json">JSON Schema</a> that editors use for completion. Every write is atomic, keeps the previous version as <code>sites.json.bak</code>, and takes a lock file so two programs never lose each other's changes. A file that does not validate is never rewritten. Edit it with the commands, the terminal interface, <code>sync-servers site edit --editor</code> for one site, or <code>sync-servers config edit</code> for the whole file. Both reopen your editor with the problems listed until the JSON is valid, and <code>config edit</code> works even when the file does not load.</p>
 <pre><code>{
   "$schema": "https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "cloaking": { "patterns": [".git/", "node_modules/"] },
   "sites": [
     {
@@ -86,7 +86,7 @@
     }
   ]
 }</code></pre>
-<p>Fields left out take their defaults. Passwords never appear in this file. At the top, <code>cloaking.patterns</code> holds the <a href="#global-cloaking">global cloaking patterns</a>, which every site uses before its own; it is written only while it holds a pattern.</p>
+<p>Fields left out take their defaults. Passwords never appear in this file. <code>schemaVersion</code> is the version of the file format, now 2: a version 1 file is read, written back as version 2 and kept as <code>sites.json.bak</code>, and a build that knows only version 1 refuses a version 2 file with a message to update. At the top, <code>cloaking.patterns</code> holds the <a href="#global-cloaking">global cloaking patterns</a>, which every site uses before its own; it is written only while it holds a pattern.</p>
 
 <h3 id="site-fields">Site fields</h3>
 <table>
@@ -107,6 +107,7 @@
     <tr><td><code>cloaking.patterns</code></td><td><code>[]</code></td><td>Cloaking patterns; see <a href="#cloaking">Cloaking</a>.</td></tr>
     <tr><td><code>cloaking.paths</code></td><td><code>[]</code></td><td>Site-relative files and folders cloaked one by one.</td></tr>
     <tr><td><code>sync.maintainInfo</code></td><td><code>true</code></td><td>Keep sync records, so a change on both sides is detected.</td></tr>
+    <tr><td><code>sync.dreamweaver.enabled</code></td><td><code>false</code></td><td>The switch for the synchronization records Dreamweaver keeps in each folder of a site as <code>_notes/dwsync.xml</code>. Needs <code>sync.maintainInfo</code>.</td></tr>
     <tr><td><code>sync.compare</code></td><td><code>metadata</code></td><td><code>metadata</code> compares size and time; <code>checksum</code> also compares SHA-256 hashes where both are known.</td></tr>
     <tr><td><code>sync.mtimeToleranceSeconds</code></td><td><code>2</code></td><td>Times this close count as equal, for servers that round them.</td></tr>
     <tr><td><code>sync.symlinks</code></td><td><code>skip</code></td><td>Which symbolic links in the local folder are followed: none (<code>skip</code>), those inside the site (<code>follow-inside-root</code>) or all (<code>follow</code>); see <a href="#links">Symbolic links</a>.</td></tr>
@@ -149,6 +150,7 @@
     <tr><td><code>options.tls.trustedCertificate</code></td><td></td><td>FTPS: a certificate you chose to trust after it failed verification: <code>sha256</code> (colon-separated hex), <code>validTo</code> and <code>pinnedAt</code>. Normal verification runs first; an expired certificate is never trusted. Set when you trust a certificate in a terminal; removed with <code>--forget-certificate</code>. See <a href="security.html#certificates">Certificates</a>.</td></tr>
     <tr><td><code>options.hostKey</code></td><td></td><td>SFTP: the pinned host key, set when you trust it on first connection.</td></tr>
     <tr><td><code>options.uploadOnSave</code></td><td><code>false</code></td><td>Used by the VS Code extension: put a file when it is saved.</td></tr>
+    <tr><td><code>options.dreamweaverServer</code></td><td>built</td><td>The name Dreamweaver gives this server in <code>_notes/dwsync.xml</code>, such as <code>203.0.113.10//public_html/</code>. Unset: the host, <code>/</code>, and the remote root ending in <code>/</code>, such as <code>sftp.example.com//var/www/my-site/</code>; for <code>local</code>, the folder with <code>/</code> between its parts and at its end.</td></tr>
     <tr><td><code>options.remoteFileMode</code></td><td>server default</td><td>An octal mode such as <code>644</code> for uploaded files.</td></tr>
     <tr><td><code>options.remoteDirMode</code></td><td>server default</td><td>An octal mode such as <code>755</code> for new folders.</td></tr>
   </tbody>

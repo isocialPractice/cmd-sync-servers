@@ -6,6 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import { hasErrorCode, writeFileAtomic } from '../config/files.ts';
 import { ensurePrivateDir } from '../config/paths.ts';
 import type { Cloak } from './cloak.ts';
+import { isDwsyncPath } from './dwsync.ts';
 import { STATUS, unsafeNameStatus } from './messages.ts';
 import { isPartName } from './part.ts';
 import { baseName, checkPath, childPath, isInside, parentPath, ROOT, type LinkPolicy, type RemotePath } from './paths.ts';
@@ -125,7 +126,9 @@ interface Folder {
 
 /**
  * Lists the files under the site's local root. Cloaked folders are never
- * entered; names this system cannot use are reported. Symbolic links and
+ * entered; names this system cannot use are reported; a `_notes/dwsync.xml`,
+ * where Dreamweaver keeps a folder's synchronization records, is never
+ * listed, whatever the case of its name. Symbolic links and
  * junctions are reported under `skip`. Under `follow-inside-root` and
  * `follow` they are followed, a file link as a file and a folder link as a
  * folder whose files are listed under the link's path, unless they lead
@@ -293,6 +296,9 @@ export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> 
       queue.push(top);
       continue;
     }
+    if (isDwsyncPath(scope, true)) {
+      continue;
+    }
     if (underCloak(options.cloak, scope, false) || underCloak(options.cloak, scope, true)) {
       mutable.cloaked += 1;
       continue;
@@ -318,6 +324,10 @@ export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> 
     for await (const dirent of await opendir(next.real)) {
       if (isPartName(dirent.name)) {
         // A partial copy left by an interrupted transfer is never synchronized as a file.
+        continue;
+      }
+      if (isDwsyncPath(next.path === ROOT ? dirent.name : `${next.path}/${dirent.name}`, true)) {
+        // Dreamweaver's synchronization records belong to this computer and name the server; they are never a file of the site.
         continue;
       }
       const child = childPath(next.path, dirent.name, platform);

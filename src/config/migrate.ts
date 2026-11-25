@@ -8,7 +8,10 @@ type RawFile = Record<string, unknown>;
  * next: the step at key `n` turns version `n` into version `n + 1`. Each step
  * has a test that loads a file of version `n`.
  */
-const MIGRATIONS: Readonly<Record<number, (file: RawFile) => RawFile>> = {};
+const MIGRATIONS: Readonly<Record<number, (file: RawFile) => RawFile>> = {
+  // Version 2 holds sync.dreamweaver and options.dreamweaverServer, which a version 1 file leaves to their defaults.
+  1: (file) => file,
+};
 
 export interface MigrationResult {
   readonly file: RawFile;

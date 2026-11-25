@@ -38,7 +38,7 @@ test('opening creates sites.json with the schema reference first', async () => {
   const text = readFileSync(paths.sitesFile, 'utf8');
   assert.match(text, /^\{\n {2}"\$schema": "https:\/\/isocialpractice\.github\.io\//);
   assert.deepEqual(readJson(paths.sitesFile).sites, []);
-  assert.equal(readJson(paths.sitesFile).schemaVersion, 1);
+  assert.equal(readJson(paths.sitesFile).schemaVersion, 2);
 });
 
 test('the master list is private to the user on POSIX', { skip: process.platform === 'win32' }, async () => {
@@ -128,6 +128,27 @@ test('a file with an unknown key is never rewritten, and the error names the fil
   assert.equal(readFileSync(paths.sitesFile, 'utf8'), broken);
 });
 
+test('a version 1 file loads, is written back as version 2, and stays in the backup', async () => {
+  const registry = await SiteRegistry.open({ paths });
+  const site = await registry.add({ name: 'My Site', localRoot: siteRoot, servers: [production] });
+  const current = readFileSync(paths.sitesFile, 'utf8');
+  const older = JSON.parse(current) as { schemaVersion: number; sites: { sync: Record<string, unknown> }[] };
+  older.schemaVersion = 1;
+  delete older.sites[0]?.sync.dreamweaver;
+  const olderText = `${JSON.stringify(older, null, 2)}\n`;
+  assert.ok(!olderText.includes('dreamweaver'));
+  writeFileSync(paths.sitesFile, olderText);
+
+  const reopened = await SiteRegistry.open({ paths });
+  assert.deepEqual(reopened.get(site.id)?.sync.dreamweaver, { enabled: false });
+  assert.equal(reopened.get(site.id)?.servers[0]?.options.dreamweaverServer, undefined);
+  assert.equal(readFileSync(paths.sitesFile, 'utf8'), current);
+  assert.equal(readFileSync(`${paths.sitesFile}.bak`, 'utf8'), olderText);
+
+  writeFileSync(paths.sitesFile, current.replace('"schemaVersion": 2,', '"schemaVersion": 3,'));
+  await assert.rejects(SiteRegistry.open({ paths }), (error) => isSyncError(error, 'E_CONFIG_INVALID') && error.message.includes('Update sync-servers to read it'));
+});
+
 test('a file that is not JSON is reported, not replaced', async () => {
   await SiteRegistry.open({ paths });
   writeFileSync(paths.sitesFile, '{ "schemaVersion": 1, ');
@@ -214,6 +235,6 @@ test('global cloaking is written only while it holds a pattern, and useGlobalPat
   });
   assert.equal(readFileSync(paths.sitesFile, 'utf8'), before, 'without global cloaking the file reads as before');
 
-  writeFileSync(paths.sitesFile, before.replace('"schemaVersion": 1,', '"schemaVersion": 1,\n  "cloaking": { "patterns": [], "extra": true },'));
+  writeFileSync(paths.sitesFile, before.replace('"schemaVersion": 2,', '"schemaVersion": 2,\n  "cloaking": { "patterns": [], "extra": true },'));
   await assert.rejects(SiteRegistry.open({ paths }), (error) => isSyncError(error, 'E_CONFIG_INVALID') && error.message.includes('extra'));
 });

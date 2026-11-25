@@ -631,6 +631,8 @@ export class ServerEditorView implements View {
     const options: Record<string, unknown> = {
       allowRootDeletes: this.#toggle('allowRootDeletes') || undefined,
       uploadOnSave: this.#toggle('uploadOnSave'),
+      // A setting no field here shows stays as it is.
+      dreamweaverServer: this.#server?.options.dreamweaverServer,
     };
     if (protocol === 'local') {
       draft.remoteRoot = this.#text('folder') === '' ? '' : typedPath(this.#services, this.#text('folder'));

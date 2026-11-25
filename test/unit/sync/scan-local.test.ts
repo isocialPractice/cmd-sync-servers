@@ -165,3 +165,50 @@ describe('scanLocal and symbolic links', () => {
     assert.deepEqual((await scan('follow', ['css/loop'])).problems, [`css/loop: ${STATUS.linkLoop}`]);
   });
 });
+
+// A site Dreamweaver synchronized keeps its records beside the files of each folder:
+//   index.html, css/site.css, docs/dwsync.xml
+//   _notes/dwsync.xml, _notes/index.html.mno, css/_notes/dwsync.xml, img/_Notes/DwSync.XML
+describe('scanLocal and the records Dreamweaver keeps', () => {
+  let temp: ReturnType<typeof tempDir>;
+  let local: string;
+  const cloak = siteCloak({ cloaking: { enabled: true, patterns: [], paths: [] } });
+
+  before(() => {
+    temp = tempDir();
+    local = path.join(realpathSync.native(temp.dir), 'site');
+    for (const [file, content] of [
+      ['index.html', '<h1>Home</h1>'],
+      ['css/site.css', 'body {}'],
+      ['docs/dwsync.xml', '<dwsync/>'],
+      ['_notes/dwsync.xml', '<dwsync/>'],
+      ['_notes/index.html.mno', '<info/>'],
+      ['css/_notes/dwsync.xml', '<dwsync/>'],
+      ['img/_Notes/DwSync.XML', '<dwsync/>'],
+    ] as const) {
+      mkdirSync(path.dirname(path.join(local, file)), { recursive: true });
+      writeFileSync(path.join(local, file), content);
+    }
+  });
+
+  after(() => {
+    temp.cleanup();
+  });
+
+  const files = async (...scopes: string[]): Promise<string[]> => {
+    const result = await scanLocal({ root: local, cloak, symlinks: 'skip', checksum: false, scopes: scopes.length === 0 ? [ROOT] : scopes.map((scope) => toRemotePath(scope)) });
+    assert.equal(result.cloaked, 0);
+    assert.deepEqual(result.problems, []);
+    return [...result.files.keys()].sort();
+  };
+
+  test('_notes/dwsync.xml is never listed, in any folder and whatever the case of its name', async () => {
+    assert.deepEqual(await files(), ['_notes/index.html.mno', 'css/site.css', 'docs/dwsync.xml', 'index.html']);
+  });
+
+  test('a single path that is such a file yields nothing', async () => {
+    assert.deepEqual(await files('_notes/dwsync.xml', 'css/_notes/dwsync.xml', 'img/_Notes/DwSync.XML'), []);
+    assert.deepEqual(await files('_notes'), ['_notes/index.html.mno']);
+    assert.deepEqual(await files('docs/dwsync.xml'), ['docs/dwsync.xml']);
+  });
+});

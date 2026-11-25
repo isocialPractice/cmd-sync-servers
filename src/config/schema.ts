@@ -4,7 +4,7 @@ import { safeLine } from '../terminal-text.ts';
 import { hostFieldProblem } from './address.ts';
 
 /** The version of the `sites.json` format this release reads and writes. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Where the generated JSON Schema of `sites.json` is published. */
 export const SITES_SCHEMA_URL = 'https://isocialpractice.github.io/cmd-sync-servers/schema/site.schema.json';
@@ -81,6 +81,12 @@ const serverOptionsSchema = z.strictObject({
   tls: tlsSchema.optional(),
   hostKey: hostKeySchema.optional().describe('The pinned SSH host key, set when it is accepted on first connection.'),
   uploadOnSave: z.boolean().default(false),
+  dreamweaverServer: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe('The name Dreamweaver gives this server in _notes/dwsync.xml, such as "203.0.113.10//public_html/". Unset: built from the host and the remote root.'),
   remoteFileMode: fileMode.optional(),
   remoteDirMode: fileMode.optional(),
 });
@@ -161,6 +167,14 @@ const cloakingSchema = z.strictObject({
 
 const syncSchema = z.strictObject({
   maintainInfo: z.boolean().default(true).describe('Keep sync records, so changes on both sides are detected.'),
+  dreamweaver: z
+    .strictObject({
+      enabled: z
+        .boolean()
+        .default(false)
+        .describe('Read and update the synchronization records Dreamweaver keeps in each folder as _notes/dwsync.xml. Needs maintainInfo.'),
+    })
+    .prefault({}),
   compare: z.enum(['metadata', 'checksum']).default('metadata'),
   mtimeToleranceSeconds: z.number().min(0).max(3600).default(2),
   symlinks: z

@@ -10,8 +10,8 @@ reporting, and say so if the problem is still there.
 
 | Version | Supported |
 | --- | --- |
-| Latest `1.x` release | Yes |
-| Earlier releases, including the `1.0.0-alpha` pre-releases | No |
+| Latest `2.x` release | Yes |
+| Earlier releases, including `1.x` and the `1.0.0-alpha` pre-releases | No |
 
 ## Reporting a Vulnerability
 

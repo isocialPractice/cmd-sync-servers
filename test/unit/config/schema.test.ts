@@ -44,6 +44,7 @@ test('a minimal site gets every default', () => {
   assert.deepEqual(parsed.local, { cache: true });
   assert.deepEqual(parsed.cloaking, { enabled: true, patterns: [], paths: [] });
   assert.equal(parsed.sync.maintainInfo, true);
+  assert.deepEqual(parsed.sync.dreamweaver, { enabled: false });
   assert.equal(parsed.sync.compare, 'metadata');
   assert.equal(parsed.sync.mtimeToleranceSeconds, 2);
   assert.equal(parsed.sync.symlinks, 'skip');
@@ -65,6 +66,20 @@ test('sync.symlinks takes skip, follow-inside-root or follow, and nothing else',
   }
 });
 
+test('sync.dreamweaver holds one switch and nothing else', () => {
+  assert.deepEqual(siteSchema.parse(site({ sync: { dreamweaver: { enabled: true } } })).sync.dreamweaver, { enabled: true });
+  assert.deepEqual(siteSchema.parse(site({ sync: { dreamweaver: {} } })).sync.dreamweaver, { enabled: false });
+  const lines = issues(siteSchema.safeParse({ ...site(), sync: { dreamweaver: { enabled: true, files: 'all' } } }));
+  assert.ok(lines.some((line) => line.startsWith('sync.dreamweaver: ') && line.includes('files')), lines.join('\n'));
+});
+
+test('a server can carry the name Dreamweaver gives it, trimmed and never empty', () => {
+  assert.equal(serverSchema.parse(server()).options.dreamweaverServer, undefined);
+  assert.equal(serverSchema.parse(server({ options: { dreamweaverServer: ' 203.0.113.10//public_html/ ' } })).options.dreamweaverServer, '203.0.113.10//public_html/');
+  assert.equal(serverSchema.parse({ ...server(), protocol: 'local', host: undefined, username: undefined, remoteRoot: root, options: { dreamweaverServer: 'D:/Sites/my-site-testing/' } }).options.dreamweaverServer, 'D:/Sites/my-site-testing/');
+  assert.ok(issues(serverSchema.safeParse(server({ options: { dreamweaverServer: '  ' } }))).some((line) => line.startsWith('options.dreamweaverServer: ')));
+});
+
 test('LinkPolicy is the type of sync.symlinks', () => {
   type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
   const same: Same<LinkPolicy, Site['sync']['symlinks']> = true;
@@ -84,7 +99,7 @@ test('a server gets its option defaults', () => {
 
 test('unknown keys are rejected with their path', () => {
   const result = sitesFileSchema.safeParse({
-    schemaVersion: 1,
+    schemaVersion: 2,
     sites: [{ ...site(), servers: [{ ...server(), colour: 'blue' }] }],
   });
   assert.equal(result.success, false);
@@ -93,7 +108,7 @@ test('unknown keys are rejected with their path', () => {
 
 test('problems in sites.json name the site, the server, the field and the value', () => {
   const input = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sites: [
       site({
         servers: [server({ name: 'Production', protocol: 'ftps', remoteRoot: 'example.com/my-site', webUrl: 'www.example.com/my-site' })],
@@ -163,7 +178,7 @@ test('server names are unique within a site, ignoring case', () => {
 test('site names are unique, ignoring case, and ids are unique', () => {
   const first = site();
   const lines = issues(
-    sitesFileSchema.safeParse({ schemaVersion: 1, sites: [first, site({ name: 'MY SITE' }), { ...site({ name: 'Other' }), id: first.id }] }),
+    sitesFileSchema.safeParse({ schemaVersion: 2, sites: [first, site({ name: 'MY SITE' }), { ...site({ name: 'Other' }), id: first.id }] }),
   );
   assert.ok(lines.some((line) => line.startsWith('sites[1].name: ')));
   assert.ok(lines.some((line) => line.startsWith('sites[2].id: ')));
