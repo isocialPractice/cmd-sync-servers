@@ -616,7 +616,7 @@ or needs a person at a real terminal.
       account name, domains and IP address of the server first set up by
       hand, and copy it to `vscode-sync-servers/.claude/leak-denylist.txt`,
       where the extension's leak scan looks
-- [ ] After Phase N3 of the Dreamweaver plan, on a site Dreamweaver
+- [x] After Phase N3 of the Dreamweaver plan, on a site Dreamweaver
       synchronizes: turn the setting on with
       `sync-servers site edit --dreamweaver`, run `sync-servers status` and
       check that it lists only real differences; then Put one file with
