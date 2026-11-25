@@ -421,6 +421,20 @@ the step of the plan that specifies it.
 - [x] Changelog, checks and commit for N3
   - **Goal**: Resolve to [Phase N3, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n3-the-command-line-the-terminal-interface-and-the-documentation)
   - From: Dreamweaver Sync Files
+- [x] Build and pack the engine for the extension
+  - **Goal**: Resolve to [Phase N4, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+  - From: Dreamweaver Sync Files
+- [x] Open the agents-align room: the workspaces, `align.md`, the
+      extension's plan and both proxy agents
+  - **Goal**: Resolve to [Phase N4, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+  - From: Dreamweaver Sync Files
+- [x] Check these items and commit
+  - **Goal**: Resolve to [Phase N4, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+  - From: Dreamweaver Sync Files
+- [x] Give the owner the command for the round, what it allows and where
+      it stops
+  - **Goal**: Resolve to [Phase N4, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
+  - From: Dreamweaver Sync Files
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -519,18 +533,8 @@ Next version: major. Phases N1 to N3 together make `2.0.0`: N1 sets the
 version, and N2 and N3 add to it. Phase N4 hands the extension its plan
 through agents-align. Phase N5 moves no version.
 
-The items of Phases N1 to N3 are in Current.
+The items of Phases N1 to N4 are in Current.
 
-- [ ] Build and pack the engine for the extension
-  - **Goal**: Resolve to [Phase N4, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
-- [ ] Open the agents-align room: the workspaces, `align.md`, the
-      extension's plan and both proxy agents
-  - **Goal**: Resolve to [Phase N4, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
-- [ ] Check these items and commit
-  - **Goal**: Resolve to [Phase N4, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
-- [ ] Give the owner the command for the round, what it allows and where
-      it stops
-  - **Goal**: Resolve to [Phase N4, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
 - [ ] Run the engine's checks once more from a clean build and read the
       extension's result from the room
   - **Goal**: Resolve to [Phase N5, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
