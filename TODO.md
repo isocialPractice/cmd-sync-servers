@@ -435,6 +435,24 @@ the step of the plan that specifies it.
       it stops
   - **Goal**: Resolve to [Phase N4, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n4-hand-the-extension-its-plan)
   - From: Dreamweaver Sync Files
+- [x] Run the engine's checks once more from a clean build and read the
+      extension's result from the room
+  - **Goal**: Resolve to [Phase N5, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+  - From: Dreamweaver Sync Files
+- [x] Bring the plan files up to date; a headless run cannot write under
+      `.claude/`
+  - **Goal**: Resolve to [Phase N5, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+  - From: Dreamweaver Sync Files
+- [x] Write `.support/complete-dwsync.md`, the paste-ready prompt that
+      makes the same updates
+  - **Goal**: Resolve to [Phase N5, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+  - From: Dreamweaver Sync Files
+- [x] Check these items and commit
+  - **Goal**: Resolve to [Phase N5, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+  - From: Dreamweaver Sync Files
+- [x] Report what was checked and any owner step that remains
+  - **Goal**: Resolve to [Phase N5, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+  - From: Dreamweaver Sync Files
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -533,21 +551,7 @@ Next version: major. Phases N1 to N3 together make `2.0.0`: N1 sets the
 version, and N2 and N3 add to it. Phase N4 hands the extension its plan
 through agents-align. Phase N5 moves no version.
 
-The items of Phases N1 to N4 are in Current.
-
-- [ ] Run the engine's checks once more from a clean build and read the
-      extension's result from the room
-  - **Goal**: Resolve to [Phase N5, step 1](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
-- [ ] Bring the plan files up to date; a headless run cannot write under
-      `.claude/`
-  - **Goal**: Resolve to [Phase N5, step 2](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
-- [ ] Write `.support/complete-dwsync.md`, the paste-ready prompt that
-      makes the same updates
-  - **Goal**: Resolve to [Phase N5, step 3](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
-- [ ] Check these items and commit
-  - **Goal**: Resolve to [Phase N5, step 4](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
-- [ ] Report what was checked and any owner step that remains
-  - **Goal**: Resolve to [Phase N5, step 5](.claude/prompts/use-dwsync-file.prompt.md#phase-n5-close-the-plan)
+All items moved to Current and done.
 
 ## Later Roadmap - paused
 
@@ -622,7 +626,7 @@ or needs a person at a real terminal.
       check that it lists only real differences; then Put one file with
       sync-servers, run Dreamweaver's Synchronize, and check that it lists
       nothing for that file. No test can show what Dreamweaver does there
-- [ ] Start the agents-align round that Phase N4 hands over, with the
+- [x] Start the agents-align round that Phase N4 hands over, with the
       command its report gives
 - [ ] When that round stops for the owner, push the engine and tag
       `v2.0.0`, so `release.yml` publishes it to npm; then start the round
