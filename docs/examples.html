@@ -39,6 +39,7 @@
   <li><a href="#sftp-key">Set up a site over SFTP with a key</a></li>
   <li><a href="#staging">Add a Staging server</a></li>
   <li><a href="#put-part">Put one folder or one file</a></li>
+  <li><a href="#recent">Put what changed in the last two days</a></li>
   <li><a href="#get">Get files from the server</a></li>
   <li><a href="#delete">Delete server files that are gone locally</a></li>
   <li><a href="#check">Check what changed, moving nothing</a></li>
@@ -83,6 +84,14 @@ sync-servers server set-testing --clear</code></pre>
 <pre><code>sync-servers sync --put css
 sync-servers put index.html</code></pre>
 <p>See <a href="cli.html#command-sync"><code>sync</code></a> and <a href="cli.html#command-put"><code>put</code></a>.</p>
+
+<h2 id="recent">Put what changed in the last two days</h2>
+<p>A range limits the preview to the files created or modified lately, and only those are looked up on the server. Other differences on the site stay where they are.</p>
+<pre><code>sync-servers sync --put recent --range 2d
+sync-servers sync --put recent --range 2d css
+sync-servers sync --put recent --range 2d --dry-run
+sync-servers sync --put recent -r 90m</code></pre>
+<p>The second command keeps to one folder, the third shows the preview and moves nothing, and the last takes the files of the last 90 minutes. A range is a number and <code>m</code>, <code>h</code>, <code>d</code> or <code>w</code>, for minutes, hours, days or weeks. It never lists a delete or a Get. See <a href="synchronization.html#range">Putting the files of a time range</a>.</p>
 
 <h2 id="get">Get files from the server</h2>
 <p>The same, the other way: files that are newer on the server come down.</p>

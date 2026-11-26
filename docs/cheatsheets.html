@@ -97,13 +97,16 @@
     <tr><td><code>sync --put --dry-run</code></td><td>Shows the preview and moves nothing</td></tr>
     <tr><td><code>sync --put --yes</code></td><td>Runs without a preview, for scripts</td></tr>
     <tr><td><code>sync --put css</code></td><td>Limits the preview to one folder</td></tr>
+    <tr><td><code>sync-servers sync --put recent --range 2d</code></td><td>Puts only the files created or modified in the last two days</td></tr>
+    <tr><td><code>sync-servers sync --put recent -r 24h css</code></td><td>The same for the last 24 hours, within one folder</td></tr>
+    <tr><td><code>-r 90m</code>, <code>-r 24h</code>, <code>-r 2d</code>, <code>-r 1w</code></td><td>The units of a range, in lower case: <code>m</code> minutes, <code>h</code> hours, <code>d</code> days, <code>w</code> weeks</td></tr>
     <tr><td><code>put img</code>, <code>get img</code></td><td>Moves these files now, with a preview only when a decision is needed</td></tr>
     <tr><td><code>status</code></td><td>Lists what changed on each side since the last sync</td></tr>
     <tr><td><code>diff css/site.css</code></td><td>Shows how the two copies of a file differ</td></tr>
     <tr><td><code>mark-synced css/site.css</code></td><td>Records a file as in sync without moving it</td></tr>
   </tbody>
 </table>
-<p>How changes are found and turned into actions: <a href="synchronization.html">Synchronization</a>.</p>
+<p>How changes are found and turned into actions: <a href="synchronization.html">Synchronization</a>. What a range lists, and what it never does: <a href="synchronization.html#range">Putting the files of a time range</a>.</p>
 
 <h2 id="preview-keys">Preview keys</h2>
 <p>The menu at the bottom of the preview, then the keys <kbd>?</kbd> adds:</p>

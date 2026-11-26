@@ -3,6 +3,9 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
+import { getCommand, putCommand, statusCommand, syncCommand } from '../../../src/cli/commands/sync.ts';
+import { commandSignature } from '../../../src/cli/help.ts';
+import { GLOBAL_OPTIONS } from '../../../src/cli/router.ts';
 import { defaultPaths } from '../../../src/config/paths.ts';
 import { SiteRegistry } from '../../../src/config/registry.ts';
 import { openSecret } from '../../../src/credentials/binding.ts';
@@ -558,4 +561,37 @@ test('cloak --global sets the patterns every site uses, without a site, and one 
   }
   assert.equal((await cli({ home, cwd: root }, 'uncloak', '--global', '--path', 'drafts/')).code, 2);
   assert.equal((await cli({ home, cwd: root }, 'cloak', '--use-global', '--ignore-global')).code, 2);
+});
+
+test('sync takes a time range as --range or -r, and its help shows the option, the word recent and the examples', async () => {
+  assert.deepEqual(syncCommand.options?.range, {
+    type: 'string',
+    short: 'r',
+    value: '<time>',
+    description: 'With --put: only the files created or modified in the last <time>, such as 90m, 24h, 2d or 1w',
+  });
+  assert.equal(commandSignature(syncCommand), 'sync [recent] [<path>...]');
+  const shorts = [...Object.values(syncCommand.options ?? {}), ...Object.values(GLOBAL_OPTIONS)].map((option) => option.short).filter((short) => short === 'r');
+  assert.deepEqual(shorts, ['r'], 'no other option of sync and no global option answers to -r');
+  for (const command of [putCommand, getCommand, statusCommand]) {
+    assert.equal(command.options?.range, undefined, `${command.path.join(' ')} takes no range`);
+  }
+
+  const help = await cli({ home }, 'sync', '--help');
+  assert.equal(help.code, 0);
+  assert.match(help.stdout, /^ {2}sync-servers sync \[recent\] \[<path>\.\.\.\] \[options\]$/m);
+  assert.match(help.stdout, /^ {2}-r, --range <time> +With --put: only the files created or modified in the last <time>, such as 90m, 24h, 2d or 1w$/m);
+  assert.match(help.stdout, /^ {2}sync-servers sync --put recent --range 2d$/m);
+  assert.match(help.stdout, /^ {2}sync-servers sync --put recent -r 90m css$/m);
+
+  const format = '--range takes a number and a unit: m for minutes, h for hours, d for days or w for weeks, such as 90m, 24h, 2d or 1w.';
+  for (const args of [['--range', '2D'], ['-r', '2M'], ['--range=-2d'], ['--range='], ['-r', '1d12h'], ['--put', '-r', '12:00']]) {
+    const refused = await cli({ home }, 'sync', ...args);
+    assert.equal(refused.code, 2, args.join(' '));
+    assert.ok(refused.stderr.includes(format), `${args.join(' ')}: ${refused.stderr}`);
+  }
+  const bare = await cli({ home }, 'sync', '--put', '--range');
+  assert.equal(bare.code, 2, 'the option always takes a value');
+  const elsewhere = await cli({ home }, 'put', 'index.html', '--range', '2d');
+  assert.equal(elsewhere.code, 2);
 });

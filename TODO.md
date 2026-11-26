@@ -478,6 +478,26 @@ the step of the plan that specifies it.
       for R1
   - **Goal**: Resolve to [Phase R1, step 6](.claude/prompts/use-date-range.prompt.md#phase-r1-the-range-and-the-plan)
   - From: Put From a Time Range
+- [x] `sync --range` with `-r`, the word `recent`, the direction question,
+      the messages and `--json`, with their tests
+  - **Goal**: Resolve to [Phase R2, step 1](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Put From a Time Range
+- [x] The time range in the Synchronize screen and the title of its
+      preview, with their tests
+  - **Goal**: Resolve to [Phase R2, step 2](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Put From a Time Range
+- [x] `npm run docs:cli` and the documentation of a time range
+  - **Goal**: Resolve to [Phase R2, step 3](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Put From a Time Range
+- [x] Changelog, checks and commit for R2
+  - **Goal**: Resolve to [Phase R2, step 4](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Put From a Time Range
+- [x] Build and pack the engine for the extension
+  - **Goal**: Resolve to [Phase R2, step 5](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Put From a Time Range
+- [x] Write this workspace's report for the agents-align room
+  - **Goal**: Resolve to [Phase R2, step 6](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
+  - From: Put From a Time Range
 
 ## Phase E1 - Configuration and Site Registry
 
@@ -583,22 +603,8 @@ All items moved to Current and done.
 Next version: minor. Phases R1 and R2 together make 2.1.0: R1 sets the
 version, and R2 adds to it. Phase R3 releases it. Phase R4 moves no version.
 
-The items of Phase R1 are in Current.
+The items of Phases R1 and R2 are in Current.
 
-- [ ] `sync --range` with `-r`, the word `recent`, the direction question,
-      the messages and `--json`, with their tests
-  - **Goal**: Resolve to [Phase R2, step 1](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] The time range in the Synchronize screen and the title of its
-      preview, with their tests
-  - **Goal**: Resolve to [Phase R2, step 2](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] `npm run docs:cli` and the documentation of a time range
-  - **Goal**: Resolve to [Phase R2, step 3](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] Changelog, checks and commit for R2
-  - **Goal**: Resolve to [Phase R2, step 4](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] Build and pack the engine for the extension
-  - **Goal**: Resolve to [Phase R2, step 5](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
-- [ ] Write this workspace's report for the agents-align room
-  - **Goal**: Resolve to [Phase R2, step 6](.claude/prompts/use-date-range.prompt.md#phase-r2-the-command-line-the-terminal-interface-and-the-documentation)
 - [ ] Run the checks from a clean install, date the changelog and run the
       release check for the tag `v2.1.0`
   - **Goal**: Resolve to [Phase R3, step 1](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)

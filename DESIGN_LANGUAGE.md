@@ -377,6 +377,8 @@ refused with the reason in the message bar.
 
 The scope, the direction, and the delete option worded for the direction,
 as Dreamweaver words it. `Enter` scans both sides and opens the preview.
+The first direction, Put files from a time range, shows a Time range field
+in place of the delete option, since a range never lists a delete.
 
 ```text
  Synchronize: My Site                                             Enter Preview

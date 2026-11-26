@@ -90,6 +90,14 @@
   <dd>Then size alone decides on that side. A file edited without changing its size is not seen as changed there; use <code>sync-servers put</code> for it, or a server that supports MLSD.</dd>
   <dt>A file changed since the preview (<code>E_STALE_ITEM</code>)</dt>
   <dd>Someone changed it between the preview and the transfer, so it was skipped. Run the sync again to see its new state.</dd>
+  <dt>A changed file is not listed by <code>sync --put recent --range</code></dt>
+  <dd>A <a href="synchronization.html#range">time range</a> lists a file only when it was created or last modified within the range, by the dates this computer keeps for it, and differs from the server. A file that is missing is older than the range by both dates, is cloaked, or is already in sync: the summary line counts recent files that are in sync as skipped. Widen the range, such as <code>--range 1w</code>, or name the file with <code>sync-servers put</code>.</dd>
+  <dt><code>sync --put recent</code> looked for a folder named recent</dt>
+  <dd>The range is missing. Without <code>--range</code>, <code>recent</code> is a path like any other, as it always was. Add the range: <code>sync-servers sync --put recent --range 1d</code>. With a range, a folder that really is named recent is written <code>./recent</code>.</dd>
+  <dt><code>--range</code> is refused</dt>
+  <dd>A range is a number and one unit in lower case: <code>m</code> for minutes, <code>h</code> for hours, <code>d</code> for days or <code>w</code> for weeks, such as <code>90m</code>, <code>24h</code>, <code>2d</code> or <code>1w</code>. A capital <code>M</code> is not minutes and is refused, as are seconds, months and years, a sign, a space, and two ranges together such as <code>1d12h</code>; write that one as <code>36h</code>. A range goes with <code>--put</code> only, and not with <code>--delete</code> or <code>--plan-in</code>.</dd>
+  <dt>A wide range on a large site is slow</dt>
+  <dd>A range looks each recent file up on the server, one request per file. When it takes in most of the site, <code>sync-servers sync --put</code> without a range is faster, because it compares whole folders.</dd>
 </dl>
 
 <h2 id="case">Case problems</h2>

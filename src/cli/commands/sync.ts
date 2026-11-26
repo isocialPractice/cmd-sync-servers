@@ -1,15 +1,17 @@
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createTwoFilesPatch } from 'diff';
 import type { Server, Site } from '../../config/schema.ts';
 import { resultLine, type SyncResult } from '../../sync/execute.ts';
-import { DREAMWEAVER_TEXT, dreamweaverInSync } from '../../sync/messages.ts';
+import { DREAMWEAVER_TEXT, dreamweaverInSync, noRecentFiles, RANGE_TEXT, rangeTitle } from '../../sync/messages.ts';
 import { isInside, ROOT, toRemotePath } from '../../sync/paths.ts';
+import { DEFAULT_RANGE, formatRange, parseRange, rangeStart, type TimeRange } from '../../sync/range.ts';
 import { safeLine, safeText } from '../../terminal-text.ts';
 import { SyncPlan, type PlanItem, type SavedPlan } from '../../sync/plan.ts';
 import { SyncSession, type StatusEntry } from '../../sync/session.ts';
-import { DIRECTION_TITLES, type Action, type Direction } from '../../sync/types.ts';
+import { DIRECTION_TITLES, RANGE_TITLE, type Action, type Direction } from '../../sync/types.ts';
 import { normalizeCertificateFingerprint } from '../../transport/certificates.ts';
 import { flag, stringOption, type CommandSpec, type OptionSpecs, type OptionValues } from '../command.ts';
 import type { CommandContext } from '../context.ts';
@@ -95,13 +97,25 @@ function checkbox(item: PlanItem): string {
   return item.checked === true && item.action !== 'skip' ? '[x]' : '[ ]';
 }
 
-function previewTitle(plan: SyncPlan, site: Site, server: Server): string {
-  return `Synchronize: ${site.name} -> ${server.name} (${protocolLabel(server.protocol)})   ${DIRECTION_TITLES[plan.direction]}${plan.deleteOrphans ? ', deleting files missing on the other side' : ''}`;
+/** The range `sync` was given, with the moment it starts. */
+interface ChosenRange {
+  readonly range: TimeRange;
+  readonly since: Date;
 }
 
-/** The preview as text: a title, the summary line, then one row per path with a difference. */
-export function formatPreview(ctx: CommandContext, plan: SyncPlan, site: Site, server: Server): string {
-  const lines = [previewTitle(plan, site, server), plan.summaryLine()];
+/** The `range` member of the JSON document of a sync made from a range. */
+function rangeJson(chosen: ChosenRange | undefined): { range?: { text: string; since: string } } {
+  return chosen === undefined ? {} : { range: { text: formatRange(chosen.range), since: chosen.since.toISOString() } };
+}
+
+function previewTitle(plan: SyncPlan, site: Site, server: Server, range?: TimeRange): string {
+  const what = range === undefined ? `${DIRECTION_TITLES[plan.direction]}${plan.deleteOrphans ? ', deleting files missing on the other side' : ''}` : rangeTitle(range);
+  return `Synchronize: ${site.name} -> ${server.name} (${protocolLabel(server.protocol)})   ${what}`;
+}
+
+/** The preview as text: a title, the summary line, then one row per path with a difference. A plan made from a range is titled for it. */
+export function formatPreview(ctx: CommandContext, plan: SyncPlan, site: Site, server: Server, range?: TimeRange): string {
+  const lines = [previewTitle(plan, site, server, range), plan.summaryLine()];
   if (plan.items.length > 0) {
     lines.push('');
     const width = Math.max(...plan.items.map((item) => (SYMBOLS[item.action][2]).length));
@@ -141,7 +155,7 @@ function runnable(plan: SyncPlan): number {
   return plan.items.filter((item) => item.state !== 'problem' && item.checked === true && item.action !== 'skip' && item.action !== 'resolve').length;
 }
 
-async function execute(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues): Promise<ExitCode> {
+async function execute(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues, chosen?: ChosenRange): Promise<ExitCode> {
   const result = await session.execute(plan, {
     signal: ctx.io.signal,
     allowMassDelete: flag(values, 'allow-mass-delete'),
@@ -150,7 +164,7 @@ async function execute(ctx: CommandContext, session: SyncSession, plan: SyncPlan
       : undefined,
   });
   if (ctx.flags.json) {
-    ctx.json('sync', { plan: plan.toJSON(), result });
+    ctx.json('sync', { plan: plan.toJSON(), result, ...rangeJson(chosen) });
   } else {
     printResult(ctx, result);
   }
@@ -158,9 +172,9 @@ async function execute(ctx: CommandContext, session: SyncSession, plan: SyncPlan
 }
 
 /** The preview in the full-screen UI, which also runs the plan and shows the results. */
-async function previewInTui(ctx: CommandContext, session: SyncSession, plan: SyncPlan): Promise<ExitCode> {
+async function previewInTui(ctx: CommandContext, session: SyncSession, plan: SyncPlan, range?: TimeRange): Promise<ExitCode> {
   const { PreviewView } = await import('../../tui/screens/preview.ts');
-  const app = await startTui(ctx, () => [new PreviewView(session, plan)]);
+  const app = await startTui(ctx, () => [new PreviewView(session, plan, range)]);
   const result = app.outcome as SyncResult | undefined;
   if (result === undefined) {
     throw new CancelledError('Nothing was changed.');
@@ -170,17 +184,17 @@ async function previewInTui(ctx: CommandContext, session: SyncSession, plan: Syn
 }
 
 /** Shows a plan in the chosen preview mode, takes the person's choices (or `--yes`), then runs it. */
-async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues, mode: PreviewMode): Promise<ExitCode> {
+async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues, mode: PreviewMode, chosen?: ChosenRange): Promise<ExitCode> {
   if (mode !== 'none' && plan.items.length > 0) {
     if (mode === 'tui') {
-      return previewInTui(ctx, session, plan);
+      return previewInTui(ctx, session, plan, chosen?.range);
     }
     let go: boolean;
     if (mode === 'plain') {
-      ctx.out(`${previewTitle(plan, session.site, session.server)}\n`);
+      ctx.out(`${previewTitle(plan, session.site, session.server, chosen?.range)}\n`);
       go = await plainPreview(ctx, session, plan);
     } else {
-      go = await editPlan(plan, session.site, session.server, ctx.io);
+      go = await editPlan(plan, session.site, session.server, ctx.io, undefined, chosen?.range);
     }
     if (!go) {
       throw new CancelledError('Nothing was changed.');
@@ -190,17 +204,17 @@ async function confirmAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
       ctx.out(plan.summary.resolve > 0 ? `Nothing to synchronize until the ${String(plan.summary.resolve)} decision(s) are made.\n` : 'Nothing to synchronize.\n');
       return plan.summary.resolve > 0 ? ExitCode.incomplete : ExitCode.ok;
     }
-    return execute(ctx, session, plan, values);
+    return execute(ctx, session, plan, values, chosen);
   }
-  return previewAndRun(ctx, session, plan, values);
+  return previewAndRun(ctx, session, plan, values, chosen);
 }
 
 /** Prints the preview, asks for confirmation in a terminal (or takes `--yes`), then runs it. */
-async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues): Promise<ExitCode> {
+async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: SyncPlan, values: OptionValues, chosen?: ChosenRange): Promise<ExitCode> {
   const json = ctx.flags.json;
   const count = runnable(plan);
   if (!json) {
-    ctx.out(formatPreview(ctx, plan, session.site, session.server));
+    ctx.out(formatPreview(ctx, plan, session.site, session.server, chosen?.range));
   }
   const waiting = plan.summary.resolve;
   if (flag(values, 'dry-run') || count === 0) {
@@ -209,7 +223,7 @@ async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
       await session.settle(plan);
     }
     if (json) {
-      ctx.json('sync', { plan: plan.toJSON(), result: null });
+      ctx.json('sync', { plan: plan.toJSON(), result: null, ...rangeJson(chosen) });
     } else if (count === 0) {
       ctx.out(waiting > 0 ? `Nothing to synchronize until the ${String(waiting)} decision(s) are made.\n` : 'Nothing to synchronize.\n');
     }
@@ -218,7 +232,7 @@ async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
   if (!flag(values, 'yes')) {
     if (!ctx.interactive) {
       if (json) {
-        ctx.json('sync', { plan: plan.toJSON(), result: null });
+        ctx.json('sync', { plan: plan.toJSON(), result: null, ...rangeJson(chosen) });
       } else {
         ctx.err('Preview only: nothing was transferred. Pass --yes to synchronize.\n');
       }
@@ -228,7 +242,7 @@ async function previewAndRun(ctx: CommandContext, session: SyncSession, plan: Sy
       throw new CancelledError('Nothing was changed.');
     }
   }
-  return execute(ctx, session, plan, values);
+  return execute(ctx, session, plan, values, chosen);
 }
 
 function directionFrom(values: OptionValues): Direction | undefined {
@@ -239,14 +253,45 @@ function directionFrom(values: OptionValues): Direction | undefined {
   return chosen[0];
 }
 
+/** The word that may stand before the paths of `sync` when a range is given. */
+const RECENT = 'recent';
+
+/** True when a plan found no file and no folder on either side, and no name it could not use. */
+function foundNothing(plan: SyncPlan): boolean {
+  return plan.items.length === 0 && plan.localFiles === 0 && plan.remoteFiles === 0 && plan.localDirs.size === 0 && plan.remoteDirs.size === 0;
+}
+
+/** The range of `--range`, checked against the options it does not go with; `undefined` without the option. */
+function rangeFrom(values: OptionValues): TimeRange | undefined {
+  const text = stringOption(values, 'range');
+  if (text === undefined) {
+    return undefined;
+  }
+  const range = parseRange(text);
+  if (range === undefined) {
+    throw new UsageError(`--range takes ${RANGE_TEXT.format}.`);
+  }
+  if (flag(values, 'get') || flag(values, 'both')) {
+    throw new UsageError('--range goes with --put: it chooses among the files of this computer.');
+  }
+  if (flag(values, 'delete')) {
+    throw new UsageError('--range does not go with --delete: a range never lists a delete.');
+  }
+  if (stringOption(values, 'plan-in') !== undefined) {
+    throw new UsageError('A saved plan already holds its files: --range does not go with --plan-in.');
+  }
+  return range;
+}
+
 export const syncCommand: CommandSpec = {
   path: ['sync'],
-  args: '[<path>...]',
+  args: '[recent] [<path>...]',
   summary: 'Synchronize a site with its Remote server: preview, then transfer',
   options: {
     put: { type: 'boolean', description: 'Put newer files to the server' },
     get: { type: 'boolean', description: 'Get newer files from the server' },
     both: { type: 'boolean', description: 'Get and put newer files' },
+    range: { type: 'string', short: 'r', value: '<time>', description: 'With --put: only the files created or modified in the last <time>, such as 90m, 24h, 2d or 1w' },
     delete: { type: 'boolean', description: 'Delete files missing on the other side (never-synchronized ones stay unchecked)' },
     ...YES_OPTION,
     ...PREVIEW_OPTION,
@@ -262,9 +307,12 @@ export const syncCommand: CommandSpec = {
     'sync-servers sync --put --preview editor',
     'sync-servers sync --get css img --yes',
     'sync-servers sync --put --plan-out plan.json',
+    'sync-servers sync --put recent --range 2d',
+    'sync-servers sync --put recent -r 90m css',
   ],
   async run(ctx, { values, args }) {
     const mode = previewMode(ctx, values);
+    let range = rangeFrom(values);
     const planIn = stringOption(values, 'plan-in');
     let saved: SavedPlan | undefined;
     if (planIn !== undefined) {
@@ -273,23 +321,38 @@ export const syncCommand: CommandSpec = {
         throw new UsageError('A saved plan already holds its direction, paths and delete option.');
       }
     }
-    let direction = saved?.direction ?? directionFrom(values);
+    // A range chooses among the files of this computer, so it is a Put whether or not --put is given.
+    let direction = saved?.direction ?? directionFrom(values) ?? (range === undefined ? undefined : 'put');
     let deleteOrphans = saved?.deleteOrphans ?? flag(values, 'delete');
     if (direction === undefined) {
       if (!ctx.interactive) {
         throw new UsageError('Pass --put, --get or --both.');
       }
-      direction = await ctx.prompter.choose<Direction>('Direction', [
-        { label: DIRECTION_TITLES.put, value: 'put' },
-        { label: DIRECTION_TITLES.get, value: 'get' },
-        { label: DIRECTION_TITLES.both, value: 'both' },
-      ]);
-      deleteOrphans ||= await ctx.prompter.confirm(direction === 'get' ? 'Delete local files not on the remote server?' : 'Delete remote files not on the local drive?', false);
+      const directions = (['put', 'get', 'both'] as const).map((value) => ({ label: DIRECTION_TITLES[value], value }));
+      // A range never lists a delete, so it is not offered beside --delete.
+      const answer = deleteOrphans
+        ? await ctx.prompter.choose<Direction>('Direction', directions)
+        : await ctx.prompter.choose<Direction | typeof RECENT>('Direction', [{ label: RANGE_TITLE, value: RECENT }, ...directions], 1);
+      if (answer === RECENT) {
+        range = parseRange(await ctx.prompter.askValid(RANGE_TEXT.question, (given) => (parseRange(given) === undefined ? `Enter ${RANGE_TEXT.format}.` : undefined), DEFAULT_RANGE));
+        direction = 'put';
+      } else {
+        direction = answer;
+        deleteOrphans ||= await ctx.prompter.confirm(direction === 'get' ? 'Delete local files not on the remote server?' : 'Delete remote files not on the local drive?', false);
+      }
     }
+    // With a range, the word `recent` before the paths is not a path.
+    const paths = stringOption(values, 'range') !== undefined && args[0] === RECENT ? args.slice(1) : args;
     const session = await openSession(ctx, values);
     try {
-      const scope = saved?.scope ?? (args.length === 0 ? { kind: 'site' as const } : { kind: 'paths' as const, paths: sitePaths(ctx, session.site, args) });
-      const plan = await session.plan({ direction, deleteOrphans, scope, signal: ctx.io.signal });
+      const { site } = session;
+      const sited = saved === undefined ? sitePaths(ctx, site, paths) : [];
+      const scope = saved?.scope ?? (sited.length === 0 ? { kind: 'site' as const } : { kind: 'paths' as const, paths: sited });
+      // `sync --put recent` without a range reads `recent` as a path. When nothing has that name, the range was probably left out.
+      const slip = range === undefined && saved === undefined && direction === 'put' && args[0] === RECENT && !existsSync(path.resolve(ctx.io.cwd, RECENT));
+      let unknownWord = slip && sited.length > 1 && foundNothing(await session.plan({ direction, scope: { kind: 'paths', paths: sited.slice(0, 1) }, signal: ctx.io.signal }));
+      const chosen = range === undefined ? undefined : { range, since: rangeStart(range) };
+      const plan = await session.plan({ direction, deleteOrphans, scope, signal: ctx.io.signal, ...(chosen === undefined ? {} : { changedSince: chosen.since }) });
       if (saved !== undefined) {
         plan.applySaved(saved);
       }
@@ -297,7 +360,22 @@ export const syncCommand: CommandSpec = {
       if (planOut !== undefined) {
         await writeFile(path.resolve(ctx.io.cwd, planOut), `${JSON.stringify(plan.toJSON(), null, 2)}\n`, { mode: 0o600 });
       }
-      return await confirmAndRun(ctx, session, plan, values, mode);
+      if (chosen !== undefined && plan.scope.kind === 'paths' && plan.scope.paths.length === 0) {
+        if (ctx.flags.json) {
+          ctx.json('sync', { plan: plan.toJSON(), result: null, ...rangeJson(chosen) });
+        } else {
+          ctx.out(`${noRecentFiles(chosen.range, site.name)}\n`);
+        }
+        return ExitCode.ok;
+      }
+      unknownWord ||= slip && sited.length === 1 && foundNothing(plan);
+      try {
+        return await confirmAndRun(ctx, session, plan, values, mode, chosen);
+      } finally {
+        if (unknownWord) {
+          ctx.err(`No file or folder named "${RECENT}" is in "${site.name}". For the files changed lately, add a range: sync-servers sync --put ${RECENT} --range ${DEFAULT_RANGE}\n`);
+        }
+      }
     } finally {
       await session.close();
     }

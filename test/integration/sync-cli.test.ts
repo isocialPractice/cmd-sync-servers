@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
+import { setTimeout as wait } from 'node:timers/promises';
 import { dreamweaverServerName } from '../../src/sync/dwsync.ts';
 import { cli, filesContaining } from '../helpers/cli.ts';
 import { entryFor, writeDwsync } from '../helpers/dwsync.ts';
@@ -123,10 +124,28 @@ test('sync needs a direction without a terminal, and asks for one in a terminal'
       rig.write('local', 'a.html', 'a');
       const asked = await run('sync', '--preview', 'none');
       assert.equal(asked.code, 0, asked.stderr);
-      assert.match(asked.stderr, /Direction\n {2}1\. Put newer files to remote/);
+      assert.match(
+        asked.stderr,
+        /Direction\n {2}1\. Put files from a time range\n {2}2\. Put newer files to remote\n {2}3\. Get newer files from remote\n {2}4\. Get and put newer files\nChoose a number \[2\]: Delete remote files not on the local drive\? \(y\/N\): /,
+        'Enter takes Put newer files to remote',
+      );
+      assert.match(asked.stdout, /^Synchronize: My Site -> Folder \(Local\/Network\) {3}Put newer files to remote$/m);
       assert.equal(rig.read('remote', 'a.html'), 'a');
     },
-    '1\nn\ny\n',
+    '\nn\ny\n',
+    true,
+  );
+  await withSite(
+    'local',
+    async (rig, run) => {
+      rig.write('local', 'a.html', 'a');
+      const asked = await run('sync', '--delete', '--preview', 'none');
+      assert.equal(asked.code, 0, asked.stderr);
+      assert.match(asked.stderr, /Direction\n {2}1\. Put newer files to remote\n {2}2\. Get newer files from remote\n {2}3\. Get and put newer files\nChoose a number \[1\]: /, 'a range is not offered beside --delete');
+      assert.match(asked.stdout, /Put newer files to remote, deleting files missing on the other side$/m);
+      assert.equal(rig.read('remote', 'a.html'), 'a');
+    },
+    '\ny\n',
     true,
   );
 });
@@ -315,4 +334,271 @@ test('a global pattern keeps matching files out of the plan on both sides, unles
     assert.equal(rig.read('remote', 'node_modules/lib.js'), undefined, 'a cloaked file is never transferred');
     assert.equal(rig.read('remote', 'node_modules/other.js'), 'remote', 'nor deleted');
   });
+});
+
+const DAY = 86_400_000;
+const RANGE_FORMAT = 'a number and a unit: m for minutes, h for hours, d for days or w for weeks, such as 90m, 24h, 2d or 1w';
+
+/** The files a site holds before a range starts, and those written after. */
+const OLDER: Readonly<Record<string, string>> = { 'about.html': '<h1>About</h1>', 'css/site.css': 'body {}' };
+const NEWER: Readonly<Record<string, string>> = { 'index.html': '<h1>Home</h1>', 'css/print.css': 'p {}' };
+
+/**
+ * Writes the older files, then the newer ones, and moves this computer's
+ * clock ahead so that a range of `rangeMs` starts between the two. Returns
+ * the moment the range then starts.
+ */
+async function aroundRange(t: TestContext, rig: SiteRig, rangeMs: number, older = OLDER, newer = NEWER): Promise<number> {
+  for (const [name, content] of Object.entries(older)) {
+    rig.write('local', name, content);
+  }
+  await wait(50);
+  const start = Date.now();
+  await wait(50);
+  const edited = Math.ceil(Date.now() / 1000) * 1000;
+  for (const [name, content] of Object.entries(newer)) {
+    rig.write('local', name, content, edited);
+  }
+  t.mock.timers.enable({ apis: ['Date'], now: start + rangeMs });
+  return start;
+}
+
+/** Every file of the state folder but the run logs, with its content. */
+function stateFiles(rig: SiteRig): string[] {
+  const state = path.join(rig.home, 'state');
+  if (!existsSync(state)) {
+    return [];
+  }
+  return readdirSync(state, { recursive: true, encoding: 'utf8' })
+    .filter((name) => name.split(path.sep)[0] !== 'logs' && statSync(path.join(state, name)).isFile())
+    .sort()
+    .map((name) => `${name}: ${readFileSync(path.join(state, name), 'utf8')}`);
+}
+
+const previewRows = (stdout: string): string[] => [...stdout.matchAll(/^ {2}\[.\] . \w+ +(\S+)/gm)].map((match) => match[1] ?? '');
+
+test('sync --put recent --range lists only the files of the range, however the range and the word are written', async (t) => {
+  await withSite('local', async (rig, run) => {
+    await aroundRange(t, rig, 2 * DAY);
+    const preview = await run('sync', '--put', 'recent', '--range', '2d');
+    assert.equal(preview.code, 0, preview.stderr);
+    assert.match(preview.stdout, /^Synchronize: My Site -> Folder \(Local\/Network\) {3}Put files from the last 2 days$/m);
+    assert.match(preview.stdout, /^Files: 2 will be updated, 0 will be skipped$/m);
+    assert.deepEqual(previewRows(preview.stdout), ['css/print.css', 'index.html']);
+    assert.match(preview.stderr, /Preview only/);
+    assert.equal(rig.read('remote', 'index.html'), undefined);
+
+    for (const args of [['--put', 'recent', '-r', '2d'], ['--put', '--range', '2d'], ['recent', '-r', '2d'], ['-r', '2d'], ['--range=2d', '--put', 'recent'], ['--put', 'recent', '--range', '48h']]) {
+      const same = await run('sync', ...args);
+      assert.equal(same.code, 0, `${args.join(' ')}: ${same.stderr}`);
+      assert.deepEqual(previewRows(same.stdout), ['css/print.css', 'index.html'], args.join(' '));
+    }
+    assert.match((await run('sync', '--put', 'recent', '--range', '48h')).stdout, / {3}Put files from the last 48 hours$/m);
+
+    const folder = await run('sync', '--put', 'recent', '-r', '2d', 'css');
+    assert.deepEqual(previewRows(folder.stdout), ['css/print.css']);
+    assert.deepEqual(previewRows((await run('sync', '--put', 'recent', '--range', '2d', 'about.html', 'index.html')).stdout), ['index.html']);
+    assert.equal((await run('sync', '--put')).stdout.match(/\^ Put/g)?.length, 4, 'without a range every file is listed');
+  });
+});
+
+test('a sync from a range runs with --yes, and a dry run of one leaves the state folder as it was', async (t) => {
+  await withSite('local', async (rig, run) => {
+    const start = await aroundRange(t, rig, 2 * DAY);
+    const dry = await run('sync', '--put', 'recent', '--range', '2d', '--dry-run');
+    assert.equal(dry.code, 0, dry.stderr);
+    assert.deepEqual(previewRows(dry.stdout), ['css/print.css', 'index.html']);
+    assert.deepEqual(stateFiles(rig), []);
+    assert.equal(rig.read('remote', 'index.html'), undefined);
+
+    const done = await run('sync', '--put', 'recent', '--range', '2d', '--yes', '--json');
+    assert.equal(done.code, 0, done.stderr);
+    const document = json<{ schema: string; plan: { direction: string; deleteOrphans: boolean; scope: unknown }; result: { done: number }; range: unknown }>(done.stdout);
+    assert.equal(document.schema, 'sync-servers/sync@1');
+    assert.deepEqual(document.range, { text: '2d', since: new Date(start).toISOString() });
+    assert.deepEqual(document.plan.scope, { kind: 'paths', paths: ['css/print.css', 'index.html'] });
+    assert.deepEqual([document.plan.direction, document.plan.deleteOrphans, document.result.done], ['put', false, 2]);
+    assert.equal(rig.read('remote', 'index.html'), NEWER['index.html']);
+    assert.equal(rig.read('remote', 'css/print.css'), NEWER['css/print.css']);
+    assert.equal(rig.read('remote', 'about.html'), undefined, 'a file older than the range stays where it is');
+
+    const records = stateFiles(rig);
+    assert.equal(records.length, 1);
+    const again = await run('sync', '--put', 'recent', '--range', '2d', '--dry-run');
+    assert.match(again.stdout, /^Files: 0 will be updated, 2 will be skipped\nNothing to synchronize\.$/m);
+    assert.deepEqual(stateFiles(rig), records);
+    assert.equal(existsSync(path.join(rig.localDir, '_notes')), false);
+    assert.equal(json<{ range: { text: string } }>((await run('sync', '--put', '-r', '2d', '--dry-run', '--json')).stdout).range.text, '2d');
+  });
+});
+
+test('--range is refused with what it does not go with, before anything is looked at', async () => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'index.html', 'home');
+    const planFile = path.join(rig.home, 'plan.json');
+    assert.equal((await run('sync', '--put', '--plan-out', planFile)).code, 0);
+    const refusals: readonly (readonly [readonly string[], string])[] = [
+      [['--put', '--range', '2D'], `--range takes ${RANGE_FORMAT}.`],
+      [['--range', '2M'], `--range takes ${RANGE_FORMAT}.`],
+      [['--get', '--range', '2d'], '--range goes with --put: it chooses among the files of this computer.'],
+      [['--both', '-r', '2d'], '--range goes with --put: it chooses among the files of this computer.'],
+      [['--put', '--delete', '--range', '2d'], '--range does not go with --delete: a range never lists a delete.'],
+      [['--delete', '-r', '90m', 'recent'], '--range does not go with --delete: a range never lists a delete.'],
+      [['--plan-in', planFile, '--range', '2d'], 'A saved plan already holds its files: --range does not go with --plan-in.'],
+      [['--plan-in', path.join(rig.home, 'missing.json'), '-r', '2d'], 'A saved plan already holds its files: --range does not go with --plan-in.'],
+    ];
+    for (const [args, message] of refusals) {
+      const refused = await run('sync', ...args, '--yes');
+      assert.equal(refused.code, 2, args.join(' '));
+      assert.ok(refused.stderr.startsWith(`sync-servers: ${message}\n`), `${args.join(' ')}: ${refused.stderr}`);
+      assert.equal(refused.stdout, '');
+    }
+    assert.equal(rig.read('remote', 'index.html'), undefined);
+  });
+});
+
+test('recent is a path without a range, and with one ./recent names a folder of that name', async () => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'index.html', 'home');
+    rig.write('local', 'recent/news.html', 'news');
+    const asPath = await run('sync', '--put', 'recent');
+    assert.equal(asPath.code, 0, asPath.stderr);
+    assert.match(asPath.stdout, / {3}Put newer files to remote$/m);
+    assert.deepEqual(previewRows(asPath.stdout), ['recent/news.html']);
+    assert.doesNotMatch(asPath.stderr, /add a range/);
+
+    assert.deepEqual(previewRows((await run('sync', '--put', 'recent', '--range', '2d')).stdout), ['index.html', 'recent/news.html'], 'the word, then the whole site');
+    assert.deepEqual(previewRows((await run('sync', '--put', './recent', '--range', '2d')).stdout), ['recent/news.html']);
+    assert.deepEqual(previewRows((await run('sync', '--put', 'recent', 'recent', '--range', '2d')).stdout), ['recent/news.html'], 'the word, then the folder');
+    assert.deepEqual(previewRows((await run('sync', '--put', 'index.html', 'recent', '-r', '2d')).stdout), ['index.html', 'recent/news.html'], 'only the first argument is the word');
+  });
+});
+
+test('sync --put recent without a range hints at the range when nothing is named recent', async () => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'index.html', 'home');
+    const hint = 'No file or folder named "recent" is in "My Site". For the files changed lately, add a range: sync-servers sync --put recent --range 1d\n';
+    const slip = await run('sync', '--put', 'recent');
+    assert.equal(slip.code, 0, slip.stderr);
+    assert.match(slip.stdout, /^Nothing to synchronize\.$/m);
+    assert.equal(slip.stderr, hint);
+    const beside = await run('sync', '--put', 'recent', 'index.html');
+    assert.deepEqual(previewRows(beside.stdout), ['index.html']);
+    assert.ok(beside.stderr.endsWith(hint), beside.stderr);
+    assert.ok((await run('sync', '--put', 'recent', '--json')).stderr.endsWith(hint));
+
+    assert.doesNotMatch((await run('sync', '--get', 'recent')).stderr, /add a range/, 'the hint is for a Put');
+    assert.doesNotMatch((await run('sync', '--put', './recent')).stderr, /add a range/, 'and for the bare word');
+    assert.doesNotMatch((await run('sync', '--put', 'index.html', 'recent')).stderr, /add a range/, 'as the first argument');
+    rig.write('remote', 'recent/old.html', 'old');
+    assert.doesNotMatch((await run('sync', '--put', 'recent')).stderr, /add a range/, 'the server has a folder of that name');
+    assert.doesNotMatch((await run('sync', '--put', 'recent', 'index.html')).stderr, /add a range/);
+    rig.remove('remote', 'recent');
+    rig.write('local', 'recent', 'a file named recent');
+    assert.doesNotMatch((await run('sync', '--put', 'recent', '--yes')).stderr, /add a range/, 'a file of that name is put');
+    assert.equal(rig.read('remote', 'recent'), 'a file named recent');
+  });
+});
+
+test('a range with no recent file says so and ends well, in every form of output', async (t) => {
+  await withSite('local', async (rig, run) => {
+    rig.write('local', 'index.html', 'home');
+    const now = Date.now() + 30 * DAY;
+    t.mock.timers.enable({ apis: ['Date'], now });
+    const message = 'No file of "My Site" was created or modified in the last day.\n';
+    for (const args of [[], ['--yes'], ['--dry-run'], ['--preview', 'none']]) {
+      const none = await run('sync', '--put', 'recent', '--range', '1d', ...args);
+      assert.deepEqual([none.code, none.stdout, none.stderr], [0, message, ''], args.join(' '));
+    }
+    assert.equal((await run('sync', '--put', 'recent', '-r', '90m', 'index.html')).stdout, 'No file of "My Site" was created or modified in the last 90 minutes.\n');
+    const document = json<{ plan: { items: unknown[]; scope: unknown }; result: unknown; range: unknown }>((await run('sync', '--put', 'recent', '--range', '1d', '--json')).stdout);
+    assert.deepEqual(document.plan.items, []);
+    assert.deepEqual(document.plan.scope, { kind: 'paths', paths: [] });
+    assert.equal(document.result, null);
+    assert.deepEqual(document.range, { text: '1d', since: new Date(now - DAY).toISOString() });
+    assert.deepEqual(stateFiles(rig), []);
+    t.mock.timers.reset();
+  });
+  for (const mode of ['plain', 'editor', 'tui']) {
+    await withSite(
+      'local',
+      async (rig, run) => {
+        rig.write('local', 'index.html', 'home');
+        t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 30 * DAY });
+        const none = await run('sync', '--put', 'recent', '--range', '1w', '--preview', mode);
+        assert.deepEqual([none.code, none.stdout], [0, 'No file of "My Site" was created or modified in the last week.\n'], mode);
+        t.mock.timers.reset();
+      },
+      '',
+      true,
+    );
+  }
+});
+
+test('a plan saved from a range runs again with --plan-in', async (t) => {
+  await withSite('local', async (rig, run) => {
+    await aroundRange(t, rig, 90 * 60_000);
+    const planFile = path.join(rig.home, 'plan.json');
+    const saved = await run('sync', '--put', 'recent', '--range', '90m', '--plan-out', planFile);
+    assert.equal(saved.code, 0, saved.stderr);
+    assert.match(saved.stdout, / {3}Put files from the last 90 minutes$/m);
+    const plan = json<{ direction: string; deleteOrphans: boolean; scope: unknown; items: { path: string }[] }>(readFileSync(planFile, 'utf8'));
+    assert.deepEqual([plan.direction, plan.deleteOrphans], ['put', false]);
+    assert.deepEqual(plan.scope, { kind: 'paths', paths: ['css/print.css', 'index.html'] });
+    assert.deepEqual(plan.items.map((item) => item.path), ['css/print.css', 'index.html']);
+
+    const ran = await run('sync', '--plan-in', planFile, '--yes');
+    assert.equal(ran.code, 0, ran.stderr);
+    assert.match(ran.stdout, /^Synchronized 2 files\. 0 failed\. 0 skipped\.$/m);
+    assert.equal(rig.read('remote', 'index.html'), NEWER['index.html']);
+    assert.equal(rig.read('remote', 'about.html'), undefined);
+    const stale = await run('sync', '--plan-in', planFile, '--yes');
+    assert.equal(stale.code, 1);
+    assert.match(stale.stderr, /changed since the plan was saved/);
+  });
+});
+
+test('the direction question offers the range first, asks for it until it is one, and takes Enter as 1d', async () => {
+  await withSite(
+    'local',
+    async (rig, run) => {
+      rig.write('local', 'a.html', 'a');
+      const asked = await run('sync', '--preview', 'none');
+      assert.equal(asked.code, 0, asked.stderr);
+      assert.match(
+        asked.stderr,
+        new RegExp(
+          [
+            'Direction',
+            ' {2}1\\. Put files from a time range',
+            ' {2}2\\. Put newer files to remote',
+            ' {2}3\\. Get newer files from remote',
+            ' {2}4\\. Get and put newer files',
+            `Choose a number \\[2\\]: Put files created or modified in the last \\[1d\\]: Enter ${RANGE_FORMAT}\\.`,
+            `Put files created or modified in the last \\[1d\\]: Enter ${RANGE_FORMAT}\\.`,
+            'Put files created or modified in the last \\[1d\\]: Synchronize 1 file\\(s\\)\\? \\(y\\/N\\): ',
+          ].join('\n'),
+        ),
+      );
+      assert.doesNotMatch(asked.stderr, /Delete remote files/, 'a range asks nothing about deletes');
+      assert.match(asked.stdout, /^Synchronize: My Site -> Folder \(Local\/Network\) {3}Put files from the last day$/m);
+      assert.deepEqual(previewRows(asked.stdout), ['a.html']);
+      assert.equal(rig.read('remote', 'a.html'), 'a');
+    },
+    '1\n2x\n2 d\n\ny\n',
+    true,
+  );
+  await withSite(
+    'local',
+    async (rig, run) => {
+      rig.write('local', 'recent/news.html', 'news');
+      rig.write('local', 'a.html', 'a');
+      const asked = await run('sync', 'recent', '--preview', 'none');
+      assert.equal(asked.code, 0, asked.stderr);
+      assert.match(asked.stdout, / {3}Put files from the last 90 minutes$/m);
+      assert.deepEqual(previewRows(asked.stdout), ['recent/news.html'], 'without --range the word is a path, even when the range is chosen in the question');
+    },
+    '1\n90m\ny\n',
+    true,
+  );
 });

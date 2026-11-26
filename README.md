@@ -30,6 +30,9 @@ at hand.
   optionally deleting what the other side lost. Only files that differ are
   listed, each with a checkbox, and a file changed on both sides waits for
   your decision.
+- **Just the recent work.** A time range, such as `--range 2d`, previews
+  only the files created or modified in the last minutes, hours, days or
+  weeks, and looks only those up on the server.
 - **At home beside Dreamweaver.** A site synchronized with Dreamweaver is
   in sync from its first preview: its `_notes/dwsync.xml` records are read,
   and each transfer keeps them up to date, so both programs go on agreeing.
@@ -86,6 +89,12 @@ time, and the folder on the server that holds the site, starting where the
 server opens. With no options it asks for everything. The last command opens
 the preview: check what should move, then press Enter. Run `sync-servers`
 with no command to do all of this from menus.
+
+To put only the files created or modified in the last two days:
+
+```sh
+sync-servers sync --put recent --range 2d
+```
 
 Without a terminal, nothing is asked and nothing connects: pass the root and
 add more servers the same way.

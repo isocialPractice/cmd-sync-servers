@@ -224,8 +224,10 @@ test('with no command, a terminal gets the plain menus; a pipe gets the help', a
     assert.match(back.stdout, /^Sites$/m);
 
     rig.write('local', 'b.html', 'b');
-    const cancelled = await cli({ home: rig.home, cwd: rig.localDir, input: '1\n1\nn\nzz\nq\n8\n', tty: true }, '--ascii');
+    // Synchronize..., then Enter for Put newer files to remote, the second of the four directions.
+    const cancelled = await cli({ home: rig.home, cwd: rig.localDir, input: '1\n\nn\nzz\nq\n8\n', tty: true }, '--ascii');
     assert.equal(cancelled.code, 4);
+    assert.match(cancelled.stderr, /Direction\n {2}1\. Put files from a time range\n {2}2\. Put newer files to remote\n/);
     assert.match(cancelled.stdout, /Unknown command "zz"\. Type "help" for commands\./);
     assert.match(cancelled.stderr, /Nothing was changed\./);
     assert.equal(rig.read('remote', 'b.html'), undefined);

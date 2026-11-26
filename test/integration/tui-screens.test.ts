@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
+import { setTimeout as wait } from 'node:timers/promises';
 import { defaultPaths } from '../../src/config/paths.ts';
 import { SiteRegistry } from '../../src/config/registry.ts';
 import { sealSecret } from '../../src/credentials/binding.ts';
@@ -12,6 +13,7 @@ import { PreviewView } from '../../src/tui/screens/preview.ts';
 import { ServerEditorView } from '../../src/tui/screens/server-editor.ts';
 import { SiteSetupView } from '../../src/tui/screens/site-setup.ts';
 import { SitesView } from '../../src/tui/screens/sites.ts';
+import { SynchronizeView } from '../../src/tui/screens/synchronize.ts';
 import type { TuiServices } from '../../src/tui/services.ts';
 import { makeFolder, tempDir } from '../helpers/cli.ts';
 import { entryFor, writeDwsync } from '../helpers/dwsync.ts';
@@ -231,6 +233,87 @@ test('leaving a preview with nothing to synchronize saves what it found in sync'
     assert.equal(existsSync(records), false);
     await press(app, 'escape');
     assert.deepEqual(Object.keys((JSON.parse(readFileSync(records, 'utf8')) as { records: object }).records), ['index.html']);
+  });
+});
+
+test('synchronize offers the files of a time range: its field takes the place of the delete option, and its preview is titled for the range', async (t) => {
+  await withRig(async (rig) => {
+    const DAY = 86_400_000;
+    rig.write('local', 'about.html', '<h1>About</h1>');
+    await wait(50);
+    const start = Date.now();
+    await wait(50);
+    rig.write('local', 'index.html', '<h1>Home</h1>', Math.ceil(Date.now() / 1000) * 1000);
+    // The clock of this computer stands two days after a moment between the two files.
+    t.mock.timers.enable({ apis: ['Date'], now: start + 2 * DAY });
+
+    const app = testApp();
+    await open(app, new SynchronizeView(services(rig), rig.site));
+    assert.match(screen(app), /^ {2}Direction +< Put newer files to remote >$/m, 'the direction a site first opens with');
+    const offered: string[] = [];
+    await press(app, 'left');
+    for (let step = 0; step < 4; step += 1) {
+      offered.push(/^ {2}Direction +< (.+) >$/m.exec(screen(app))?.[1] ?? '');
+      await press(app, 'right');
+    }
+    assert.deepEqual(offered, ['Put files from a time range', 'Put newer files to remote', 'Get newer files from remote', 'Get and put newer files']);
+
+    const range = screen(app);
+    assert.match(range, /^ {2}Direction +< Put files from a time range >$/m);
+    assert.match(range, /^ {2}Time range +1d$/m);
+    assert.doesNotMatch(range, /Delete (?:remote|local) files/);
+    await press(app, 'right', 'down', 'space');
+    assert.match(screen(app), /Delete remote files not on local drive +\[x\]/);
+    assert.doesNotMatch(screen(app), /Time range/);
+    await press(app, 'up', 'left', 'down');
+    assert.match(screen(app), /^ {2}Time range +1d/m);
+    assert.match(screen(app), /^ A number and m, h, d or w: 90m, 24h, 2d, 1w\.$/m);
+
+    await press(app, 'ctrl+u');
+    await type(app, '2M');
+    await press(app, 'enter');
+    const refused = screen(app);
+    assert.match(refused, /^ Synchronize: My Site +Enter Preview$/m, 'a text that is not a range opens no preview');
+    assert.match(refused, /^ {2}Time range +2M/m);
+    assert.match(refused, /^ +! Enter a number and a unit: m for minutes, h for hours, d for/m);
+    assert.match(screen(app, 120), /^ Enter a number and a unit: m for minutes, h for hours, d for days or w for weeks, such as 90m, 24h, 2d or 1w\.$/m);
+    await press(app, 'ctrl+u', 'enter');
+    assert.match(screen(app), /^ +! Enter a number and a unit/m, 'an emptied field is not a range either');
+
+    await type(app, 'q?2d');
+    assert.match(screen(app), /^ {2}Time range +q\?2d/m, 'typed characters go to the field');
+    await press(app, 'ctrl+u');
+    await type(app, '2d');
+    await press(app, 'enter');
+    const preview = screen(app);
+    assert.match(preview, /^ Synchronize: My Site -> Folder \(Local\/Network\) +Put files from the last 2 days$/m);
+    assert.match(preview, /^ Files: 1 will be updated, 0 will be skipped$/m);
+    assert.match(preview, /^ {2}\[x\] \^ Put +index\.html$/m);
+    assert.doesNotMatch(preview, /about\.html/);
+    await press(app, 'enter', 'enter');
+    assert.equal(rig.read('remote', 'index.html'), '<h1>Home</h1>');
+    assert.equal(rig.read('remote', 'about.html'), undefined, 'a file older than the range is not put');
+
+    const again = testApp();
+    await open(again, new SynchronizeView(services(rig), rig.site));
+    assert.match(screen(again), /^ {2}Direction +< Put files from a time range >$/m, 'the last answers are offered again');
+    assert.match(screen(again), /^ {2}Time range +2d$/m);
+    await press(again, 'right');
+    assert.match(screen(again), /Delete remote files not on local drive +\[x\]/, 'with the delete option as it was left');
+
+    // A month on, nothing is recent.
+    t.mock.timers.reset();
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 30 * DAY });
+    const later = testApp();
+    await open(later, new SynchronizeView(services(rig), rig.site));
+    await press(later, 'enter');
+    const none = screen(later);
+    assert.match(none, /^ Synchronize: My Site -> Folder \(Local\/Network\) +Put files from the last 2 days$/m);
+    assert.match(none, /^ {2}No file of "My Site" was created or modified in the last 2 days\.$/m);
+    await press(later, 'enter');
+    assert.match(screen(later), /Nothing is checked/);
+    await press(later, 'escape');
+    await later.finished;
   });
 });
 

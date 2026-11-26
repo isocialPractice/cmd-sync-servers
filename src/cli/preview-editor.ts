@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Server, Site } from '../config/schema.ts';
 import type { PlanItem, SyncPlan } from '../sync/plan.ts';
+import { rangeTitle } from '../sync/messages.ts';
+import type { TimeRange } from '../sync/range.ts';
 import { DIRECTION_TITLES, type Action } from '../sync/types.ts';
 import { safeLine } from '../terminal-text.ts';
 import { protocolLabel } from './commands/shared.ts';
@@ -22,8 +24,8 @@ function box(item: PlanItem): string {
   return item.checked === true && item.action !== 'skip' && item.action !== 'resolve' ? '[x]' : '[ ]';
 }
 
-/** The plan as the text file of editor mode: a commented header, then one row per planned item. */
-export function formatPlanForEditor(plan: SyncPlan, site: Site, server: Server): string {
+/** The plan as the text file of editor mode: a commented header, then one row per planned item. A plan made from a range is titled for it. */
+export function formatPlanForEditor(plan: SyncPlan, site: Site, server: Server, range?: TimeRange): string {
   const rows = plan.items.filter((item) => item.state !== 'problem');
   const problems = plan.items.filter((item) => item.state === 'problem');
   const actionWidth = Math.max(7, ...rows.map((item) => item.action.length));
@@ -31,7 +33,7 @@ export function formatPlanForEditor(plan: SyncPlan, site: Site, server: Server):
   const pathWidth = Math.min(48, Math.max(4, ...rows.map((item) => editorPath(item.path).length)));
   const lines = [
     `# sync-servers preview: ${site.name} -> ${server.name} (${protocolLabel(server.protocol)})`,
-    `# ${DIRECTION_TITLES[plan.direction]}${plan.deleteOrphans ? ', deleting files missing on the other side' : ''}`,
+    `# ${range === undefined ? `${DIRECTION_TITLES[plan.direction]}${plan.deleteOrphans ? ', deleting files missing on the other side' : ''}` : rangeTitle(range)}`,
     `# ${plan.summaryLine()}`,
     '#',
     '# Check or uncheck a box, or change the action word, then save and close to',
@@ -163,12 +165,12 @@ export type EditFile = (file: string) => Promise<void>;
  * editor, and applies the edits. Reopens with the problems as comments at the
  * top until the file reads cleanly. Resolves `false` to cancel.
  */
-export async function editPlan(plan: SyncPlan, site: Site, server: Server, environment: EditorEnvironment, edit?: EditFile): Promise<boolean> {
+export async function editPlan(plan: SyncPlan, site: Site, server: Server, environment: EditorEnvironment, edit?: EditFile, range?: TimeRange): Promise<boolean> {
   const open = edit ?? ((file: string) => runEditor(file, environment));
   const dir = await mkdtemp(path.join(tmpdir(), 'sync-servers-'));
   try {
     const file = path.join(dir, 'preview.txt');
-    let text = formatPlanForEditor(plan, site, server);
+    let text = formatPlanForEditor(plan, site, server, range);
     let first = true;
     for (;;) {
       await writeFile(file, text, { mode: 0o600, flag: first ? 'wx' : 'w' });

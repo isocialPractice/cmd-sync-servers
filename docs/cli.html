@@ -388,7 +388,7 @@ sync-servers uncloak img/raw
 sync-servers uncloak --global node_modules/</code></pre>
 </section>
 <section class="command" id="command-sync">
-  <h3><code>sync-servers sync [&lt;path&gt;...]</code></h3>
+  <h3><code>sync-servers sync [recent] [&lt;path&gt;...]</code></h3>
   <p>Synchronize a site with its Remote server: preview, then transfer.</p>
   <table>
     <caption>Options of sync</caption>
@@ -397,6 +397,7 @@ sync-servers uncloak --global node_modules/</code></pre>
       <tr><td><code>--put</code></td><td>Put newer files to the server</td></tr>
       <tr><td><code>--get</code></td><td>Get newer files from the server</td></tr>
       <tr><td><code>--both</code></td><td>Get and put newer files</td></tr>
+      <tr><td><code>-r, --range &lt;time&gt;</code></td><td>With --put: only the files created or modified in the last &lt;time&gt;, such as 90m, 24h, 2d or 1w</td></tr>
       <tr><td><code>--delete</code></td><td>Delete files missing on the other side (never-synchronized ones stay unchecked)</td></tr>
       <tr><td><code>-y, --yes</code></td><td>Run without asking for confirmation</td></tr>
       <tr><td><code>--preview &lt;mode&gt;</code></td><td>Show the preview in the terminal UI (tui), your editor, plain prompts, or print it (none)</td></tr>
@@ -412,7 +413,9 @@ sync-servers uncloak --global node_modules/</code></pre>
 sync-servers sync --both --delete --dry-run
 sync-servers sync --put --preview editor
 sync-servers sync --get css img --yes
-sync-servers sync --put --plan-out plan.json</code></pre>
+sync-servers sync --put --plan-out plan.json
+sync-servers sync --put recent --range 2d
+sync-servers sync --put recent -r 90m css</code></pre>
 </section>
 <section class="command" id="command-put">
   <h3><code>sync-servers put &lt;path&gt;...</code></h3>
@@ -584,7 +587,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
     <tr><td>Site home</td><td><kbd>s</kbd> Synchronize, <kbd>r</kbd> check for changes, <kbd>e</kbd> site settings; Put and Get newer files from the list</td></tr>
     <tr><td>Site Setup</td><td>Categories on the left: Site, Servers, Local Info, Cloaking, Synchronization, Security. In Servers: <kbd>a</kbd> add, <kbd>Enter</kbd> edit, <kbd>c</kbd> duplicate, <kbd>Del</kbd> remove, <kbd>t</kbd> test, <kbd>r</kbd> make Remote, <kbd>Shift</kbd>+<kbd>T</kbd> make Testing. In Cloaking: Use global patterns turns the global patterns on or off for the site, which lists them, and Edit global patterns... opens them. In Synchronization: Dreamweaver sync files reads and updates the records Dreamweaver keeps in <code>_notes/dwsync.xml</code>, and needs Maintain sync information</td></tr>
     <tr><td>Server editor</td><td><kbd>Tab</kbd> switches Basic and Advanced. Basic: Protocol, Host (<code>host:port</code> fills Port), Port, User, Root directory with Browse..., Test. Test and Browse connect with the values the form shows, without saving them; what they decide, such as a trusted certificate, is saved with the server on <kbd>Ctrl</kbd>+<kbd>S</kbd>. Advanced holds the Web URL, the name Dreamweaver gives the server, the host key and the trusted certificate, with Forget buttons</td></tr>
-    <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview</td></tr>
+    <tr><td>Synchronize</td><td>Direction and the delete option; <kbd>Enter</kbd> scans and opens the preview. The first direction, Put files from a time range, shows a Time range field in place of the delete option, holding <code>1d</code> or the last range used for the site: a number and <code>m</code>, <code>h</code>, <code>d</code> or <code>w</code>, such as <code>90m</code>, <code>24h</code>, <code>2d</code> or <code>1w</code>. Its preview holds only the files created or modified in that time. Put newer files to remote stays the direction a site first opens with</td></tr>
     <tr><td>Preview</td><td><kbd>Space</kbd> check or uncheck every row (all unchecked when most are checked, else all checked), <kbd>c</kbd> check or uncheck the focused row, <kbd>p</kbd> Put, <kbd>g</kbd> Get, <kbd>s</kbd> Skip, <kbd>m</kbd> mark synchronized, <kbd>x</kbd> delete, <kbd>a</kbd> check all, or uncheck all when all are checked, <kbd>d</kbd> difference, <kbd>Tab</kbd> filter, <kbd>Enter</kbd> synchronize, <kbd>q</kbd> quit without transferring anything, as <kbd>Ctrl</kbd>+<kbd>C</kbd> does</td></tr>
     <tr><td>Progress</td><td><kbd>Esc</kbd> cancels cleanly between files</td></tr>
     <tr><td>Results</td><td>Failures first; <kbd>Esc</kbd> done</td></tr>
@@ -631,6 +634,7 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
   <li><code>--yes</code> runs the checked rows. Rows that need a decision are never decided for you: they are reported, and the exit code is 3.</li>
   <li>Deletes run only with both <code>--delete</code> and <code>--yes</code>, and past the mass-delete limit only with <code>--allow-mass-delete</code> as well.</li>
   <li><code>--plan-out plan.json</code> saves the plan; <code>--plan-in plan.json</code> runs it later, after checking that a fresh scan still matches what the plan was built from.</li>
+  <li><code>--range 2d</code> needs no direction, since a <a href="synchronization.html#range">time range</a> is always a Put. When no file is recent, the command says so, connects to nothing and exits 0.</li>
 </ul>
 <pre><code>SYNC_SERVERS_PASSWORD="$DEPLOY_PASSWORD" \
   sync-servers sync --put --yes --site "My Site" --host-key SHA256:&lt;fingerprint&gt;</code></pre>
@@ -672,6 +676,13 @@ Invoke-Expression (&amp; sync-servers shell-init pwsh | Out-String)</code></pre>
   ...
 }</code></pre>
 <p>The kinds are <code>sites</code>, <code>site</code>, <code>site-removed</code>, <code>site-path</code>, <code>servers</code>, <code>server</code>, <code>server-removed</code>, <code>server-test</code>, <code>cloaking</code>, <code>cloaking-global</code>, <code>sync</code>, <code>status</code>, <code>diff</code>, <code>mark-synced</code>, <code>config-paths</code>, <code>doctor</code> and <code>error</code>. Paths are site-relative, and secrets never appear.</p>
+<p>A <code>sync</code> document holds the <code>plan</code> and the <code>result</code>, which is <code>null</code> when nothing ran. One made with <code>--range</code> also holds the range as it was read and the moment it starts:</p>
+<pre><code>{
+  "schema": "sync-servers/sync@1",
+  "plan": { "direction": "put", "scope": { "kind": "paths", "paths": ["css/site.css", "index.html"] }, ... },
+  "result": null,
+  "range": { "text": "2d", "since": "2026-10-27T12:00:00.000Z" }
+}</code></pre>
 </main>
 <footer class="site-footer">
   <div class="inner">

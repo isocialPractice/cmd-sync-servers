@@ -11,6 +11,37 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
 
 ### Added
 
+- `sync --put recent --range <time>`, or `-r <time>`: a Put of the local
+  files created or last modified in the last minutes, hours, days or
+  weeks, written as a number and `m`, `h`, `d` or `w`, such as `90m`,
+  `24h`, `2d` or `1w`. Only those files are listed in the preview and
+  looked up on the server, and the preview, the choices and the run are as
+  for any sync.
+  - A file is recent by this computer's clock and the dates its file
+    system keeps for it, so a file copied into the site counts from the
+    day it arrived, whatever its modification time.
+  - A range goes with `--put` only and means `--put` when no direction is
+    given. With `--get`, `--both`, `--delete` or `--plan-in` it is a usage
+    error.
+  - The word `recent` before the paths may be left out, and is a word only
+    beside `--range`: without the option it stays a path, and beside it a
+    folder of that name is written `./recent`.
+  - With no recent file the command says so and exits 0 without
+    connecting.
+  - The preview is titled for the range, such as
+    `Put files from the last 2 days`, in every preview mode, and `--json`
+    carries the range and the moment it starts as `range`.
+  - `sync --put recent` without a range, when the site holds nothing of
+    that name, points to the option on the error stream.
+- In a terminal, the direction question of `sync` offers Put files from a
+  time range and then asks for the range, with `1d` as the answer Enter
+  gives.
+- In the terminal interface, the Synchronize screen offers Put files from
+  a time range as its first direction, with a Time range field in place of
+  the delete option.
+- A Putting the files of a time range section on the synchronization page,
+  an example, cheatsheet rows, and entries under Time problems on the
+  troubleshooting page.
 - In the library API, `changedSince` in the options of `SyncSession.plan`:
   a plan of the local files created or last modified at or after a moment,
   for a Put without the delete option. Only those files are compared, and
@@ -34,6 +65,9 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
 
 - Single paths, as in `sync --put <path>...`, `put` and `get`, are looked
   up on the server several at a time, as many as the site's `concurrency`.
+- In a terminal, the direction question of `sync` lists the time range as
+  choice 1, so Put newer files to remote is choice 2. Enter still chooses
+  it.
 
 ## [2.0.0] - 2026-11-24
 

@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { createTwoFilesPatch } from 'diff';
 import type { Site } from '../../config/schema.ts';
+import { noRecentFiles, rangeTitle } from '../../sync/messages.ts';
 import type { PlanItem, SyncPlan } from '../../sync/plan.ts';
-import type { SyncSession } from '../../sync/session.ts';
-import type { Action, Direction } from '../../sync/types.ts';
+import type { TimeRange } from '../../sync/range.ts';
+import type { PlanOptions, SyncSession } from '../../sync/session.ts';
+import type { Action } from '../../sync/types.ts';
 import type { App, Hint, View, ViewBody } from '../app.ts';
 import { isKey, type Key } from '../keys.ts';
 import { openSession, type TuiServices } from '../services.ts';
@@ -38,36 +40,46 @@ export function runnable(plan: SyncPlan): number {
   return plan.items.filter((item) => item.state !== 'problem' && item.checked === true && item.action !== 'skip' && item.action !== 'resolve').length;
 }
 
+/** What a preview is planned from: the direction and the delete option, or the files of a time range. */
+export interface PreviewOptions extends Pick<PlanOptions, 'direction' | 'deleteOrphans' | 'changedSince'> {
+  /** The range `changedSince` was counted from, which titles the preview. */
+  readonly range?: TimeRange | undefined;
+}
+
 /**
  * The preview of a synchronization, as Dreamweaver's preview: a summary, then
  * one row per file with a difference, each with a checkbox, an action, the
- * path and a status. Unchanged files are counted, never listed.
+ * path and a status. Unchanged files are counted, never listed. A preview
+ * made from a time range is titled for the range.
  */
 export class PreviewView implements View {
   readonly #session: SyncSession;
   readonly #plan: SyncPlan;
+  readonly #range: TimeRange | undefined;
   readonly #list: ListState<PlanItem>;
   #filter = 0;
   #height = 10;
 
-  constructor(session: SyncSession, plan: SyncPlan) {
+  constructor(session: SyncSession, plan: SyncPlan, range?: TimeRange) {
     this.#session = session;
     this.#plan = plan;
+    this.#range = range;
     this.#list = new ListState<PlanItem>(plan.items, (item) => item.path);
   }
 
   /** Scans and plans in the background, then shows the preview; `replace` puts it in place of the view in front. */
-  static async plan(app: App, services: TuiServices, site: Site, options: { direction: Direction; deleteOrphans: boolean }, replace = false): Promise<void> {
+  static async plan(app: App, services: TuiServices, site: Site, options: PreviewOptions, replace = false): Promise<void> {
+    const { range, ...planOptions } = options;
     let session: SyncSession | undefined;
     const plan = await app.task('Comparing the local folder and the server', async (signal) => {
       session = await openSession(app, services, site.id);
-      return session.plan({ ...options, signal });
+      return session.plan({ ...planOptions, signal });
     });
     if (plan === undefined || session === undefined) {
       await session?.close();
       return;
     }
-    const view = new PreviewView(session, plan);
+    const view = new PreviewView(session, plan, range);
     if (replace) {
       app.replace(view);
     } else {
@@ -81,7 +93,7 @@ export class PreviewView implements View {
   }
 
   primary(): string {
-    return DIRECTION_TITLES[this.#plan.direction];
+    return this.#range === undefined ? DIRECTION_TITLES[this.#plan.direction] : rangeTitle(this.#range);
   }
 
   summary(): Line {
@@ -137,7 +149,8 @@ export class PreviewView implements View {
   body(width: number, height: number, theme: Theme): ViewBody {
     this.#height = height;
     if (this.#plan.items.length === 0) {
-      return { lines: [[], [span('  Nothing to synchronize: every compared file is in sync.')]] };
+      const none = this.#range !== undefined && this.#plan.scope.kind === 'paths' && this.#plan.scope.paths.length === 0;
+      return { lines: [[], [span(`  ${none ? noRecentFiles(this.#range, this.#session.site.name) : 'Nothing to synchronize: every compared file is in sync.'}`)]] };
     }
     const sym = symbols(theme);
     const visible = this.#list.visible;

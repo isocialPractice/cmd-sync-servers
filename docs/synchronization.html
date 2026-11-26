@@ -34,6 +34,7 @@
 <main id="main">
 <h1>Synchronization</h1>
 <p class="lead">How a sync finds what changed on each side, decides what each file needs, and runs only what you confirm.</p>
+<p>To put only the files you worked on in the last hours or days, see <a href="#range">Putting the files of a time range</a>.</p>
 
 <h2 id="records">The memory of the last sync</h2>
 <p>For every file it synchronizes, sync-servers records both sides as they were at that moment: the size and modification time of the local copy and of the server copy. These <strong>sync records</strong> are kept per site and server in the state folder of this computer.</p>
@@ -87,8 +88,32 @@
 <h3 id="single-files">Put and Get of single files</h3>
 <p><code>sync-servers put css/site.css</code> and <code>get</code> move the files and folders you name at once, through the same checks. When one of them changed on the other side, or is held back by the guard, the preview opens first so you can decide.</p>
 
+<h2 id="range">Putting the files of a time range</h2>
+<p>Sometimes only the work of the last hours or days should go to the server: on a site with other differences that are not ready to go yet, or on one that was never synchronized, where a Put lists every file. A <strong>time range</strong> puts just the files you worked on lately:</p>
+<pre><code>sync-servers sync --put recent --range 2d</code></pre>
+<p>The range is a number and one unit in lower case, counted back from now. <code>-r</code> is short for <code>--range</code>, the word <code>recent</code> may be left out, and paths after it keep the range to those folders and files, as in <code>sync-servers sync --put recent -r 90m css</code>.</p>
+<table>
+  <caption>The units of a time range</caption>
+  <thead><tr><th scope="col">Unit</th><th scope="col">Counts</th><th scope="col">Example</th></tr></thead>
+  <tbody>
+    <tr><td><code>m</code></td><td>Minutes</td><td><code>--range 90m</code>, the last 90 minutes</td></tr>
+    <tr><td><code>h</code></td><td>Hours</td><td><code>--range 24h</code>, the last 24 hours</td></tr>
+    <tr><td><code>d</code></td><td>Days</td><td><code>--range 2d</code>, the last two days</td></tr>
+    <tr><td><code>w</code></td><td>Weeks</td><td><code>--range 1w</code>, the last week</td></tr>
+  </tbody>
+</table>
+<p>The number may have a decimal part, as in <code>1.5h</code>. A capital letter, another unit or two ranges at once are refused, so <code>2M</code> is never taken for two minutes.</p>
+<ul>
+  <li><strong>What recent means.</strong> A file is recent when it was created or last modified at or after the start of the range, by this computer's clock and the dates its file system keeps. A file copied into the site keeps the modification time it came with, and still counts from the day it arrived. Folders are not judged, only the files in them.</li>
+  <li><strong>What the preview holds.</strong> The recent files that differ from the server, each as in any preview: one that also changed on the server waits for a decision, and one that matches a sensitive pattern is held back. Recent files already in sync are counted as skipped, and cloaked files are left out as always.</li>
+  <li><strong>What it never holds.</strong> A delete, a Get, or a file only the server has. A range goes with Put only, and not with the delete option.</li>
+  <li><strong>What the server is asked.</strong> Only the recent files are looked up on the server, file by file, and nothing connects when no file is recent. That is quick for a few files. When the range takes in most of a large site, <code>sync --put</code> without a range, which compares whole folders, is faster.</li>
+  <li><strong>Time on disk.</strong> A file counts by the time it was saved to disk. One that is open in an editor with unsaved changes counts by its last save.</li>
+</ul>
+<p>The preview is titled for the range, such as <code>Put files from the last 2 days</code>, and from there everything is as in any synchronization: check or uncheck rows, then confirm. In a terminal, <code>sync-servers sync</code> without a direction offers <em>Put files from a time range</em> as its first choice and asks for the range, with <code>1d</code> as the answer Enter gives. The Synchronize screen of the <a href="cli.html#tui">terminal interface</a> has the same choice.</p>
+
 <h2 id="preview">The preview</h2>
-<p>The preview lists only files with a difference; unchanged files are counted, never listed. Its summary line counts what will happen, such as <code>Files: 37 will be updated, 169 will be skipped, 12 need a decision</code>. Each row has a checkbox, an action and a status that says why, in a sentence:</p>
+<p>The preview lists only files with a difference; unchanged files are counted, never listed. A preview made from <a href="#range">a time range</a> lists only the recent ones among them. Its summary line counts what will happen, such as <code>Files: 37 will be updated, 169 will be skipped, 12 need a decision</code>. Each row has a checkbox, an action and a status that says why, in a sentence:</p>
 <table>
   <caption>Rows that start unchecked</caption>
   <thead><tr><th scope="col">Row</th><th scope="col">Why</th></tr></thead>
