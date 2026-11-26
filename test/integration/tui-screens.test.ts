@@ -275,10 +275,11 @@ test('synchronize offers the files of a time range: its field takes the place of
     const refused = screen(app);
     assert.match(refused, /^ Synchronize: My Site +Enter Preview$/m, 'a text that is not a range opens no preview');
     assert.match(refused, /^ {2}Time range +2M/m);
-    assert.match(refused, /^ +! Enter a number and a unit: m for minutes, h for hours, d for/m);
-    assert.match(screen(app, 120), /^ Enter a number and a unit: m for minutes, h for hours, d for days or w for weeks, such as 90m, 24h, 2d or 1w\.$/m);
+    // The sentence shows whole at 80 columns, under the field and in the message bar.
+    assert.match(refused, /^ +! Enter a number and m, h, d or w: 90m, 24h, 2d, 1w\.$/m);
+    assert.match(refused, /^ Enter a number and m, h, d or w: 90m, 24h, 2d, 1w\.$/m);
     await press(app, 'ctrl+u', 'enter');
-    assert.match(screen(app), /^ +! Enter a number and a unit/m, 'an emptied field is not a range either');
+    assert.match(screen(app), /^ +! Enter a number and m, h, d or w: 90m, 24h, 2d, 1w\.$/m, 'an emptied field is not a range either');
 
     await type(app, 'q?2d');
     assert.match(screen(app), /^ {2}Time range +q\?2d/m, 'typed characters go to the field');

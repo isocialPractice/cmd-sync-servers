@@ -1,5 +1,4 @@
 import type { Site } from '../../config/schema.ts';
-import { RANGE_TEXT } from '../../sync/messages.ts';
 import { DEFAULT_RANGE, formatRange, parseRange, rangeStart } from '../../sync/range.ts';
 import { RANGE_TITLE, type Direction } from '../../sync/types.ts';
 import type { App, Hint, View, ViewBody } from '../app.ts';
@@ -29,7 +28,11 @@ const WAYS: readonly { readonly label: string; readonly value: Way }[] = [
 ];
 
 const DELETE_HELP = 'Files never synchronized before stay unchecked in the preview.';
-const RANGE_HELP = 'A number and m, h, d or w: 90m, 24h, 2d, 1w.';
+/** How a range is written, short enough to show whole on one row of an 80-column screen. */
+const RANGE_FORM = 'number and m, h, d or w: 90m, 24h, 2d, 1w.';
+const RANGE_HELP = `A ${RANGE_FORM}`;
+/** What the field says of a text that is not a range. */
+const RANGE_REFUSED = `Enter a ${RANGE_FORM}`;
 
 /**
  * Dreamweaver's Synchronize dialog: scope, direction, and the delete option
@@ -121,7 +124,7 @@ export class SynchronizeView implements View {
       if (way === 'recent') {
         const range = parseRange(this.#range.field.value);
         if (range === undefined) {
-          this.#form.setError('range', `Enter ${RANGE_TEXT.format}.`);
+          this.#form.setError('range', RANGE_REFUSED);
           this.#form.focusOn('range');
           return;
         }
