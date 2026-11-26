@@ -363,6 +363,16 @@ async function aroundRange(t: TestContext, rig: SiteRig, rangeMs: number, older 
   return start;
 }
 
+/**
+ * Writes a local file that every range takes in. Its modification time is
+ * now: on macOS a file given an earlier modification time takes that time
+ * as its creation time too, so the default time of the rig would leave it
+ * out.
+ */
+function writeRecent(rig: SiteRig, name: string, content: string): void {
+  rig.write('local', name, content, Date.now());
+}
+
 /** Every file of the state folder but the run logs, with its content. */
 function stateFiles(rig: SiteRig): string[] {
   const state = path.join(rig.home, 'state');
@@ -459,8 +469,8 @@ test('--range is refused with what it does not go with, before anything is looke
 
 test('recent is a path without a range, and with one ./recent names a folder of that name', async () => {
   await withSite('local', async (rig, run) => {
-    rig.write('local', 'index.html', 'home');
-    rig.write('local', 'recent/news.html', 'news');
+    writeRecent(rig, 'index.html', 'home');
+    writeRecent(rig, 'recent/news.html', 'news');
     const asPath = await run('sync', '--put', 'recent');
     assert.equal(asPath.code, 0, asPath.stderr);
     assert.match(asPath.stdout, / {3}Put newer files to remote$/m);
@@ -562,7 +572,7 @@ test('the direction question offers the range first, asks for it until it is one
   await withSite(
     'local',
     async (rig, run) => {
-      rig.write('local', 'a.html', 'a');
+      writeRecent(rig, 'a.html', 'a');
       const asked = await run('sync', '--preview', 'none');
       assert.equal(asked.code, 0, asked.stderr);
       assert.match(
@@ -591,8 +601,8 @@ test('the direction question offers the range first, asks for it until it is one
   await withSite(
     'local',
     async (rig, run) => {
-      rig.write('local', 'recent/news.html', 'news');
-      rig.write('local', 'a.html', 'a');
+      writeRecent(rig, 'recent/news.html', 'news');
+      writeRecent(rig, 'a.html', 'a');
       const asked = await run('sync', 'recent', '--preview', 'none');
       assert.equal(asked.code, 0, asked.stderr);
       assert.match(asked.stdout, / {3}Put files from the last 90 minutes$/m);
