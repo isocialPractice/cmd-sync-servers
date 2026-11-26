@@ -458,7 +458,7 @@ the step of the plan that specifies it.
       the `Put From a Time Range` section here
   - **Goal**: Resolve to [Phase R1, step 1](.claude/prompts/use-date-range.prompt.md#phase-r1-the-range-and-the-plan)
   - From: Put From a Time Range
-- [x] `@jhauga/timecal` `1.1.0` and `getfiledate` `1.0.0` installed and
+- [x] `@jhauga/timecal` `1.1.1` and `getfiledate` `1.0.0` installed and
       checked against their integrity hashes, the type declaration for
       timecal, and `src/sync/range.ts` with its sentences and its label,
       with every branch tested
