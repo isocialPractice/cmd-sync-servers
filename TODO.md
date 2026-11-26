@@ -605,22 +605,22 @@ version, and R2 adds to it. Phase R3 releases it. Phase R4 moves no version.
 
 The items of Phases R1 and R2 are in Current.
 
-- [ ] Run the checks from a clean install, date the changelog and run the
+- [x] Run the checks from a clean install, date the changelog and run the
       release check for the tag `v2.1.0`
   - **Goal**: Resolve to [Phase R3, step 1](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] Push `main` and wait for every job of its CI run to pass
+- [x] Push `main` and wait for every job of its CI run to pass
   - **Goal**: Resolve to [Phase R3, step 2](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] Tag that commit `v2.1.0` and push the tag
+- [x] Tag that commit `v2.1.0` and push the tag
   - **Goal**: Resolve to [Phase R3, step 3](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] Publish the GitHub release for the tag and wait for its `Release`
+- [x] Publish the GitHub release for the tag and wait for its `Release`
       run
   - **Goal**: Resolve to [Phase R3, step 4](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] `2.1.0` on npm: published by the workflow, or from the attested
+- [x] `2.1.0` on npm: published by the workflow, or from the attested
       tarball the release holds
   - **Goal**: Resolve to [Phase R3, step 5](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] Check these items, commit and push
+- [x] Check these items, commit and push
   - **Goal**: Resolve to [Phase R3, step 6](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] Write this workspace's report for the agents-align room
+- [x] Write this workspace's report for the agents-align room
   - **Goal**: Resolve to [Phase R3, step 7](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
 - [ ] Read the extension's result from the room and run the engine's
       checks once more from a clean build
