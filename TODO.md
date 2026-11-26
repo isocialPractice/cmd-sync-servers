@@ -622,17 +622,17 @@ The items of Phases R1 and R2 are in Current.
   - **Goal**: Resolve to [Phase R3, step 6](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
 - [x] Write this workspace's report for the agents-align room
   - **Goal**: Resolve to [Phase R3, step 7](.claude/prompts/use-date-range.prompt.md#phase-r3-release-the-engine)
-- [ ] Read the extension's result from the room and run the engine's
+- [x] Read the extension's result from the room and run the engine's
       checks once more from a clean build
   - **Goal**: Resolve to [Phase R4, step 1](.claude/prompts/use-date-range.prompt.md#phase-r4-close-the-plan)
-- [ ] Bring the plan files up to date
+- [x] Bring the plan files up to date
   - **Goal**: Resolve to [Phase R4, step 2](.claude/prompts/use-date-range.prompt.md#phase-r4-close-the-plan)
-- [ ] Write `.support/complete-date-range.md`, the paste-ready prompt that
+- [x] Write `.support/complete-date-range.md`, the paste-ready prompt that
       makes the same updates
   - **Goal**: Resolve to [Phase R4, step 3](.claude/prompts/use-date-range.prompt.md#phase-r4-close-the-plan)
-- [ ] Check these items, commit and push
+- [x] Check these items, commit and push
   - **Goal**: Resolve to [Phase R4, step 4](.claude/prompts/use-date-range.prompt.md#phase-r4-close-the-plan)
-- [ ] Report what was checked and any owner step that remains
+- [x] Report what was checked and any owner step that remains
   - **Goal**: Resolve to [Phase R4, step 5](.claude/prompts/use-date-range.prompt.md#phase-r4-close-the-plan)
 
 ## Later Roadmap - paused
