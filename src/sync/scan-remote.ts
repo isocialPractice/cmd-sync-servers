@@ -18,7 +18,7 @@ export interface RemoteScanOptions {
   readonly pool: TransportPool;
   readonly cloak: Cloak;
   readonly scopes: readonly RemotePath[];
-  /** Folders listed at once. */
+  /** Folders listed at once, and single paths looked up at once. */
   readonly concurrency: number;
   readonly retry?: RetryOptions;
   readonly signal?: AbortSignal | undefined;
@@ -30,7 +30,8 @@ export interface RemoteScanOptions {
  * listed; symbolic links are reported and never followed; names that are not
  * safe on this system are reported, never used; a `_notes/dwsync.xml` is
  * never listed, whatever the case of its name. Servers whose listings carry
- * no times are asked file by file (FTP MDTM).
+ * no times are asked file by file (FTP MDTM). Single paths are looked up
+ * instead of listed, `concurrency` of them at a time.
  */
 export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult> {
   const result: ScanResult = { files: new Map(), dirs: new Set(), problems: [], cloaked: 0, linked: new Map() };
@@ -89,19 +90,30 @@ export async function scanRemote(options: RemoteScanOptions): Promise<ScanResult
     }
   };
 
+  const lookups: RemotePath[] = [];
   for (const scope of options.scopes) {
     if (scope === ROOT) {
       queue.push(ROOT);
-      continue;
-    }
-    if (underCloak(cloak, scope, false) || underCloak(cloak, scope, true)) {
+    } else if (underCloak(cloak, scope, false) || underCloak(cloak, scope, true)) {
       mutable.cloaked += 1;
-      continue;
+    } else {
+      lookups.push(scope);
     }
-    const entry = await pool.runWithRetry((transport) => transport.stat(scope), retry);
-    if (entry !== undefined) {
-      take(scope, { ...entry, path: scope });
-    }
+  }
+
+  // Single paths are looked up several at a time. Each batch's answers are taken in the order
+  // of the scopes, so the result never depends on which lookup answered first.
+  const width = Math.max(1, options.concurrency);
+  for (let start = 0; start < lookups.length && options.signal?.aborted !== true; start += width) {
+    const batch = lookups.slice(start, start + width);
+    const found = await Promise.all(batch.map((scope) => pool.runWithRetry((transport) => transport.stat(scope), retry)));
+    batch.forEach((scope, index) => {
+      const entry = found[index];
+      if (entry !== undefined) {
+        take(scope, { ...entry, path: scope });
+      }
+    });
+    options.onProgress?.(result.files.size, result.dirs.size);
   }
 
   while (queue.length > 0 && options.signal?.aborted !== true) {

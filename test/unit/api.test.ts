@@ -9,6 +9,7 @@ const EXPORTS = [
   'CREDENTIAL_SERVICE',
   'DEFAULT_GUARD_PATTERNS',
   'DEFAULT_LISTING_LIMIT',
+  'DEFAULT_RANGE',
   'DEFAULT_RETRY_DELAYS_MS',
   'DIRECTION_TITLES',
   'DREAMWEAVER_TEXT',
@@ -21,6 +22,8 @@ const EXPORTS = [
   'PASSWORD_ENV',
   'PROTOCOLS',
   'PromptSecretSource',
+  'RANGE_TEXT',
+  'RANGE_TITLE',
   'REDACTED',
   'ROOT',
   'Redactor',
@@ -52,10 +55,12 @@ const EXPORTS = [
   'dreamweaverInSync',
   'dreamweaverServerName',
   'dreamweaverTakeOver',
+  'fileChangedSince',
   'findCoveredNames',
   'findDreamweaverServers',
   'findServer',
   'formatIssues',
+  'formatRange',
   'guardedStatus',
   'hasChanged',
   'hasDreamweaverRecords',
@@ -69,13 +74,18 @@ const EXPORTS = [
   'lookupSecret',
   'memorySink',
   'nameProblem',
+  'noRecentFiles',
   'normalizeCertificateFingerprint',
   'normalizeFingerprint',
   'openSecret',
   'parentPath',
   'parseDwsync',
+  'parseRange',
   'parseServerAddress',
   'parseSitesFile',
+  'rangeStart',
+  'rangeTitle',
+  'rangeWords',
   'recordsFile',
   'resolveLocalTarget',
   'resultLine',
@@ -117,4 +127,6 @@ test('the main classes and functions are what they claim to be', () => {
   assert.ok(api.isSyncError(new api.SyncError('E_LOCKED', 'Locked.'), 'E_LOCKED'));
   assert.deepEqual(api.PROTOCOLS, ['sftp', 'ftps', 'ftps-implicit', 'ftp', 'local']);
   assert.equal(api.DIRECTION_TITLES.put, 'Put newer files to remote');
+  assert.equal(api.RANGE_TITLE, 'Put files from a time range');
+  assert.deepEqual(api.parseRange(api.DEFAULT_RANGE), { value: 1, unit: 'd' });
 });

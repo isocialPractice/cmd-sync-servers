@@ -173,6 +173,36 @@ plan.setChecked('css/print.css', false);
 const saved = JSON.stringify(plan.toJSON());  // run it later with SyncPlan.fromJSON and applySaved</code></pre>
 <p><a href="synchronization.html#actions">Synchronization</a> explains which action each change gets.</p>
 
+<h2 id="range">The files of a time range</h2>
+<p>A plan with <code>changedSince</code> compares only the local files created or last modified at or after that moment, and looks only them up on the server. It is a Put without the delete option: another direction, or <code>deleteOrphans</code>, rejects with <code>E_PLAN_INVALID</code>. The plan is the plan of those files as single paths, so <code>plan.scope.paths</code> lists them, an empty list means no file was recent and nothing connected, and <code>plan.unlisted</code> counts the recent files already in sync. It never holds a delete, a Get, or a file only the server has.</p>
+<pre><code>import { noRecentFiles, parseRange, rangeStart, rangeTitle } from '@isocialpractice/cmd-sync-servers';
+
+const range = parseRange('2d');               // { value: 2, unit: 'd' }, or undefined for text that is not a range
+if (range === undefined) {
+  throw new Error('A range is a number and a unit, such as 90m, 24h, 2d or 1w.');
+}
+const plan = await session.plan({ direction: 'put', changedSince: rangeStart(range) });
+if (plan.scope.kind === 'paths' &amp;&amp; plan.scope.paths.length === 0) {
+  console.log(noRecentFiles(range, session.site.name));   // No file of "My Site" was created or modified in the last 2 days.
+} else {
+  console.log(rangeTitle(range));             // Put files from the last 2 days
+  console.log(plan.summaryLine());
+}</code></pre>
+<p>A range is a number and one unit in lower case: <code>m</code> for minutes, <code>h</code> for hours, <code>d</code> for days or <code>w</code> for weeks, as in <code>90m</code>, <code>24h</code>, <code>2d</code> and <code>1w</code>. It counts back from this computer's clock, and a file is judged by the dates its file system keeps for it. <code>changedSince</code> takes any <code>Date</code>, so a program can also count from a moment of its own. A scope narrows the files looked through, as in any plan, and a plan saved with <code>toJSON()</code> runs again like any saved plan of paths. These exports are experimental.</p>
+<table>
+  <caption>Exports for a time range</caption>
+  <thead><tr><th scope="col">Export</th><th scope="col">Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>parseRange(text)</code>, <code>formatRange(range)</code></td><td>Read a range from text, with <code>undefined</code> for anything that is not one, and write a <code>TimeRange</code> back as it is typed.</td></tr>
+    <tr><td><code>rangeStart(range)</code></td><td>The moment a range starts: that long before this computer's clock.</td></tr>
+    <tr><td><code>fileChangedSince(file, since)</code></td><td>Whether a local file was created or last modified at or after a moment. <code>false</code> for a file that cannot be read.</td></tr>
+    <tr><td><code>TimeRange</code>, <code>RangeUnit</code></td><td>A range as <code>{ value, unit }</code>, and its four units.</td></tr>
+    <tr><td><code>DEFAULT_RANGE</code></td><td><code>1d</code>, the range a question offers when nothing is typed.</td></tr>
+    <tr><td><code>RANGE_TITLE</code></td><td><code>Put files from a time range</code>, the name of the choice in every front end.</td></tr>
+    <tr><td><code>RANGE_TEXT</code>, <code>rangeWords(range)</code>, <code>rangeTitle(range)</code>, <code>noRecentFiles(range, siteName)</code></td><td>The sentences every front end shows: how a range is written, the question that asks for one, a range in words, the title of its preview, and what to say when no file is recent.</td></tr>
+  </tbody>
+</table>
+
 <h2 id="session">Other session calls</h2>
 <table>
   <caption>SyncSession methods</caption>

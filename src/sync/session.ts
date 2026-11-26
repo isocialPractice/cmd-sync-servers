@@ -19,6 +19,7 @@ import { siteGuard } from './guard.ts';
 import { cappedFile } from './part.ts';
 import { baseName, isCaseSensitive, joinRemote, resolveLocalTarget, ROOT, toRemotePath, type RemotePath } from './paths.ts';
 import { SyncPlan } from './plan.ts';
+import { fileChangedSince } from './range.ts';
 import { Recovery } from './recovery.ts';
 import { HashCache, scanLocal, underCloak, type ScanResult } from './scan-local.ts';
 import { scanRemote } from './scan-remote.ts';
@@ -65,6 +66,14 @@ export interface PlanOptions {
   readonly signal?: AbortSignal | undefined;
   /** Receives `scan-local`, `scan-remote` and `compare` events. */
   readonly onProgress?: ((event: ProgressEvent) => void) | undefined;
+  /**
+   * Only the local files created or modified at or after this moment are
+   * compared, and only they are looked up on the server. For a Put without
+   * the delete option. The plan's scope then holds those files.
+   *
+   * @experimental
+   */
+  readonly changedSince?: Date | undefined;
 }
 
 /** One changed path of a {@link StatusReport}. */
@@ -143,8 +152,17 @@ export function remoteRootIsTop(server: Pick<Server, 'protocol' | 'remoteRoot'>)
 const LOCAL_STATES: ReadonlySet<SyncState> = new Set(['local-changed', 'local-only', 'local-deleted', 'first-sync-local-newer']);
 const REMOTE_STATES: ReadonlySet<SyncState> = new Set(['remote-changed', 'remote-only', 'remote-deleted', 'first-sync-remote-newer']);
 
-function inside(target: string, scopes: readonly RemotePath[]): boolean {
-  return scopes.some((scope) => scope === ROOT || target === scope || target.startsWith(`${scope}/`));
+/** True when `target` is one of `scopes` or lies under one. A set, so a scope of many single files costs one look per folder above the path. */
+function inside(target: string, scopes: ReadonlySet<string>): boolean {
+  if (scopes.has(ROOT)) {
+    return true;
+  }
+  for (let at = target; at !== ROOT; at = at.slice(0, Math.max(0, at.lastIndexOf('/')))) {
+    if (scopes.has(at)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -370,17 +388,56 @@ export class SyncSession {
       throw new SyncError('E_CANCELLED', 'Cancelled.');
     }
     const records = new Map<string, SyncRecord>();
+    const within = new Set<string>(scopes);
     for (const target of this.#records.paths()) {
       const record = this.#records.get(target);
-      if (record !== undefined && inside(target, scopes) && !underCloak(cloak, target as RemotePath, false)) {
+      if (record !== undefined && inside(target, within) && !underCloak(cloak, target as RemotePath, false)) {
         records.set(target, record);
       }
     }
     return { local, remote, records, cloak, localRoot };
   }
 
+  /**
+   * The local files within `scope` that were created or modified at or after
+   * `since`, as the scope of a plan of single paths. Cloaking and the link
+   * policy apply as in any scan, nothing is hashed, and the server is not
+   * asked.
+   */
+  async #changedSince(scope: Scope, since: Date, signal: AbortSignal | undefined, onProgress: PlanOptions['onProgress']): Promise<Scope> {
+    const { site } = this;
+    const found = await scanLocal({
+      root: await this.#localRoot(),
+      cloak: siteCloak(site, process.platform, this.#registry.globalCloaking.patterns),
+      symlinks: site.sync.symlinks,
+      checksum: false,
+      scopes: this.#scopes(scope),
+      signal,
+      onProgress: (files) => onProgress?.({ type: 'scan-local', files }),
+      accept: (file) => fileChangedSince(file, since),
+    });
+    if (signal?.aborted === true) {
+      throw new SyncError('E_CANCELLED', 'Cancelled.');
+    }
+    return { kind: 'paths', paths: [...found.files.keys()].sort() };
+  }
+
   async #buildPlan(options: PlanOptions, explicit: boolean): Promise<SyncPlan> {
-    const scope = options.scope ?? { kind: 'site' };
+    const since = options.changedSince;
+    if (since !== undefined) {
+      if (options.direction !== 'put') {
+        throw new SyncError('E_PLAN_INVALID', 'changedSince goes with the direction put only: it chooses among the files of this computer.');
+      }
+      if (options.deleteOrphans === true) {
+        throw new SyncError('E_PLAN_INVALID', 'changedSince does not go with deleteOrphans: a plan of the files changed since a moment never lists a delete.');
+      }
+      if (Number.isNaN(since.getTime())) {
+        throw new SyncError('E_PLAN_INVALID', 'changedSince is not a date.');
+      }
+    }
+    const asked = options.scope ?? { kind: 'site' };
+    // A plan of the files changed since a moment is the plan of those files as single paths.
+    const scope = since === undefined ? asked : await this.#changedSince(asked, since, options.signal, options.onProgress);
     const { local, remote, records, localRoot } = await this.#scan(scope, options.signal, options.onProgress);
     const compare = { toleranceMs: this.site.sync.mtimeToleranceSeconds * 1000, checksum: this.site.sync.compare === 'checksum' };
     const evidence = await this.#notes?.evidence({ local, remote, records, compare, wholeSite: scope.kind === 'site' });
@@ -463,7 +520,7 @@ export class SyncSession {
   }
 
   /** What changed on each side since the last sync, without planning a transfer. */
-  async status(options: Omit<PlanOptions, 'direction' | 'deleteOrphans'> = {}): Promise<StatusReport> {
+  async status(options: Omit<PlanOptions, 'direction' | 'deleteOrphans' | 'changedSince'> = {}): Promise<StatusReport> {
     const plan = await this.plan({ ...options, direction: 'both', deleteOrphans: false });
     const local: StatusEntry[] = [];
     const remote: StatusEntry[] = [];

@@ -1,3 +1,5 @@
+import type { RangeUnit, TimeRange } from './range.ts';
+
 /**
  * The status texts every front end shows beside a preview row. One place, so
  * the CLI, the terminal UI and the VS Code extension read the same.
@@ -72,4 +74,49 @@ export function dreamweaverTakeOver(adopted: number, clock: 'known' | 'unknown')
     return DREAMWEAVER_TEXT.clockUnknown;
   }
   return adopted === 0 ? DREAMWEAVER_TEXT.nothingTaken : `Took ${files(adopted)} as in sync from Dreamweaver's records.`;
+}
+
+/**
+ * The sentences every front end uses for a Put of the files of a time
+ * range.
+ *
+ * @experimental
+ */
+export const RANGE_TEXT = {
+  /** How a range is written, to follow "takes" or "Enter". */
+  format: 'a number and a unit: m for minutes, h for hours, d for days or w for weeks, such as 90m, 24h, 2d or 1w',
+  /** The question a front end asks for the range. */
+  question: 'Put files created or modified in the last',
+} as const;
+
+const UNIT_WORDS: Readonly<Record<RangeUnit, string>> = { m: 'minute', h: 'hour', d: 'day', w: 'week' };
+
+/**
+ * A range in words, to follow "the last": `day`, `2 days`, `90 minutes`,
+ * `1.5 hours`.
+ *
+ * @experimental
+ */
+export function rangeWords(range: TimeRange): string {
+  const word = UNIT_WORDS[range.unit];
+  return range.value === 1 ? word : `${String(range.value)} ${word}s`;
+}
+
+/**
+ * The title of a preview made from a range: `Put files from the last 2 days`.
+ *
+ * @experimental
+ */
+export function rangeTitle(range: TimeRange): string {
+  return `Put files from the last ${rangeWords(range)}`;
+}
+
+/**
+ * What a front end says when no file is recent: `No file of "My Site" was
+ * created or modified in the last 2 days.`
+ *
+ * @experimental
+ */
+export function noRecentFiles(range: TimeRange, siteName: string): string {
+  return `No file of "${siteName}" was created or modified in the last ${rangeWords(range)}.`;
 }

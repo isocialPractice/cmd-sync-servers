@@ -46,6 +46,11 @@ export interface LocalScanOptions {
   readonly cache?: HashCache | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly onProgress?: ((files: number) => void) | undefined;
+  /**
+   * Leaves out the files it answers false for. Asked once per file that
+   * would be listed, with the path the file is read from, before any hash.
+   */
+  readonly accept?: ((file: string) => Promise<boolean>) | undefined;
 }
 
 /** SHA-256 hashes of local files, reused while size and time are unchanged. */
@@ -135,7 +140,9 @@ interface Folder {
  * nowhere, lead back into a folder above them, or, with
  * `follow-inside-root`, lead out of the real root; then they are reported
  * with the reason. An entry is cloaked when its site path is, or when a
- * link leads to a place inside the site that is.
+ * link leads to a place inside the site that is. With `accept`, a file it
+ * answers false for is left out as if it were not there; folders are
+ * entered whatever it would say of them.
  */
 export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> {
   const platform = options.platform ?? process.platform;
@@ -237,6 +244,9 @@ export async function scanLocal(options: LocalScanOptions): Promise<ScanResult> 
     } else if (entry.isFile()) {
       if (cloakedAt(target, real, linked, false)) {
         mutable.cloaked += 1;
+        return;
+      }
+      if (options.accept !== undefined && !(await options.accept(full))) {
         return;
       }
       await addFile(target, full, entry);

@@ -7,6 +7,34 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
 `1.0.0`, versions used the pre-release form `1.0.0-alpha.x.y.z`, where
 `x.y.z` counted alpha iterations toward `1.0.0`.
 
+## [2.1.0] - 2026-11-26
+
+### Added
+
+- In the library API, `changedSince` in the options of `SyncSession.plan`:
+  a plan of the local files created or last modified at or after a moment,
+  for a Put without the delete option. Only those files are compared, and
+  only they are looked up on the server, as single paths; nothing connects
+  when none is recent. Such a plan never lists a delete, a Get, or a file
+  only the server has. A recent file that also changed on the server is a
+  decision, and cloaking and the sensitive-file guard apply as in any plan.
+- The experimental exports `parseRange`, `formatRange`, `rangeStart`,
+  `fileChangedSince` and `DEFAULT_RANGE`, with the types `TimeRange` and
+  `RangeUnit`, for a time range: a number and one unit, `m` for minutes,
+  `h` for hours, `d` for days or `w` for weeks, such as `90m`, `24h`, `2d`
+  or `1w`. `RANGE_TITLE`, `RANGE_TEXT`, `rangeWords`, `rangeTitle` and
+  `noRecentFiles` hold the label and the sentences every front end shows.
+- A section on the files of a time range on the library API page.
+- Two runtime dependencies, neither with dependencies of its own:
+  `@jhauga/timecal` `1.1.0` (MIT), which gives the start of a time range,
+  and `getfiledate` `1.0.0` (MIT), which gives a file's creation and
+  modification dates.
+
+### Changed
+
+- Single paths, as in `sync --put <path>...`, `put` and `get`, are looked
+  up on the server several at a time, as many as the site's `concurrency`.
+
 ## [2.0.0] - 2026-11-24
 
 ### Changed
@@ -534,5 +562,6 @@ marked experimental in the API reference are outside that promise.
   updates, with every action pinned to a commit.
 - Security policy, contribution guide and design language.
 
+[2.1.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/isocialPractice/cmd-sync-servers/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/isocialPractice/cmd-sync-servers/releases/tag/v1.0.0

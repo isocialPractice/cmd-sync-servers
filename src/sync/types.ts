@@ -17,6 +17,13 @@ export const DIRECTION_TITLES: Readonly<Record<Direction, string>> = {
   both: 'Get and put newer files',
 };
 
+/**
+ * The name of the choice that puts the files of a time range.
+ *
+ * @experimental
+ */
+export const RANGE_TITLE = 'Put files from a time range';
+
 /** The whole site, or some files and folders of it. */
 export type Scope = { readonly kind: 'site' } | { readonly kind: 'paths'; readonly paths: readonly string[] };
 

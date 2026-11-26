@@ -5,7 +5,7 @@ import { after, before, describe, test } from 'node:test';
 import { siteCloak } from '../../../src/sync/cloak.ts';
 import { STATUS } from '../../../src/sync/messages.ts';
 import { ROOT, toRemotePath, type LinkPolicy } from '../../../src/sync/paths.ts';
-import { scanLocal } from '../../../src/sync/scan-local.ts';
+import { HashCache, scanLocal } from '../../../src/sync/scan-local.ts';
 import { tempDir } from '../../helpers/cli.ts';
 
 // A site whose local folder holds links of every kind:
@@ -163,6 +163,133 @@ describe('scanLocal and symbolic links', () => {
     assert.deepEqual((await scan('follow-inside-root', ['img'])).files, ['img/hero.svg']);
     assert.deepEqual((await scan('skip', ['img'])).problems, [`img: ${STATUS.linkNotFollowed}`]);
     assert.deepEqual((await scan('follow', ['css/loop'])).problems, [`css/loop: ${STATUS.linkLoop}`]);
+  });
+
+  test('a file accept leaves out is not among the files reached through links either', async (t) => {
+    if (!folderLinks) {
+      t.skip('creating folder links is not permitted here');
+      return;
+    }
+    const options = { root: local, cloak, symlinks: 'follow', checksum: false, scopes: [ROOT] } as const;
+    const all = await scanLocal(options);
+    const asked: string[] = [];
+    const kept = await scanLocal({
+      ...options,
+      accept: (file) => {
+        asked.push(file);
+        return Promise.resolve(path.basename(file) !== 'hero.svg');
+      },
+    });
+    const withoutHero = (paths: Iterable<string>): string[] => [...paths].filter((target) => !target.endsWith('hero.svg')).sort();
+    assert.deepEqual([...kept.files.keys()].sort(), withoutHero(all.files.keys()));
+    assert.deepEqual([...kept.linked.keys()].sort(), withoutHero(all.linked.keys()));
+    assert.ok(all.linked.has(toRemotePath('img/hero.svg')) && all.linked.has(toRemotePath('pics/hero.svg')));
+    assert.deepEqual([...kept.dirs].sort(), [...all.dirs].sort());
+    assert.equal(kept.cloaked, all.cloaked);
+    assert.deepEqual(kept.problems, all.problems);
+    // Once per file that would be listed, and never for what cloaking hides: drafts/, hidden/ and notes.md.
+    assert.equal(asked.length, all.files.size);
+    assert.deepEqual(asked.filter((file) => file.split(path.sep).includes('drafts') || path.basename(file) === 'notes.md'), []);
+  });
+});
+
+// A site of plain files, with a cloaked folder:
+//   index.html, about.html, css/site.css, img/hero.svg, drafts/notes.md
+describe('scanLocal with accept', () => {
+  let temp: ReturnType<typeof tempDir>;
+  let local: string;
+  const cloak = siteCloak({ cloaking: { enabled: true, patterns: ['/drafts/'], paths: ['about.html'] } });
+  const FILES = ['css/site.css', 'img/hero.svg', 'index.html'];
+
+  before(() => {
+    temp = tempDir();
+    local = path.join(realpathSync.native(temp.dir), 'site');
+    for (const file of [...FILES, 'about.html', 'drafts/notes.md']) {
+      mkdirSync(path.dirname(path.join(local, file)), { recursive: true });
+      writeFileSync(path.join(local, file), `<!-- ${file} -->`);
+    }
+  });
+
+  after(() => {
+    temp.cleanup();
+  });
+
+  const sitePath = (file: string): string => path.relative(local, file).split(path.sep).join('/');
+
+  test('files answered false are left out, and every file that would be listed is asked about once', async () => {
+    const asked: string[] = [];
+    const result = await scanLocal({
+      root: local,
+      cloak,
+      symlinks: 'skip',
+      checksum: false,
+      scopes: [ROOT],
+      accept: (file) => {
+        asked.push(sitePath(file));
+        return Promise.resolve(sitePath(file) !== 'css/site.css');
+      },
+    });
+    assert.deepEqual([...result.files.keys()].sort(), ['img/hero.svg', 'index.html']);
+    assert.deepEqual(asked.sort(), FILES);
+    assert.deepEqual([...result.dirs].sort(), ['css', 'img'], 'a folder is entered whatever accept says of its files');
+    assert.deepEqual([...result.linked.keys()], []);
+  });
+
+  test('a cloaked file is never asked about, and the counts are as without the option', async () => {
+    const plain = await scanLocal({ root: local, cloak, symlinks: 'skip', checksum: false, scopes: [ROOT] });
+    const asked: string[] = [];
+    const none = await scanLocal({
+      root: local,
+      cloak,
+      symlinks: 'skip',
+      checksum: false,
+      scopes: [ROOT],
+      accept: (file) => {
+        asked.push(sitePath(file));
+        return Promise.resolve(false);
+      },
+    });
+    assert.deepEqual([...plain.files.keys()].sort(), FILES);
+    assert.deepEqual([...none.files.keys()], []);
+    assert.ok(!asked.includes('about.html') && !asked.includes('drafts/notes.md'));
+    assert.equal(plain.cloaked, 2);
+    assert.equal(none.cloaked, plain.cloaked);
+    assert.deepEqual(none.problems, plain.problems);
+  });
+
+  test('a checksum scan hashes only the files kept', async (t) => {
+    const cache = await HashCache.open(undefined);
+    const hash = t.mock.method(cache, 'hash');
+    const result = await scanLocal({
+      root: local,
+      cloak,
+      symlinks: 'skip',
+      checksum: true,
+      scopes: [ROOT],
+      cache,
+      accept: (file) => Promise.resolve(sitePath(file) === 'index.html'),
+    });
+    assert.deepEqual(hash.mock.calls.map((call) => call.arguments[0]), ['index.html']);
+    assert.match(result.files.get(toRemotePath('index.html'))?.sha256 ?? '', /^[0-9a-f]{64}$/);
+    assert.equal(result.files.size, 1);
+  });
+
+  test('a single path is asked about like any file', async () => {
+    const asked: string[] = [];
+    const result = await scanLocal({
+      root: local,
+      cloak,
+      symlinks: 'skip',
+      checksum: false,
+      scopes: ['index.html', 'img', 'about.html', 'missing.html'].map((scope) => toRemotePath(scope)),
+      accept: (file) => {
+        asked.push(sitePath(file));
+        return Promise.resolve(sitePath(file) !== 'index.html');
+      },
+    });
+    assert.deepEqual([...result.files.keys()], ['img/hero.svg']);
+    assert.deepEqual(asked.sort(), ['img/hero.svg', 'index.html']);
+    assert.equal(result.cloaked, 1);
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@isocialpractice/cmd-sync-servers",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Cross-platform command-line site synchronization with a library API, modelled on Dreamweaver's Synchronize: sites, servers, cloaking and a preview of every change.",
   "keywords": [
     "sync",
@@ -80,8 +80,10 @@
     "typescript-eslint": "8.72.1"
   },
   "dependencies": {
+    "@jhauga/timecal": "1.1.0",
     "basic-ftp": "6.2.3",
     "diff": "9.0.0",
+    "getfiledate": "1.0.0",
     "ignore": "7.0.14",
     "ssh2": "1.17.0",
     "zod": "4.6.7"
