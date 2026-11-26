@@ -22,6 +22,10 @@ services:
     build:
       context: .
       dockerfile: ftps.Dockerfile
+    # vsftpd's listener must not be PID 1: a session process whose parent
+    # exits first is handed to PID 1, and the listener crashes (SIGSEGV) when
+    # it reaps a process it did not start. The init reaps those instead.
+    init: true
     environment:
       SANDBOX_USER: ${SANDBOX_USER:?set SANDBOX_USER}
       SANDBOX_PASSWORD: ${SANDBOX_PASSWORD:?set SANDBOX_PASSWORD}
