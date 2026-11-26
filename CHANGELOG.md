@@ -57,7 +57,7 @@ and versions follow [Semantic Versioning](https://semver.org/). Before
   `noRecentFiles` hold the label and the sentences every front end shows.
 - A section on the files of a time range on the library API page.
 - Two runtime dependencies, neither with dependencies of its own:
-  `@jhauga/timecal` `1.1.0` (MIT), which gives the start of a time range,
+  `@jhauga/timecal` `1.1.1` (MIT), which gives the start of a time range,
   and `getfiledate` `1.0.0` (MIT), which gives a file's creation and
   modification dates.
 

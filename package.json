@@ -80,7 +80,7 @@
     "typescript-eslint": "8.72.1"
   },
   "dependencies": {
-    "@jhauga/timecal": "1.1.0",
+    "@jhauga/timecal": "1.1.1",
     "basic-ftp": "6.2.3",
     "diff": "9.0.0",
     "getfiledate": "1.0.0",
